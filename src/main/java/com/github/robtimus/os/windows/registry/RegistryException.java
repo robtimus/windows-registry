@@ -21,7 +21,7 @@ import com.sun.jna.platform.win32.Win32Exception;
 import com.sun.jna.platform.win32.WinError;
 
 /**
- * Thrown whenan error occurred while trying to access or modify the Windows registry.
+ * Thrown when an error occurred while trying to access or modify the Windows registry.
  *
  * @author Rob Spoor
  */

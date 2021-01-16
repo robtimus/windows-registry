@@ -290,7 +290,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
             if (code == WinError.ERROR_FILE_NOT_FOUND) {
                 return Optional.empty();
             }
-            if (code != WinError.ERROR_SUCCESS || code != WinError.ERROR_MORE_DATA) {
+            if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
                 byte[] byteData = new byte[lpcbData.getValue() + Native.WCHAR_SIZE];
                 Arrays.fill(byteData, (byte) 0);
                 lpcbData.setValue(0);
@@ -595,7 +595,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         if (code == WinError.ERROR_FILE_NOT_FOUND) {
             return false;
         }
-        throw new RegistryException(code);
+        throw RegistryException.of(code, path);
     }
 
     private HKEY openKey(int samDesired) {
@@ -610,7 +610,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     private void closeKey(HKEY hKey) {
         int code = api.RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
-            throw new RegistryException(code);
+            throw RegistryException.of(code, path);
         }
     }
 }
