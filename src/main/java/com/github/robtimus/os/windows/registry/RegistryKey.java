@@ -62,7 +62,9 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     /** The HKEY_CURRENT_CONFIG root key. */
     public static final RegistryKey HKEY_CURRENT_CONFIG = new RegistryKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
 
-    private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile("\\\\"); //$NON-NLS-1$
+    private static final String SEPARATOR = "\\"; //$NON-NLS-1$
+
+    private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 
     private static Advapi32 api = Advapi32.INSTANCE;
 
@@ -89,7 +91,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         this.rootHKEY = root.rootHKEY;
 
         this.name = pathParts[pathParts.length - 1];
-        this.path = String.join("\\", pathParts); //$NON-NLS-1$
+        this.path = String.join(SEPARATOR, pathParts);
         this.pathFromRoot = path.substring(root.path.length() + 1);
         this.pathParts = pathParts;
     }
@@ -99,7 +101,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         this.rootHKEY = parent.rootHKEY;
 
         this.name = name;
-        this.path = parent.path + "\\" + name; //$NON-NLS-1$
+        this.path = parent.path + SEPARATOR + name;
         this.pathFromRoot = path.substring(root.path.length() + 1);
         this.pathParts = Arrays.copyOfRange(parent.pathParts, 0, parent.pathParts.length + 1);
         this.pathParts[pathParts.length - 1] = name;
@@ -176,7 +178,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
                 if (result.size() > 1) {
                     result.removeLast();
                 }
-            } else if (!".".equals(relativePathPart)) { //$NON-NLS-1$
+            } else if (!(relativePath.isEmpty() || ".".equals(relativePathPart))) { //$NON-NLS-1$
                 result.addLast(relativePathPart);
             }
         }
@@ -512,6 +514,9 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         int code = api.RegCreateKeyEx(rootHKEY, pathFromRoot, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult,
                 lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
+            if (this != root) {
+                closeKey(phkResult.getValue());
+            }
             return lpdwDisposition.getValue();
         }
         throw RegistryException.of(code, path);
