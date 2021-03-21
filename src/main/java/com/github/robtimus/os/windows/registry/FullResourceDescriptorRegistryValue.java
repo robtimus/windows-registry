@@ -30,7 +30,7 @@ public class FullResourceDescriptorRegistryValue extends RegistryValue {
     private final byte[] data;
 
     FullResourceDescriptorRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_NONE);
+        super(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR);
         this.data = Arrays.copyOfRange(data, 0, dataLength);
     }
 

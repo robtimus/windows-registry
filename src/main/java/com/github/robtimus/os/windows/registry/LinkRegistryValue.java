@@ -30,7 +30,7 @@ public class LinkRegistryValue extends RegistryValue {
     private final byte[] data;
 
     LinkRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_NONE);
+        super(name, WinNT.REG_LINK);
         this.data = Arrays.copyOfRange(data, 0, dataLength);
     }
 

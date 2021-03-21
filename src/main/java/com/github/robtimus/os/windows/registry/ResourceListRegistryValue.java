@@ -30,7 +30,7 @@ public class ResourceListRegistryValue extends RegistryValue {
     private final byte[] data;
 
     ResourceListRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_NONE);
+        super(name, WinNT.REG_RESOURCE_LIST);
         this.data = Arrays.copyOfRange(data, 0, dataLength);
     }
 
