@@ -182,6 +182,21 @@
               <suppressWarnings>nls</suppressWarnings>
             </configuration>
           </execution>
+          <execution>
+            <id>generate-service-messages</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <bundleName>com.github.robtimus.os.windows.windows-service</bundleName>
+              <className>com.github.robtimus.os.windows.service.Messages</className>
+              <licenseText>Apache-2.0</licenseText>
+              <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
+              <licenseCopyrightYear>2020</licenseCopyrightYear>
+              <publicVisibility>false</publicVisibility>
+              <suppressWarnings>nls</suppressWarnings>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
