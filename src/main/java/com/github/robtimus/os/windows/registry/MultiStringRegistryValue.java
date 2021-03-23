@@ -19,6 +19,7 @@ package com.github.robtimus.os.windows.registry;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import com.sun.jna.Memory;
@@ -33,7 +34,7 @@ import com.sun.jna.win32.W32APITypeMapper;
  */
 public class MultiStringRegistryValue extends RegistryValue {
 
-    private final String[] values;
+    private final List<String> values;
 
     /**
      * Creates a new multi-string registry value.
@@ -41,20 +42,35 @@ public class MultiStringRegistryValue extends RegistryValue {
      * @param name The name of the registry value.
      * @param values The registry value's string values.
      */
-    public MultiStringRegistryValue(String name, String[] values) {
+    public MultiStringRegistryValue(String name, String... values) {
+        this(name, Arrays.asList(values));
+    }
+
+    /**
+     * Creates a new multi-string registry value.
+     *
+     * @param name The name of the registry value.
+     * @param values The registry value's string values.
+     */
+    public MultiStringRegistryValue(String name, List<String> values) {
         super(name, WinNT.REG_SZ);
-        for (String value : values) {
-            Objects.requireNonNull(value);
-        }
-        this.values = values.clone();
+        this.values = copyOf(values);
     }
 
     MultiStringRegistryValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_SZ);
-        values = toStringArray(data, dataLength);
+        values = toStringList(data, dataLength);
     }
 
-    static String[] toStringArray(byte[] data, int dataLength) {
+    private static List<String> copyOf(List<String> values) {
+        List<String> result = new ArrayList<>(values.size());
+        for (String value : values) {
+            result.add(Objects.requireNonNull(value));
+        }
+        return Collections.unmodifiableList(result);
+    }
+
+    private static List<String> toStringList(byte[] data, int dataLength) {
         Memory memory = new Memory(dataLength + 2L * Native.WCHAR_SIZE);
         memory.clear();
         memory.write(0, data, 0, dataLength);
@@ -82,16 +98,16 @@ public class MultiStringRegistryValue extends RegistryValue {
 
             result.add(value);
         }
-        return result.toArray(new String[0]);
+        return Collections.unmodifiableList(result);
     }
 
     /**
      * Returns the registry value's string values.
      *
-     * @return A copy of the registry value's string values.
+     * @return An unmodifiable list with the registry value's string values.
      */
-    public String[] values() {
-        return values.clone();
+    public List<String> values() {
+        return values;
     }
 
     @Override
@@ -120,18 +136,6 @@ public class MultiStringRegistryValue extends RegistryValue {
         return memory.getByteArray(0, size);
     }
 
-    static byte[] fromString(String value) {
-        Memory memory;
-        if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-            memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
-            memory.setWideString(0, value);
-        } else {
-            memory = new Memory(value.length() + 1L);
-            memory.setString(0, value);
-        }
-        return memory.getByteArray(0, (int) memory.size());
-    }
-
     @Override
     public boolean equals(Object o) {
         if (this == o) {
@@ -141,19 +145,19 @@ public class MultiStringRegistryValue extends RegistryValue {
             return false;
         }
         MultiStringRegistryValue other = (MultiStringRegistryValue) o;
-        return Arrays.equals(values, other.values);
+        return values.equals(other.values);
     }
 
     @Override
     public int hashCode() {
         int hash = super.hashCode();
-        hash = 31 * hash + Arrays.hashCode(values);
+        hash = 31 * hash + values.hashCode();
         return hash;
     }
 
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + Arrays.toString(values);
+        return name() + "=" + values;
     }
 }
