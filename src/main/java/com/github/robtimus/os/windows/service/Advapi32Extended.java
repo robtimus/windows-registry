@@ -17,12 +17,14 @@
 
 package com.github.robtimus.os.windows.service;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.Structure.FieldOrder;
 import com.sun.jna.platform.win32.Advapi32;
-import com.sun.jna.platform.win32.WTypes.LPSTR;
 import com.sun.jna.platform.win32.Winsvc.SC_HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.W32APIOptions;
@@ -42,11 +44,52 @@ interface Advapi32Extended extends Advapi32 {
         public String lpBinaryPathName;
         public String lpLoadOrderGroup;
         public int dwTagId;
-        public String lpDependencies;
-        public LPSTR lpServiceStartName;
-        public LPSTR lpDisplayName;
+        public Pointer lpDependencies;
+        public String lpServiceStartName;
+        public String lpDisplayName;
 
         public QUERY_SERVICE_CONFIG(Pointer p) {
+            super(p, ALIGN_DEFAULT, W32APITypeMapper.DEFAULT);
+        }
+
+        public List<String> dependencies() {
+            if (lpDependencies == null) {
+                return Collections.emptyList();
+            }
+
+            List<String> result = new ArrayList<>();
+            int offset = 0;
+            while (true) {
+                String s = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
+                        ? lpDependencies.getWideString(offset)
+                        : lpDependencies.getString(offset);
+                if (s == null || s.isEmpty()) {
+                    break;
+                }
+                result.add(s);
+                offset += W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
+                        ? (s.length() + 1) * Native.WCHAR_SIZE
+                        : s.length() + 1;
+            }
+
+            return Collections.unmodifiableList(result);
+        }
+    }
+
+    @FieldOrder({"lpDescription"})
+    public static class SERVICE_DESCRIPTION extends Structure {
+        public String lpDescription;
+
+        public SERVICE_DESCRIPTION(Pointer p) {
+            super(p, ALIGN_DEFAULT, W32APITypeMapper.DEFAULT);
+        }
+    }
+
+    @FieldOrder("fDelayedAutostart")
+    class SERVICE_DELAYED_AUTO_START_INFO extends Structure {
+        public boolean fDelayedAutostart;
+
+        public SERVICE_DELAYED_AUTO_START_INFO(Pointer p) {
             super(p, ALIGN_DEFAULT, W32APITypeMapper.DEFAULT);
         }
     }

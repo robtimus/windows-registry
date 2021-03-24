@@ -217,7 +217,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         char[] lpName = new char[lpcMaxSubKeyLen.getValue() + 1];
         IntByReference lpcName = new IntByReference(lpName.length);
 
-        return new LookaheadIterator<String>() {
+        return new LookaheadIterator<>() {
 
             private int index = 0;
 
@@ -396,7 +396,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         byte[] byteData = new byte[lpcMaxValueLen.getValue() + 2 * Native.WCHAR_SIZE];
         IntByReference lpcbData = new IntByReference(byteData.length);
 
-        return new LookaheadIterator<RegistryValue>() {
+        return new LookaheadIterator<>() {
 
             private int index = 0;
 

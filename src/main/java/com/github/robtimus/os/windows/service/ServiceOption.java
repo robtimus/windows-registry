@@ -26,9 +26,6 @@ import com.sun.jna.platform.win32.Winsvc;
  * @author Rob Spoor
  */
 public enum ServiceOption {
-    /** Indicates services can be controlled - started, stopped, paused, continued. */
-    CONTROL(Winsvc.SERVICE_START | Winsvc.SERVICE_STOP | Winsvc.SERVICE_PAUSE_CONTINUE),
-
     /** Indicates services can be created. */
     CREATE(Winsvc.SC_MANAGER_CREATE_SERVICE),
 
