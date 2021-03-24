@@ -87,51 +87,136 @@ public final class ServiceHandle {
         return serviceManager.dependents(this);
     }
 
-    // TODO: recovery?
-
     /**
      * Starts the Windows service.
+     * This method does not wait until the Windows service has started but returns immediately.
      *
      * @param args Additional arguments for the service.
      * @throws IllegalStateException If the service manager from which this service handle originated is closed.
      * @throws AccessDeniedException If the current user does not have sufficient rights to start Windows services.
      */
     public void start(String... args) {
-        // TODO: add a listener, or return some future object?
         serviceManager.start(this, args);
     }
 
     /**
+     * Starts the Windows service.
+     * This method waits until the Windows service has entered a non-transitional state, or the given maximum wait time has passed.
+     * <p>
+     * If all goes well, the resulting status will be {@link ServiceStatus#RUNNING}.
+     * However, if the Windows service fails to start a different non-transitional status may be returned (usually {@link ServiceStatus#STOPPED}.
+     * If the maximum wait time passes before the Windows service finishes starting, a {@link ServiceStatus#isTransitionStatus() transition status}
+     * may be returned.
+     *
+     * @param maxWaitTime The maximum time in milliseconds to wait for the Windows service to start.
+     * @param args Additional arguments for the service.
+     * @return The status of the Windows service.
+     * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+     * @throws AccessDeniedException If the current user does not have sufficient rights to start Windows services.
+     */
+    public StatusInfo startAndWait(long maxWaitTime, String... args) {
+        return serviceManager.start(this, args, maxWaitTime);
+    }
+
+    /**
      * Stops the Windows service.
+     * This method does not wait until the Windows service has stopped but returns immediately.
      *
      * @throws IllegalStateException If the service manager from which this service handle originated is closed.
      * @throws AccessDeniedException If the current user does not have sufficient rights to stop Windows services.
      */
     public void stop() {
-        // TODO: add a listener, or return some future object?
         serviceManager.stop(this);
     }
 
     /**
+     * Stops the Windows service.
+     * This method waits until the Windows service has entered a non-transitional state, or the given maximum wait time has passed.
+     * <p>
+     * If all goes well, the resulting status will be {@link ServiceStatus#STOPPED}.
+     * However, if the Windows service fails to stop a different non-transitional status may be returned.
+     * If the maximum wait time passes before the Windows service finishes stopping, a {@link ServiceStatus#isTransitionStatus() transition status}
+     * may be returned.
+     *
+     * @param maxWaitTime The maximum time in milliseconds to wait for the Windows service to stop.
+     * @return The status of the Windows service.
+     * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+     * @throws AccessDeniedException If the current user does not have sufficient rights to stop Windows services.
+     */
+    public StatusInfo stopAndWait(long maxWaitTime) {
+        return serviceManager.stop(this, maxWaitTime);
+    }
+
+    /**
      * Pauses the Windows service.
+     * This method does not wait until the Windows service has paused but returns immediately.
      *
      * @throws IllegalStateException If the service manager from which this service handle originated is closed.
      * @throws AccessDeniedException If the current user does not have sufficient rights to pause Windows services.
      */
     public void pause() {
-        // TODO: add a listener, or return some future object?
         serviceManager.pause(this);
     }
 
     /**
+     * Pauses the Windows service.
+     * This method waits until the Windows service has entered a non-transitional state, or the given maximum wait time has passed.
+     * <p>
+     * If all goes well, the resulting status will be {@link ServiceStatus#PAUSED}.
+     * However, if the Windows service fails to pause a different non-transitional status may be returned.
+     * If the maximum wait time passes before the Windows service finishes pausing, a {@link ServiceStatus#isTransitionStatus() transition status}
+     * may be returned.
+     *
+     * @param maxWaitTime The maximum time in milliseconds to wait for the Windows service to pause.
+     * @return The status of the Windows service.
+     * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+     * @throws AccessDeniedException If the current user does not have sufficient rights to pause Windows services.
+     */
+    public StatusInfo pauseAndWait(long maxWaitTime) {
+        return serviceManager.pause(this, maxWaitTime);
+    }
+
+    /**
      * Resumes the Windows service.
+     * This method does not wait until the Windows service has resumed but returns immediately.
      *
      * @throws IllegalStateException If the service manager from which this service handle originated is closed.
      * @throws AccessDeniedException If the current user does not have sufficient rights to resume Windows services.
      */
     public void resume() {
-        // TODO: add a listener, or return some future object?
         serviceManager.resume(this);
+    }
+
+    /**
+     * Resumes the Windows service.
+     * This method waits until the Windows service has entered a non-transitional state, or the given maximum wait time has passed.
+     * <p>
+     * If all goes well, the resulting status will be {@link ServiceStatus#RUNNING}.
+     * However, if the Windows service fails to resume a different non-transitional status may be returned (usually {@link ServiceStatus#PAUSED}.
+     * If the maximum wait time passes before the Windows service finishes pausing, a {@link ServiceStatus#isTransitionStatus() transition status}
+     * may be returned.
+     *
+     * @param maxWaitTime The maximum time in milliseconds to wait for the Windows service to resume.
+     * @return The status of the Windows service.
+     * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+     * @throws AccessDeniedException If the current user does not have sufficient rights to resume Windows services.
+     */
+    public StatusInfo resumeAndWait(long maxWaitTime) {
+        return serviceManager.resume(this, maxWaitTime);
+    }
+
+    /**
+     * Awaits until the Windows service has finished its latest status transition.
+     * If the Windows service is in a non-transition status this method will return immediately.
+     * <p>
+     * If the maximum wait time passes before the Windows service finishes its latest status transition,
+     * a {@link ServiceStatus#isTransitionStatus() transition status} may be returned.
+     *
+     * @param maxWaitTime The maximum time in milliseconds to wait for the Windows service to resume.
+     * @return The status of the Windows service.
+     */
+    public StatusInfo awaitStatusTransition(long maxWaitTime) {
+        return serviceManager.awaitStatusTransition(this, maxWaitTime);
     }
 
     @Override

@@ -17,7 +17,6 @@
 
 package com.github.robtimus.os.windows.service;
 
-import java.io.IOException;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.Optional;
@@ -223,7 +222,7 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    ServiceHandle.StatusInfo start(ServiceHandle serviceHandle, String[] args, long maxWaitTime) throws InterruptedException {
+    ServiceHandle.StatusInfo start(ServiceHandle serviceHandle, String[] args, long maxWaitTime) {
         checkClosed();
 
         SC_HANDLE scHandle = openService(serviceHandle, Winsvc.SERVICE_START | Winsvc.SERVICE_QUERY_STATUS);
@@ -250,15 +249,15 @@ public final class ServiceManager implements AutoCloseable {
         control(serviceHandle, Winsvc.SERVICE_CONTROL_CONTINUE, Winsvc.SERVICE_PAUSE_CONTINUE);
     }
 
-    ServiceHandle.StatusInfo stop(ServiceHandle serviceHandle, long maxWaitTime) throws InterruptedException {
+    ServiceHandle.StatusInfo stop(ServiceHandle serviceHandle, long maxWaitTime) {
         return control(serviceHandle, Winsvc.SERVICE_CONTROL_STOP, Winsvc.SERVICE_STOP, maxWaitTime);
     }
 
-    ServiceHandle.StatusInfo pause(ServiceHandle serviceHandle, long maxWaitTime) throws InterruptedException {
+    ServiceHandle.StatusInfo pause(ServiceHandle serviceHandle, long maxWaitTime) {
         return control(serviceHandle, Winsvc.SERVICE_CONTROL_PAUSE, Winsvc.SERVICE_PAUSE_CONTINUE, maxWaitTime);
     }
 
-    ServiceHandle.StatusInfo resume(ServiceHandle serviceHandle, long maxWaitTime) throws InterruptedException {
+    ServiceHandle.StatusInfo resume(ServiceHandle serviceHandle, long maxWaitTime) {
         return control(serviceHandle, Winsvc.SERVICE_CONTROL_CONTINUE, Winsvc.SERVICE_PAUSE_CONTINUE, maxWaitTime);
     }
 
@@ -276,9 +275,7 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    private ServiceHandle.StatusInfo control(ServiceHandle serviceHandle, int dwControl, int dwDesiredAccess, long maxWaitTime)
-            throws InterruptedException {
-
+    private ServiceHandle.StatusInfo control(ServiceHandle serviceHandle, int dwControl, int dwDesiredAccess, long maxWaitTime) {
         checkClosed();
 
         SC_HANDLE scHandle = openService(serviceHandle, dwDesiredAccess | Winsvc.SERVICE_QUERY_STATUS);
@@ -293,7 +290,20 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    private ServiceHandle.StatusInfo awaitStatusTransition(SC_HANDLE scHandle, long maxWaitTime) throws InterruptedException {
+    ServiceHandle.StatusInfo awaitStatusTransition(ServiceHandle serviceHandle, long maxWaitTime) {
+        checkClosed();
+
+        SC_HANDLE scHandle = openService(serviceHandle, Winsvc.SERVICE_QUERY_STATUS);
+        try {
+            return awaitStatusTransition(scHandle, maxWaitTime);
+        } finally {
+            closeService(scHandle);
+        }
+    }
+
+    private ServiceHandle.StatusInfo awaitStatusTransition(SC_HANDLE scHandle, long maxWaitTime) {
+        // Code based on https://docs.microsoft.com/en-us/windows/win32/services/starting-a-service
+
         final int infoLevel = SC_STATUS_TYPE.SC_STATUS_PROCESS_INFO;
 
         SERVICE_STATUS_PROCESS lpBuffer = new SERVICE_STATUS_PROCESS();
@@ -302,14 +312,21 @@ public final class ServiceManager implements AutoCloseable {
             throwLastError();
         }
 
-        long startTime = System.currentTimeMillis();
+        long pollStartTime = System.currentTimeMillis();
+        long startTime = pollStartTime;
         int previousCheckPoint = lpBuffer.dwCheckPoint;
 
         while (ServiceStatus.of(lpBuffer.dwCurrentState).isTransitionStatus()) {
             // Do not wait longer than the wait hint.
             // A good interval is one-tenth of the wait hint but not less than 1 second and not more than the max wait time
             long waitTime = Math.min(maxWaitTime, Math.max(1000, lpBuffer.dwWaitHint / 10));
-            Thread.sleep(waitTime);
+
+            try {
+                Thread.sleep(waitTime);
+            } catch (@SuppressWarnings("unused") InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
 
             if (!api.QueryServiceStatusEx(scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
                 throwLastError();
@@ -319,9 +336,12 @@ public final class ServiceManager implements AutoCloseable {
                 // Continue to wait and check
                 startTime = System.currentTimeMillis();
                 previousCheckPoint = lpBuffer.dwCheckPoint;
-            } else if (System.currentTimeMillis() - startTime > lpBuffer.dwWaitHint) {
-                // No progress made within the wait hint
-                break;
+            } else {
+                long currentTime = System.currentTimeMillis();
+                if (currentTime - startTime > lpBuffer.dwWaitHint || currentTime - pollStartTime >= maxWaitTime) {
+                    // No progress made within the wait hint, or the total wait time has passed
+                    break;
+                }
             }
         }
 
@@ -463,7 +483,7 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     @SuppressWarnings("nls")
-    public static void main(String[] args) throws IOException, InterruptedException {
+    public static void main(String[] args) {
         try (ServiceManager serviceManager = local()) {
             testService(serviceManager.service("Apache2.4").get());
             testService(serviceManager.service("MariaDB").get());
@@ -473,20 +493,14 @@ public final class ServiceManager implements AutoCloseable {
             testService(serviceManager.service("DoSvc").get());
 
             ServiceHandle sh = serviceManager.service("Apache2.4").get();
-            //System.out.printf("%s%n", serviceManager.start(sh, null, 1000));
-            //System.out.printf("%s%n", serviceManager.stop(sh, 1000));
+            sh.startAndWait(5000);
+            System.out.printf("%s%n", sh.status());
+            sh.stopAndWait(5000);
             System.out.printf("%s%n", sh.status());
             sh.start();
-            System.out.printf("%s%n", sh.status());
-            Thread.sleep(1000);
-            System.out.printf("%s%n", sh.status());
-
-            System.out.printf("---%n");
-            sh = serviceManager.service("MariaDB").get();
-            System.out.printf("%s%n", sh.status());
-            //sh.stop();
-            //sh.pause();
-            System.out.printf("%s%n", sh.status());
+            System.out.printf("%s%n", sh.awaitStatusTransition(5000));
+            sh.stop();
+            System.out.printf("%s%n", sh.awaitStatusTransition(5000));
 
             serviceManager.services().forEach(s -> {});
         }
