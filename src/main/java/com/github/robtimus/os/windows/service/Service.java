@@ -23,6 +23,7 @@ import java.util.Optional;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
+import com.github.robtimus.os.windows.service.ServiceManager.ServiceHandle;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.Winsvc;
 import com.sun.jna.platform.win32.Winsvc.ENUM_SERVICE_STATUS;
@@ -48,20 +49,26 @@ public final class Service {
      */
     public static final class Descriptor {
 
+        /** An {@link Extractor} for {@code Descriptor} instances. */
+        public static final Extractor<Descriptor> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new Descriptor(status),
+                (manager, name, handle) -> manager.extractDescriptor(name, handle),
+                (maanger, status) -> new Descriptor(status));
+
         private final String serviceName;
         private final String displayName;
         private final TypeInfo typeInfo;
-
-        Descriptor(String serviceName, QUERY_SERVICE_CONFIG config) {
-            this.serviceName = serviceName;
-            this.displayName = config.lpDisplayName;
-            this.typeInfo = new TypeInfo(config.dwServiceType);
-        }
 
         Descriptor(ENUM_SERVICE_STATUS_PROCESS status) {
             this.serviceName = status.lpServiceName;
             this.displayName = status.lpDisplayName;
             this.typeInfo = new TypeInfo(status.ServiceStatusProcess.dwServiceType);
+        }
+
+        Descriptor(String serviceName, QUERY_SERVICE_CONFIG config) {
+            this.serviceName = serviceName;
+            this.displayName = config.lpDisplayName;
+            this.typeInfo = new TypeInfo(config.dwServiceType);
         }
 
         Descriptor(ENUM_SERVICE_STATUS status) {
@@ -194,6 +201,12 @@ public final class Service {
      * @author Rob Spoor
      */
     public static final class Info {
+
+        /** An {@link Extractor} for {@code Info} instances. */
+        public static final Extractor<Info> EXTRACTOR = new Extractor<>(
+                (manager, status) -> manager.info(status.lpServiceName),
+                (manager, name, handle) -> manager.info(handle),
+                (manager, status) -> manager.info(status.lpServiceName));
 
         private final String description;
         private final String executable;
@@ -361,6 +374,13 @@ public final class Service {
      */
     public static final class StatusInfo {
 
+        /** An {@link Extractor} for {@code StatusInfo} instances. */
+        public static final Extractor<StatusInfo> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new StatusInfo(status.ServiceStatusProcess),
+                (manager, name, handle) -> manager.status(handle),
+                (manager, status) -> new StatusInfo(status.ServiceStatus),
+                Winsvc.SERVICE_QUERY_STATUS);
+
         private final Status status;
         private final int controlsAccepted;
         private final ProcessHandle process;
@@ -507,11 +527,82 @@ public final class Service {
     }
 
     /**
+     * A class encapsulating both a {@link Descriptor} and an {@link Info} for a Windows service.
+     *
+     * @author Rob Spoor
+     */
+    public static final class DescriptorAndInfo {
+
+        /** An {@link Extractor} for {@code DescriptorAndInfo} instances. */
+        public static final Extractor<DescriptorAndInfo> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new DescriptorAndInfo(status, manager.info(status.lpServiceName)),
+                (manager, name, handle) -> manager.extractDescriptorAndInfo(name, handle),
+                (manager, status) -> new DescriptorAndInfo(status, manager.info(status.lpServiceName)),
+                Winsvc.SERVICE_QUERY_STATUS);
+
+        private final Descriptor descriptor;
+        private final Info info;
+
+        DescriptorAndInfo(ENUM_SERVICE_STATUS_PROCESS status, Info info) {
+            this.descriptor = new Descriptor(status);
+            this.info = info;
+        }
+
+        DescriptorAndInfo(String serviceName, QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description,
+                SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
+
+            this.descriptor = new Descriptor(serviceName, config);
+            this.info = new Info(config, description, delayedAutoStartInfo);
+        }
+
+        DescriptorAndInfo(ENUM_SERVICE_STATUS status, Info info) {
+            this.descriptor = new Descriptor(status);
+            this.info = info;
+        }
+
+        /**
+         * Returns the service descriptor.
+         *
+         * @return The service descriptor.
+         */
+        public Descriptor descriptor() {
+            return descriptor;
+        }
+
+        /**
+         * The service information.
+         *
+         * @return The service information.
+         */
+        public Info info() {
+            return info;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append('[');
+            appendField(sb, "descriptor", descriptor);
+            appendField(sb, "info", info);
+            sb.append(']');
+            return sb.toString();
+        }
+    }
+
+    /**
      * A class encapsulating both a {@link Descriptor} and a {@link StatusInfo} for a Windows service.
      *
      * @author Rob Spoor
      */
     public static final class DescriptorAndStatusInfo {
+
+        /** An {@link Extractor} for {@code DescriptorAndStatusInfo} instances. */
+        public static final Extractor<DescriptorAndStatusInfo> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new DescriptorAndStatusInfo(status),
+                (manager, name, handle) -> manager.extractDescriptorAndStatusInfo(name, handle),
+                (manager, status) -> new DescriptorAndStatusInfo(status),
+                Winsvc.SERVICE_QUERY_STATUS);
 
         private final Descriptor descriptor;
         private final StatusInfo statusInfo;
@@ -521,14 +612,14 @@ public final class Service {
             this.statusInfo = new StatusInfo(status.ServiceStatusProcess);
         }
 
+        DescriptorAndStatusInfo(String serviceName, SERVICE_STATUS_PROCESS status, QUERY_SERVICE_CONFIG config) {
+            this.descriptor = new Descriptor(serviceName, config);
+            this.statusInfo = new StatusInfo(status);
+        }
+
         DescriptorAndStatusInfo(ENUM_SERVICE_STATUS status) {
             this.descriptor = new Descriptor(status);
             this.statusInfo = new StatusInfo(status.ServiceStatus);
-        }
-
-        DescriptorAndStatusInfo(String serviceName, QUERY_SERVICE_CONFIG config, SERVICE_STATUS_PROCESS status) {
-            this.descriptor = new Descriptor(serviceName, config);
-            this.statusInfo = new StatusInfo(status);
         }
 
         /**
@@ -558,6 +649,135 @@ public final class Service {
             appendField(sb, "statusInfo", statusInfo);
             sb.append(']');
             return sb.toString();
+        }
+    }
+
+    /**
+     * A class encapsulating all information for a Windows service.
+     *
+     * @author Rob Spoor
+     */
+    public static final class AllInfo {
+
+        /** An {@link Extractor} for {@code AllInfo} instances. */
+        public static final Extractor<AllInfo> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new AllInfo(status, manager.info(status.lpServiceName)),
+                (manager, name, handle) -> manager.extractAllInfo(name, handle),
+                (manager, status) -> new AllInfo(status, manager.info(status.lpServiceName)),
+                Winsvc.SERVICE_QUERY_STATUS);
+
+        private final Descriptor descriptor;
+        private final Info info;
+        private final StatusInfo statusInfo;
+
+        AllInfo(ENUM_SERVICE_STATUS_PROCESS status, Info info) {
+            this.descriptor = new Descriptor(status);
+            this.info = info;
+            this.statusInfo = new StatusInfo(status.ServiceStatusProcess);
+        }
+
+        AllInfo(String serviceName, SERVICE_STATUS_PROCESS status, QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description,
+                SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
+
+            this.descriptor = new Descriptor(serviceName, config);
+            this.info = new Info(config, description, delayedAutoStartInfo);
+            this.statusInfo = new StatusInfo(status);
+        }
+
+        AllInfo(ENUM_SERVICE_STATUS status, Info info) {
+            this.descriptor = new Descriptor(status);
+            this.info = info;
+            this.statusInfo = new StatusInfo(status.ServiceStatus);
+        }
+
+        /**
+         * Returns the service descriptor.
+         *
+         * @return The service descriptor.
+         */
+        public Descriptor descriptor() {
+            return descriptor;
+        }
+
+        /**
+         * Returns the service information.
+         *
+         * @return The service information.
+         */
+        public Info info() {
+            return info();
+        }
+
+        /**
+         * The service status information.
+         *
+         * @return The service status information.
+         */
+        public StatusInfo statusInfo() {
+            return statusInfo;
+        }
+
+        @Override
+        @SuppressWarnings("nls")
+        public String toString() {
+            StringBuilder sb = new StringBuilder();
+            sb.append('[');
+            appendField(sb, "descriptor", descriptor);
+            appendField(sb, "info", info);
+            appendField(sb, "statusInfo", statusInfo);
+            sb.append(']');
+            return sb.toString();
+        }
+    }
+
+    /**
+     * A utility class that can extract Windows service information. This can be used to determine what to return from the following
+     * {@link ServiceManager} methods:
+     * <ul>
+     * <li>{@link ServiceManager#services(Extractor)}</li>
+     * <li>{@link ServiceManager#service(String, Extractor)}</li>
+     * <li>{@link ServiceManager#dependencies(Descriptor, Extractor)}</li>
+     * <li>{@link ServiceManager#dependents(Descriptor, Extractor)}</li>
+     * </ul>
+     *
+     * @author Rob Spoor
+     * @param <T> The type to extract.
+     */
+    public static final class Extractor<T> {
+
+        final ServicesExtractor<T> servicesExtractor;
+        final ServiceExtractor<T> serviceExtractor;
+        final DependentExtractor<T> dependentExtractor;
+
+        final int dwDesiredServiceAccess;
+
+        private Extractor(ServicesExtractor<T> servicesExtractor, ServiceExtractor<T> serviceExtractor, DependentExtractor<T> dependentExtractor) {
+            this(servicesExtractor, serviceExtractor, dependentExtractor, 0);
+        }
+
+        private Extractor(ServicesExtractor<T> servicesExtractor, ServiceExtractor<T> serviceExtractor, DependentExtractor<T> dependentExtractor,
+                int dwDesiredServiceAccess) {
+
+            this.servicesExtractor = servicesExtractor;
+            this.serviceExtractor = serviceExtractor;
+            this.dependentExtractor = dependentExtractor;
+
+            this.dwDesiredServiceAccess = dwDesiredServiceAccess;
+        }
+
+        interface ServicesExtractor<T> {
+
+            T extract(ServiceManager serviceManager, ENUM_SERVICE_STATUS_PROCESS status);
+        }
+
+        interface ServiceExtractor<T> {
+
+            T extract(ServiceManager serviceManager, String serviceName, ServiceHandle serviceHandle);
+        }
+
+        interface DependentExtractor<T> {
+
+            T extract(ServiceManager serviceManager, ENUM_SERVICE_STATUS status);
         }
     }
 
