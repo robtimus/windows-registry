@@ -50,12 +50,6 @@ public final class Service {
      */
     public static final class Handle {
 
-        /** An {@link Extractor} for {@code Handle} instances. */
-        public static final Extractor<Handle> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new Handle(manager, status.lpServiceName),
-                (manager, name, handle) -> new Handle(manager, name),
-                (manager, status) -> new Handle(manager, status.lpServiceName));
-
         private final ServiceManager serviceManager;
         private final String serviceName;
 
@@ -108,7 +102,7 @@ public final class Service {
          * @throws ServiceException If the dependencies could not be retrieved for another reason.
          */
         public Stream<Handle> dependencies() {
-            return dependencies(EXTRACTOR);
+            return dependencies(Query.HANDLE);
         }
 
         /**
@@ -116,16 +110,16 @@ public final class Service {
          * <p>
          * To get only the names of the dependencies, use {@link #info()}.
          *
-         * @param <T> The type of objects to extract.
-         * @param extractor An object that determines what type of objects the dependencies will be returned as.
-         * @return A stream with all dependencies of the service, extracted as specified by the extractor.
-         * @throws NullPointerException If the extractor is {@code null}.
+         * @param <T> The type of objects to return.
+         * @param query The query defining the type of objects to return.
+         * @return A stream with all dependencies of the service, as instances of the type defined by the query.
+         * @throws NullPointerException If the query is {@code null}.
          * @throws IllegalStateException If the service manager from which this service handle originated is closed.
          * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
          * @throws ServiceException If the dependencies could not be retrieved for another reason.
          */
-        public <T> Stream<T> dependencies(Extractor<T> extractor) {
-            return serviceManager.dependencies(this, extractor);
+        public <T> Stream<T> dependencies(Query<T> query) {
+            return serviceManager.dependencies(this, query);
         }
 
         /**
@@ -137,22 +131,22 @@ public final class Service {
          * @throws ServiceException If the dependents could not be retrieved for another reason.
          */
         public Stream<Handle> dependents() {
-            return dependents(EXTRACTOR);
+            return dependents(Query.HANDLE);
         }
 
         /**
          * Returns all dependents of the service.
          *
-         * @param <T> The type of objects to extract.
-         * @param extractor An object that determines what type of objects the dependents will be returned as.
-         * @return A stream with all services that have a dependency on the service, extracted as specified by the extractor.
-         * @throws NullPointerException If the extractor is {@code null}.
+         * @param <T> The type of objects to return.
+         * @param query The query defining the type of objects to return.
+         * @return A stream with all services that have a dependency on the service, as instances of the type defined by the query.
+         * @throws NullPointerException If the query is {@code null}.
          * @throws IllegalStateException If the service manager from which this service handle originated is closed.
          * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
          * @throws ServiceException If the dependencies could not be retrieved for another reason.
          */
-        public <T> Stream<T> dependents(Extractor<T> extractor) {
-            return serviceManager.dependents(this, extractor);
+        public <T> Stream<T> dependents(Query<T> query) {
+            return serviceManager.dependents(this, query);
         }
 
         /**
@@ -342,12 +336,6 @@ public final class Service {
      * @author Rob Spoor
      */
     public static final class Info {
-
-        /** An {@link Extractor} for {@code Info} instances. */
-        public static final Extractor<Info> EXTRACTOR = new Extractor<>(
-                (manager, status) -> manager.info(status.lpServiceName),
-                (manager, name, handle) -> manager.info(handle),
-                (manager, status) -> manager.info(status.lpServiceName));
 
         private final String displayName;
         private final String description;
@@ -607,13 +595,6 @@ public final class Service {
      */
     public static final class StatusInfo {
 
-        /** An {@link Extractor} for {@code StatusInfo} instances. */
-        public static final Extractor<StatusInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new StatusInfo(status.ServiceStatusProcess),
-                (manager, name, handle) -> manager.status(handle),
-                (manager, status) -> new StatusInfo(status.ServiceStatus),
-                Winsvc.SERVICE_QUERY_STATUS);
-
         private final Status status;
         private final int controlsAccepted;
         private final ProcessHandle process;
@@ -766,13 +747,6 @@ public final class Service {
      */
     public static final class HandleAndInfo {
 
-        /** An {@link Extractor} for {@code HandleAndInfo} instances. */
-        public static final Extractor<HandleAndInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new HandleAndInfo(new Handle(manager, status.lpServiceName), manager.info(status.lpServiceName)),
-                (manager, name, handle) -> new HandleAndInfo(new Handle(manager, name), manager.info(handle)),
-                (manager, status) -> new HandleAndInfo(new Handle(manager, status.lpServiceName), manager.info(status.lpServiceName)),
-                Winsvc.SERVICE_QUERY_STATUS);
-
         private final Handle handle;
         private final Info info;
 
@@ -818,13 +792,6 @@ public final class Service {
      */
     public static final class HandleAndStatusInfo {
 
-        /** An {@link Extractor} for {@code HandleAndStatusInfo} instances. */
-        public static final Extractor<HandleAndStatusInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatusProcess)),
-                (manager, name, handle) -> new HandleAndStatusInfo(new Handle(manager, name), manager.status(handle)),
-                (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatus)),
-                Winsvc.SERVICE_QUERY_STATUS);
-
         private final Handle handle;
         private final StatusInfo statusInfo;
 
@@ -869,13 +836,6 @@ public final class Service {
      * @author Rob Spoor
      */
     public static final class AllInfo {
-
-        /** An {@link Extractor} for {@code AllInfo} instances. */
-        public static final Extractor<AllInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new AllInfo(manager, status, manager.info(status.lpServiceName)),
-                (manager, name, handle) -> manager.allInfo(name, handle),
-                (manager, status) -> new AllInfo(manager, status, manager.info(status.lpServiceName)),
-                Winsvc.SERVICE_QUERY_STATUS);
 
         private final Handle handle;
         private final Info info;
@@ -942,53 +902,90 @@ public final class Service {
     }
 
     /**
-     * A utility class that can extract Windows service information. This can be used to determine what to return from the following
-     * {@link ServiceManager} methods:
+     * A strategy for querying Windows services. This can be used to determine what to return from the following methods:
      * <ul>
-     * <li>{@link ServiceManager#services(Extractor)}</li>
-     * <li>{@link ServiceManager#service(String, Extractor)}</li>
-     * <li>{@link Handle#dependencies(Extractor)}</li>
-     * <li>{@link Handle#dependents(Extractor)}</li>
+     * <li>{@link ServiceManager#services(Query)}</li>
+     * <li>{@link ServiceManager#service(String, Query)}</li>
+     * <li>{@link Handle#dependencies(Query)}</li>
+     * <li>{@link Handle#dependents(Query)}</li>
      * </ul>
      *
      * @author Rob Spoor
-     * @param <T> The type to extract.
+     * @param <T> The type returned from the query.
      */
-    public static final class Extractor<T> {
+    public static final class Query<T> {
 
-        final ServicesExtractor<T> servicesExtractor;
-        final ServiceExtractor<T> serviceExtractor;
-        final DependentExtractor<T> dependentExtractor;
+        /** A query for {@code Handle} instances. */
+        public static final Query<Handle> HANDLE = new Query<>(
+                (manager, status) -> new Handle(manager, status.lpServiceName),
+                (manager, name, handle) -> new Handle(manager, name),
+                (manager, status) -> new Handle(manager, status.lpServiceName));
+
+        /** A query for {@code Info} instances. */
+        public static final Query<Info> INFO = new Query<>(
+                (manager, status) -> manager.info(status.lpServiceName),
+                (manager, name, handle) -> manager.info(handle),
+                (manager, status) -> manager.info(status.lpServiceName));
+
+        /** A query for {@code StatusInfo} instances. */
+        public static final Query<StatusInfo> STATUS_INFO = new Query<>(
+                (manager, status) -> new StatusInfo(status.ServiceStatusProcess),
+                (manager, name, handle) -> manager.status(handle),
+                (manager, status) -> new StatusInfo(status.ServiceStatus),
+                Winsvc.SERVICE_QUERY_STATUS);
+
+        /** A query for {@code HandleAndInfo} instances. */
+        public static final Query<HandleAndInfo> HANDLE_AND_INFO = new Query<>(
+                (manager, status) -> new HandleAndInfo(new Handle(manager, status.lpServiceName), manager.info(status.lpServiceName)),
+                (manager, name, handle) -> new HandleAndInfo(new Handle(manager, name), manager.info(handle)),
+                (manager, status) -> new HandleAndInfo(new Handle(manager, status.lpServiceName), manager.info(status.lpServiceName)),
+                Winsvc.SERVICE_QUERY_STATUS);
+
+        /** A query for {@code HandleAndStatusInfo} instances. */
+        public static final Query<HandleAndStatusInfo> HANDLE_AND_STATUS_INFO = new Query<>(
+                (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatusProcess)),
+                (manager, name, handle) -> new HandleAndStatusInfo(new Handle(manager, name), manager.status(handle)),
+                (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatus)),
+                Winsvc.SERVICE_QUERY_STATUS);
+
+        /** A query for {@code AllInfo} instances. */
+        public static final Query<AllInfo> ALL_INFO = new Query<>(
+                (manager, status) -> new AllInfo(manager, status, manager.info(status.lpServiceName)),
+                (manager, name, handle) -> manager.allInfo(name, handle),
+                (manager, status) -> new AllInfo(manager, status, manager.info(status.lpServiceName)),
+                Winsvc.SERVICE_QUERY_STATUS);
+
+        final ServicesQuery<T> servicesQuery;
+        final ServiceQuery<T> serviceQuery;
+        final DependentQuery<T> dependentQuery;
 
         final int dwDesiredServiceAccess;
 
-        private Extractor(ServicesExtractor<T> servicesExtractor, ServiceExtractor<T> serviceExtractor, DependentExtractor<T> dependentExtractor) {
-            this(servicesExtractor, serviceExtractor, dependentExtractor, 0);
+        private Query(ServicesQuery<T> servicesQuery, ServiceQuery<T> serviceQuery, DependentQuery<T> dependentQuery) {
+            this(servicesQuery, serviceQuery, dependentQuery, 0);
         }
 
-        private Extractor(ServicesExtractor<T> servicesExtractor, ServiceExtractor<T> serviceExtractor, DependentExtractor<T> dependentExtractor,
-                int dwDesiredServiceAccess) {
-
-            this.servicesExtractor = servicesExtractor;
-            this.serviceExtractor = serviceExtractor;
-            this.dependentExtractor = dependentExtractor;
+        private Query(ServicesQuery<T> servicesQuery, ServiceQuery<T> serviceQuery, DependentQuery<T> dependentQuery, int dwDesiredServiceAccess) {
+            this.servicesQuery = servicesQuery;
+            this.serviceQuery = serviceQuery;
+            this.dependentQuery = dependentQuery;
 
             this.dwDesiredServiceAccess = dwDesiredServiceAccess;
         }
 
-        interface ServicesExtractor<T> {
+        interface ServicesQuery<T> {
 
-            T extract(ServiceManager serviceManager, ENUM_SERVICE_STATUS_PROCESS status);
+            T queryFrom(ServiceManager serviceManager, ENUM_SERVICE_STATUS_PROCESS status);
         }
 
-        interface ServiceExtractor<T> {
+        interface ServiceQuery<T> {
 
-            T extract(ServiceManager serviceManager, String serviceName, ServiceManager.Handle serviceHandle);
+            T queryFrom(ServiceManager serviceManager, String serviceName, ServiceManager.Handle serviceHandle);
         }
 
-        interface DependentExtractor<T> {
+        interface DependentQuery<T> {
 
-            T extract(ServiceManager serviceManager, ENUM_SERVICE_STATUS status);
+            T queryFrom(ServiceManager serviceManager, ENUM_SERVICE_STATUS status);
         }
     }
 

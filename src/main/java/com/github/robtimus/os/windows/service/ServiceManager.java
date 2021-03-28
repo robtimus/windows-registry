@@ -137,26 +137,25 @@ public final class ServiceManager implements AutoCloseable {
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
     public Stream<Service.Handle> services() {
-        return services(Service.Handle.EXTRACTOR);
+        return services(Service.Query.HANDLE);
     }
 
     /**
      * Returns all Windows services for this service manager.
      *
-     * @param <T> The type of objects to extract.
-     * @param extractor An object that determines what type of objects the services will be returned as.
-     * @return A stream with all Windows services, extracted as specified by the extractor.
-     * @throws NullPointerException If the extractor is {@code null}.
+     * @param <T> The type of objects to return.
+     * @param query The query defining the type of objects to return.
+     * @return A stream with all Windows services, as instances of the type defined by the query.
+     * @throws NullPointerException If the query is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
-    public <T> Stream<T> services(Service.Extractor<T> extractor) {
-        Objects.requireNonNull(extractor);
+    public <T> Stream<T> services(Service.Query<T> query) {
+        Objects.requireNonNull(query);
         checkClosed();
 
         final int infoLevel = Winsvc.SC_ENUM_PROCESS_INFO;
-        //final int dwServiceType = WinNT.SERVICE_WIN32;
-        final int dwServiceType = WinNT.SERVICE_TYPE_ALL;
+        final int dwServiceType = WinNT.SERVICE_WIN32;
         final int dwServiceState = Winsvc.SERVICE_STATE_ALL;
 
         IntByReference pcbBytesNeeded = new IntByReference();
@@ -186,49 +185,45 @@ public final class ServiceManager implements AutoCloseable {
         ENUM_SERVICE_STATUS_PROCESS status = Structure.newInstance(ENUM_SERVICE_STATUS_PROCESS.class, lpServices);
         status.read();
         ENUM_SERVICE_STATUS_PROCESS[] statuses = (ENUM_SERVICE_STATUS_PROCESS[]) status.toArray(lpServicesReturned.getValue());
-        //return Arrays.stream(statuses).map(s -> extractor.servicesExtractor.extract(this, s));
-        return Arrays.stream(statuses).map(s -> {
-            System.out.printf("%-60s: %10d%n", s.lpServiceName, s.ServiceStatusProcess.dwServiceType);
-            return extractor.servicesExtractor.extract(this, s);
-        });
+        return Arrays.stream(statuses).map(s -> query.servicesQuery.queryFrom(this, s));
     }
 
     /**
      * Returns a specific Windows service if available.
      *
      * @param serviceName The name of the service to return. Note that this is case insensitive.
-     * @return An optional describing a handle to the specified Windows service, or {@link Optional#empty()} if no such service exists.
+     * @return An {@link Optional} describing a handle to the specified Windows service, or {@link Optional#empty()} if no such service exists.
      * @throws NullPointerException If the service name is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
     public Optional<Service.Handle> service(String serviceName) {
-        return service(serviceName, Service.Handle.EXTRACTOR);
+        return service(serviceName, Service.Query.HANDLE);
     }
 
     /**
      * Returns a specific Windows service if available.
      *
-     * @param <T> The type of objects to extract.
+     * @param <T> The type of objects to return.
      * @param serviceName The name of the service to return. Note that this is case insensitive.
-     * @param extractor An object that determines what type of object the service will be returned as.
-     * @return An optional describing the specified Windows service, extracted as specified by the extractor,
+     * @param query The query defining the type of object to return.
+     * @return An {@link Optional} describing the specified Windows service as an instance of the type defined by the query,
      *         or {@link Optional#empty()} if no such service exists.
-     * @throws NullPointerException If the service name or extractor is {@code null}.
+     * @throws NullPointerException If the service name or query is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
-    public <T> Optional<T> service(String serviceName, Service.Extractor<T> extractor) {
+    public <T> Optional<T> service(String serviceName, Service.Query<T> query) {
         Objects.requireNonNull(serviceName);
-        Objects.requireNonNull(extractor);
+        Objects.requireNonNull(query);
         checkClosed();
 
-        try (Handle serviceHandle = tryOpenService(serviceName, Winsvc.SERVICE_QUERY_CONFIG | extractor.dwDesiredServiceAccess)) {
+        try (Handle serviceHandle = tryOpenService(serviceName, Winsvc.SERVICE_QUERY_CONFIG | query.dwDesiredServiceAccess)) {
             if (serviceHandle == null) {
                 return Optional.empty();
             }
 
-            return Optional.of(extractor.serviceExtractor.extract(this, serviceName, serviceHandle));
+            return Optional.of(query.serviceQuery.queryFrom(this, serviceName, serviceHandle));
         }
     }
 
@@ -269,24 +264,24 @@ public final class ServiceManager implements AutoCloseable {
         return new Service.Info(config, description, delayedAutoStartInfo);
     }
 
-    <T> Stream<T> dependencies(Service.Handle service, Service.Extractor<T> extractor) {
+    <T> Stream<T> dependencies(Service.Handle service, Service.Query<T> query) {
         Objects.requireNonNull(service);
-        Objects.requireNonNull(extractor);
+        Objects.requireNonNull(query);
         checkClosed();
 
         try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_CONFIG)) {
             QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
 
             return config.dependencies().stream()
-                    .map(d -> service(d, extractor))
+                    .map(d -> service(d, query))
                     .filter(Optional::isPresent)
                     .map(Optional::get);
         }
     }
 
-    <T> Stream<T> dependents(Service.Handle service, Service.Extractor<T> extractor) {
+    <T> Stream<T> dependents(Service.Handle service, Service.Query<T> query) {
         Objects.requireNonNull(service);
-        Objects.requireNonNull(extractor);
+        Objects.requireNonNull(query);
         checkClosed();
 
         try (Handle serviceHandle = openService(service, Winsvc.SERVICE_ENUMERATE_DEPENDENTS)) {
@@ -316,7 +311,7 @@ public final class ServiceManager implements AutoCloseable {
             ENUM_SERVICE_STATUS status = Structure.newInstance(ENUM_SERVICE_STATUS.class, lpServices);
             status.read();
             ENUM_SERVICE_STATUS[] statuses = (ENUM_SERVICE_STATUS[]) status.toArray(lpServicesReturned.getValue());
-            return Arrays.stream(statuses).map(s -> extractor.dependentExtractor.extract(this, s));
+            return Arrays.stream(statuses).map(s -> query.dependentQuery.queryFrom(this, s));
         }
     }
 
@@ -589,12 +584,12 @@ public final class ServiceManager implements AutoCloseable {
 //            service.stop();
 //            System.out.printf("%s%n", service.awaitStatusTransition(5000));
 
-            serviceManager.services(Service.HandleAndStatusInfo.EXTRACTOR)
+            serviceManager.services(Service.Query.HANDLE_AND_STATUS_INFO)
                     .limit(10)
                     .forEach(s -> System.out.printf("%s, %s, %s%n", s, s.handle(), s.statusInfo()));
 
-            serviceManager.service("PrintWorkflowUserSvc_29f05", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
-            serviceManager.service("PrintWorkflowUserSvc", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
+            serviceManager.service("PrintWorkflowUserSvc_29f05", Service.Query.ALL_INFO).ifPresent(System.out::println);
+            serviceManager.service("PrintWorkflowUserSvc", Service.Query.ALL_INFO).ifPresent(System.out::println);
 
             serviceManager.services().mapToInt(s -> {
                 try (Handle handle = serviceManager.openService(s, Winsvc.SERVICE_QUERY_CONFIG | Winsvc.SERVICE_QUERY_STATUS)) {
@@ -602,10 +597,6 @@ public final class ServiceManager implements AutoCloseable {
                     return serviceManager.queryServiceConfig(handle).dwServiceType;
                 }
             }).distinct().sorted().forEach(System.out::println);
-            serviceManager.service("wuauserv", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
-            serviceManager.service("WpnUserService_29f05", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
-            serviceManager.service("PrintNotify", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
-            serviceManager.service("SamsungUPDUtilSvc", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
         }
     }
 
@@ -617,11 +608,11 @@ public final class ServiceManager implements AutoCloseable {
         System.out.printf("%s (%s)%n", service, service.serviceName());
         System.out.printf("Info: %s%n", info);
         System.out.printf("Status: %s%n", status);
-        System.out.printf("Status: %s%n", serviceManager.service(name, Service.StatusInfo.EXTRACTOR));
+        System.out.printf("Status: %s%n", serviceManager.service(name, Service.Query.STATUS_INFO));
         System.out.printf("Dependencies:%n");
-        service.dependencies(Service.HandleAndInfo.EXTRACTOR).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
+        service.dependencies(Service.Query.HANDLE_AND_INFO).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
         System.out.printf("Dependent:%n");
-        service.dependents(Service.HandleAndInfo.EXTRACTOR).limit(10).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
+        service.dependents(Service.Query.HANDLE_AND_INFO).limit(10).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
         System.out.printf("Process:%n");
         status.process().map(ProcessHandle::info).ifPresent(System.out::println);
         System.out.printf("---%n");
