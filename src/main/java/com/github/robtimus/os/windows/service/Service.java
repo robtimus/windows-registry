@@ -757,7 +757,7 @@ public final class Service {
          */
         public boolean canPause() {
             // Pausing while transitioning (e.g. starting, stopping) is not allowed
-            return isSet(controlsAccepted, Winsvc.SERVICE_ACCEPT_PAUSE_CONTINUE) && !status.isTransitionStatus();
+            return status == Status.RUNNING && isSet(controlsAccepted, Winsvc.SERVICE_ACCEPT_PAUSE_CONTINUE);
         }
 
         /**
@@ -767,7 +767,7 @@ public final class Service {
          */
         public boolean canResume() {
             // Resuming while transitioning (e.g. starting, stopping) is not allowed
-            return isSet(controlsAccepted, Winsvc.SERVICE_ACCEPT_PAUSE_CONTINUE) && !status.isTransitionStatus();
+            return status == Status.PAUSED && isSet(controlsAccepted, Winsvc.SERVICE_ACCEPT_PAUSE_CONTINUE);
         }
 
         /**
