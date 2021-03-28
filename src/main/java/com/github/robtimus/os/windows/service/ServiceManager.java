@@ -60,13 +60,30 @@ public final class ServiceManager implements AutoCloseable {
 
     private static Kernel32 kernel32 = Kernel32.INSTANCE;
 
-    private final Set<ServiceOption> options;
+    private final Set<OpenOption> options;
 
     private SC_HANDLE scmHandle;
 
-    private ServiceManager(SC_HANDLE scmHandle, ServiceOption... options) {
-        this.options = options.length == 0 ? EnumSet.noneOf(ServiceOption.class) : EnumSet.of(options[0], options);
+    private ServiceManager(SC_HANDLE scmHandle, Set<OpenOption> options) {
+        this.options = options;
         this.scmHandle = scmHandle;
+    }
+
+    /**
+     * An object that configures how to open a service manager.
+     *
+     * @author Rob Spoor
+     */
+    public enum OpenOption {
+        /** Indicates services can be created. */
+        CREATE,
+
+        /** Indicates services can be changed. */
+        CHANGE,
+
+        /** Indicates services can be deleted. */
+        DELETE,
+        ;
     }
 
     /**
@@ -78,7 +95,7 @@ public final class ServiceManager implements AutoCloseable {
      * @param options The options to use.
      * @return A service manager for the current machine.
      */
-    public static ServiceManager local(ServiceOption... options) {
+    public static ServiceManager local(OpenOption... options) {
         return create(null, options);
     }
 
@@ -95,26 +112,19 @@ public final class ServiceManager implements AutoCloseable {
      * @throws ServiceException If no service manager is available
      * @throws NullPointerException If the given machine name is {@code null}.
      */
-    public static ServiceManager remote(String machineName, ServiceOption... options) {
+    public static ServiceManager remote(String machineName, OpenOption... options) {
         Objects.requireNonNull(machineName);
         return create(machineName, options);
     }
 
-    private static ServiceManager create(String machineName, ServiceOption... options) {
-        int dwDesiredAccess = dwDesiredAccess(DEFAULT_SERVICE_MANAGER_ACCESS, options);
+    private static ServiceManager create(String machineName, OpenOption... options) {
+        Set<OpenOption> openOptions = options.length == 0 ? EnumSet.noneOf(OpenOption.class) : EnumSet.of(options[0], options);
+        int dwDesiredAccess = DEFAULT_SERVICE_MANAGER_ACCESS | (openOptions.contains(OpenOption.CREATE) ? Winsvc.SC_MANAGER_CREATE_SERVICE : 0);
         SC_HANDLE scmHandle = api.OpenSCManager(machineName, null, dwDesiredAccess);
         if (scmHandle == null) {
             throwLastError();
         }
-        return new ServiceManager(scmHandle, options);
-    }
-
-    private static int dwDesiredAccess(int defaultAccess, ServiceOption... options) {
-        int dwDesiredAccess = defaultAccess;
-        for (ServiceOption option : options) {
-            dwDesiredAccess |= option.dwDesiredAccess;
-        }
-        return dwDesiredAccess;
+        return new ServiceManager(scmHandle, openOptions);
     }
 
     @Override
@@ -263,23 +273,23 @@ public final class ServiceManager implements AutoCloseable {
     /**
      * Deletes a specific Windows service.
      * <p>
-     * This service manager must have been opened with option {@link ServiceOption#DELETE}.
+     * This service manager must have been opened with option {@link OpenOption#DELETE}.
      * If this option is not given an {@link AccessDeniedException} will be thrown.
      *
      * @param service A handle to the service to delete.
-     * @throws NullPointerException  If the service handle is {@code null}.
+     * @throws NullPointerException If the service handle is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws AccessDeniedException If the current user does not have sufficient rights to delete services,
-     *                                   or if the {@link ServiceOption#DELETE} option is not given when opening this service manager.
-     * @throws ServiceException      If the service could not be deleted for another reason.
-     * @see #local(ServiceOption...)
-     * @see #remote(String, ServiceOption...)
+     *                                   or if the {@link OpenOption#DELETE} option is not given when opening this service manager.
+     * @throws ServiceException If the service could not be deleted for another reason.
+     * @see #local(OpenOption...)
+     * @see #remote(String, OpenOption...)
      */
     public void delete(Service.Handle service) {
         Objects.requireNonNull(service);
         checkClosed();
 
-        int dwDesiredAccess = options.contains(ServiceOption.DELETE) ? WinNT.DELETE : 0;
+        int dwDesiredAccess = options.contains(OpenOption.DELETE) ? WinNT.DELETE : 0;
         try (Handle handle = openService(service, dwDesiredAccess)) {
             if (!api.DeleteService(handle.scHandle)) {
                 throwLastError();
