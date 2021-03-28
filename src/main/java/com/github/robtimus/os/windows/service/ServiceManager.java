@@ -18,8 +18,10 @@
 package com.github.robtimus.os.windows.service;
 
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import com.github.robtimus.os.windows.AccessDeniedException;
@@ -58,9 +60,12 @@ public final class ServiceManager implements AutoCloseable {
 
     private static Kernel32 kernel32 = Kernel32.INSTANCE;
 
+    private final Set<ServiceOption> options;
+
     private SC_HANDLE scmHandle;
 
-    private ServiceManager(SC_HANDLE scmHandle) {
+    private ServiceManager(SC_HANDLE scmHandle, ServiceOption... options) {
+        this.options = options.length == 0 ? EnumSet.noneOf(ServiceOption.class) : EnumSet.of(options[0], options);
         this.scmHandle = scmHandle;
     }
 
@@ -101,7 +106,7 @@ public final class ServiceManager implements AutoCloseable {
         if (scmHandle == null) {
             throwLastError();
         }
-        return new ServiceManager(scmHandle);
+        return new ServiceManager(scmHandle, options);
     }
 
     private static int dwDesiredAccess(int defaultAccess, ServiceOption... options) {
@@ -223,7 +228,7 @@ public final class ServiceManager implements AutoCloseable {
      * @return An {@link Optional} describing a handle to the specified Windows service, or {@link Optional#empty()} if no such service exists.
      * @throws NullPointerException If the service name is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
-     * @throws ServiceException If the services could not be retrieved for another reason.
+     * @throws ServiceException If the service could not be retrieved for another reason.
      */
     public Optional<Service.Handle> service(String serviceName) {
         return service(serviceName, Service.Query.HANDLE);
@@ -239,19 +244,46 @@ public final class ServiceManager implements AutoCloseable {
      *         or {@link Optional#empty()} if no such service exists.
      * @throws NullPointerException If the service name or query is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
-     * @throws ServiceException If the services could not be retrieved for another reason.
+     * @throws ServiceException If the service could not be retrieved for another reason.
      */
     public <T> Optional<T> service(String serviceName, Service.Query<T> query) {
         Objects.requireNonNull(serviceName);
         Objects.requireNonNull(query);
         checkClosed();
 
-        try (Handle serviceHandle = tryOpenService(serviceName, Winsvc.SERVICE_QUERY_CONFIG | query.dwDesiredServiceAccess)) {
-            if (serviceHandle == null) {
+        try (Handle handle = tryOpenService(serviceName, Winsvc.SERVICE_QUERY_CONFIG | query.dwDesiredServiceAccess)) {
+            if (handle == null) {
                 return Optional.empty();
             }
 
-            return Optional.of(query.serviceQuery.queryFrom(this, serviceName, serviceHandle));
+            return Optional.of(query.serviceQuery.queryFrom(this, serviceName, handle));
+        }
+    }
+
+    /**
+     * Deletes a specific Windows service.
+     * <p>
+     * This service manager must have been opened with option {@link ServiceOption#DELETE}.
+     * If this option is not given an {@link AccessDeniedException} will be thrown.
+     *
+     * @param service A handle to the service to delete.
+     * @throws NullPointerException  If the service handle is {@code null}.
+     * @throws IllegalStateException If this service manager is closed.
+     * @throws AccessDeniedException If the current user does not have sufficient rights to delete services,
+     *                                   or if the {@link ServiceOption#DELETE} option is not given when opening this service manager.
+     * @throws ServiceException      If the service could not be deleted for another reason.
+     * @see #local(ServiceOption...)
+     * @see #remote(String, ServiceOption...)
+     */
+    public void delete(Service.Handle service) {
+        Objects.requireNonNull(service);
+        checkClosed();
+
+        int dwDesiredAccess = options.contains(ServiceOption.DELETE) ? WinNT.DELETE : 0;
+        try (Handle handle = openService(service, dwDesiredAccess)) {
+            if (!api.DeleteService(handle.scHandle)) {
+                throwLastError();
+            }
         }
     }
 
@@ -259,13 +291,13 @@ public final class ServiceManager implements AutoCloseable {
         Objects.requireNonNull(service);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
-            return status(serviceHandle);
+        try (Handle handle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
+            return status(handle);
         }
     }
 
-    Service.StatusInfo status(Handle serviceHandle) {
-        SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
+    Service.StatusInfo status(Handle handle) {
+        SERVICE_STATUS_PROCESS status = queryStatus(handle);
 
         return new Service.StatusInfo(status);
     }
@@ -278,16 +310,16 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     Service.Info info(String serviceName) {
-        try (Handle serviceHandle = openService(serviceName, Winsvc.SERVICE_QUERY_CONFIG)) {
-            return info(serviceHandle);
+        try (Handle handle = openService(serviceName, Winsvc.SERVICE_QUERY_CONFIG)) {
+            return info(handle);
         }
     }
 
-    Service.Info info(Handle serviceHandle) {
-        QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
-        SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
+    Service.Info info(Handle handle) {
+        QUERY_SERVICE_CONFIG config = queryServiceConfig(handle);
+        SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(handle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
         SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = config.dwStartType == WinNT.SERVICE_AUTO_START
-                ? queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, SERVICE_DELAYED_AUTO_START_INFO::new)
+                ? queryServiceConfig2(handle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, SERVICE_DELAYED_AUTO_START_INFO::new)
                 : null;
 
         return new Service.Info(config, description, delayedAutoStartInfo);
@@ -298,8 +330,8 @@ public final class ServiceManager implements AutoCloseable {
         Objects.requireNonNull(query);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_CONFIG)) {
-            QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
+        try (Handle handle = openService(service, Winsvc.SERVICE_QUERY_CONFIG)) {
+            QUERY_SERVICE_CONFIG config = queryServiceConfig(handle);
 
             return config.dependencies().stream()
                     .map(d -> service(d, query))
@@ -313,12 +345,12 @@ public final class ServiceManager implements AutoCloseable {
         Objects.requireNonNull(query);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_ENUMERATE_DEPENDENTS)) {
+        try (Handle handle = openService(service, Winsvc.SERVICE_ENUMERATE_DEPENDENTS)) {
             final int dwServiceState = Winsvc.SERVICE_STATE_ALL;
 
             IntByReference pcbBytesNeeded = new IntByReference();
             IntByReference lpServicesReturned = new IntByReference();
-            if (!api.EnumDependentServices(serviceHandle.scHandle, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned)) {
+            if (!api.EnumDependentServices(handle.scHandle, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned)) {
                 throwLastErrorUnless(WinError.ERROR_MORE_DATA);
             }
 
@@ -327,7 +359,7 @@ public final class ServiceManager implements AutoCloseable {
             }
 
             Memory lpServices = new Memory(pcbBytesNeeded.getValue());
-            if (!api.EnumDependentServices(serviceHandle.scHandle, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
+            if (!api.EnumDependentServices(handle.scHandle, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
                     lpServicesReturned)) {
 
                 throwLastError();
@@ -344,26 +376,26 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    Service.AllInfo allInfo(String serviceName, Handle serviceHandle) {
-        Service.Handle handle = new Service.Handle(this, serviceName);
+    Service.AllInfo allInfo(String serviceName, Handle handle) {
+        Service.Handle serviceHandle = new Service.Handle(this, serviceName);
 
-        QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
-        SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
-        SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
+        QUERY_SERVICE_CONFIG config = queryServiceConfig(handle);
+        SERVICE_STATUS_PROCESS status = queryStatus(handle);
+        SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(handle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
         SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = config.dwStartType == WinNT.SERVICE_AUTO_START
-                ? queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, SERVICE_DELAYED_AUTO_START_INFO::new)
+                ? queryServiceConfig2(handle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, SERVICE_DELAYED_AUTO_START_INFO::new)
                 : null;
 
-        return new Service.AllInfo(handle, status, config, description, delayedAutoStartInfo);
+        return new Service.AllInfo(serviceHandle, status, config, description, delayedAutoStartInfo);
     }
 
     void start(Service.Handle service, String... args) {
         Objects.requireNonNull(service);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_START)) {
+        try (Handle handle = openService(service, Winsvc.SERVICE_START)) {
             int dwNumServiceArgs = args != null ? args.length : 0;
-            if (!api.StartService(serviceHandle.scHandle, dwNumServiceArgs, args)) {
+            if (!api.StartService(handle.scHandle, dwNumServiceArgs, args)) {
                 throwLastError();
             }
         }
@@ -374,12 +406,12 @@ public final class ServiceManager implements AutoCloseable {
         checkWaitTime(maxWaitTime);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_START | Winsvc.SERVICE_QUERY_STATUS)) {
+        try (Handle handle = openService(service, Winsvc.SERVICE_START | Winsvc.SERVICE_QUERY_STATUS)) {
             int dwNumServiceArgs = args != null ? args.length : 0;
-            if (!api.StartService(serviceHandle.scHandle, dwNumServiceArgs, args)) {
+            if (!api.StartService(handle.scHandle, dwNumServiceArgs, args)) {
                 throwLastError();
             }
-            return awaitStatusTransition(serviceHandle, maxWaitTime);
+            return awaitStatusTransition(handle, maxWaitTime);
         }
     }
 
@@ -411,9 +443,9 @@ public final class ServiceManager implements AutoCloseable {
         Objects.requireNonNull(service);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, dwDesiredAccess)) {
+        try (Handle handle = openService(service, dwDesiredAccess)) {
             SERVICE_STATUS lpServiceStatus = new SERVICE_STATUS();
-            if (!api.ControlService(serviceHandle.scHandle, dwControl, lpServiceStatus)) {
+            if (!api.ControlService(handle.scHandle, dwControl, lpServiceStatus)) {
                 throwLastError();
             }
         }
@@ -424,12 +456,12 @@ public final class ServiceManager implements AutoCloseable {
         checkWaitTime(maxWaitTime);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, dwDesiredAccess | Winsvc.SERVICE_QUERY_STATUS)) {
+        try (Handle handle = openService(service, dwDesiredAccess | Winsvc.SERVICE_QUERY_STATUS)) {
             SERVICE_STATUS lpServiceStatus = new SERVICE_STATUS();
-            if (!api.ControlService(serviceHandle.scHandle, dwControl, lpServiceStatus)) {
+            if (!api.ControlService(handle.scHandle, dwControl, lpServiceStatus)) {
                 throwLastError();
             }
-            return awaitStatusTransition(serviceHandle, maxWaitTime);
+            return awaitStatusTransition(handle, maxWaitTime);
         }
     }
 
@@ -438,8 +470,8 @@ public final class ServiceManager implements AutoCloseable {
         checkWaitTime(maxWaitTime);
         checkClosed();
 
-        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
-            return awaitStatusTransition(serviceHandle, maxWaitTime);
+        try (Handle handle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
+            return awaitStatusTransition(handle, maxWaitTime);
         }
     }
 
@@ -449,14 +481,14 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    private Service.StatusInfo awaitStatusTransition(Handle serviceHandle, long maxWaitTime) {
+    private Service.StatusInfo awaitStatusTransition(Handle handle, long maxWaitTime) {
         // Code based on https://docs.microsoft.com/en-us/windows/win32/services/starting-a-service
 
         final int infoLevel = SC_STATUS_TYPE.SC_STATUS_PROCESS_INFO;
 
         SERVICE_STATUS_PROCESS lpBuffer = new SERVICE_STATUS_PROCESS();
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceStatusEx(serviceHandle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
+        if (!api.QueryServiceStatusEx(handle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
             throwLastError();
         }
 
@@ -476,7 +508,7 @@ public final class ServiceManager implements AutoCloseable {
                 break;
             }
 
-            if (!api.QueryServiceStatusEx(serviceHandle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
+            if (!api.QueryServiceStatusEx(handle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
                 throwLastError();
             }
 
@@ -496,46 +528,46 @@ public final class ServiceManager implements AutoCloseable {
         return new Service.StatusInfo(lpBuffer);
     }
 
-    private SERVICE_STATUS_PROCESS queryStatus(Handle serviceHandle) {
+    private SERVICE_STATUS_PROCESS queryStatus(Handle handle) {
         final int infoLevel = SC_STATUS_TYPE.SC_STATUS_PROCESS_INFO;
 
         SERVICE_STATUS_PROCESS lpBuffer = new SERVICE_STATUS_PROCESS();
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceStatusEx(serviceHandle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
+        if (!api.QueryServiceStatusEx(handle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
             throwLastError();
         }
         return lpBuffer;
     }
 
-    private QUERY_SERVICE_CONFIG queryServiceConfig(Handle serviceHandle) {
+    private QUERY_SERVICE_CONFIG queryServiceConfig(Handle handle) {
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceConfig(serviceHandle.scHandle, null, 0, pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig(handle.scHandle, null, 0, pcbBytesNeeded)) {
             throwLastErrorUnless(WinError.ERROR_INSUFFICIENT_BUFFER);
         }
         QUERY_SERVICE_CONFIG lpServiceConfig = new QUERY_SERVICE_CONFIG(new Memory(pcbBytesNeeded.getValue()));
-        if (!api.QueryServiceConfig(serviceHandle.scHandle, lpServiceConfig, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig(handle.scHandle, lpServiceConfig, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
             throwLastError();
         }
         return lpServiceConfig;
     }
 
-    private <T extends Structure> T queryServiceConfig2(Handle serviceHandle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
-        T config = queryOptionalServiceConfig2(serviceHandle, dwInfoLevel, bufferFactory);
+    private <T extends Structure> T queryServiceConfig2(Handle handle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
+        T config = queryOptionalServiceConfig2(handle, dwInfoLevel, bufferFactory);
         if (config == null) {
             throwLastError();
         }
         return config;
     }
 
-    private <T extends Structure> T queryOptionalServiceConfig2(Handle serviceHandle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
+    private <T extends Structure> T queryOptionalServiceConfig2(Handle handle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, null, 0, pcbBytesNeeded)
+        if (!api.QueryServiceConfig2(handle.scHandle, dwInfoLevel, null, 0, pcbBytesNeeded)
                 && kernel32.GetLastError() != WinError.ERROR_INSUFFICIENT_BUFFER) {
 
             return null;
         }
         Memory lpBuffer = new Memory(pcbBytesNeeded.getValue());
-        if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, lpBuffer, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig2(handle.scHandle, dwInfoLevel, lpBuffer, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
             return null;
         }
         T lpConfig = bufferFactory.apply(lpBuffer);

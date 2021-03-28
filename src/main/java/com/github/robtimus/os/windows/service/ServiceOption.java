@@ -17,7 +17,6 @@
 
 package com.github.robtimus.os.windows.service;
 
-import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.Winsvc;
 
 /**
@@ -33,7 +32,7 @@ public enum ServiceOption {
     CHANGE(Winsvc.SERVICE_CHANGE_CONFIG),
 
     /** Indicates services can be deleted. */
-    DELETE(WinNT.DELETE),
+    DELETE(0),
     ;
 
     final int dwDesiredAccess;
