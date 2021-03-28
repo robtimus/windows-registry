@@ -989,6 +989,73 @@ public final class Service {
         }
     }
 
+    /**
+     * A strategy for filtering Windows services. This can be used to determine what to return from the following methods:
+     * <ul>
+     * <li>{@link ServiceManager#services(Filter)}</li>
+     * <li>{@link ServiceManager#services(Query, Filter)}</li>
+     * </ul>
+     *
+     * @author Rob Spoor
+     */
+    public static final class Filter {
+
+        static final Filter DEFAULT = new Filter();
+
+        int dwServiceType;
+        int dwServiceState;
+        String pszGroupName;
+
+        /**
+         * Creates a new filter. Using this filter will by default return both active and inactive non-driver services.
+         */
+        public Filter() {
+            dwServiceType = WinNT.SERVICE_WIN32;
+            dwServiceState = Winsvc.SERVICE_STATE_ALL;
+            pszGroupName = null;
+        }
+
+        /**
+         * Specifies that using this filter will return only drivers.
+         *
+         * @return This filter.
+         */
+        public Filter driversOnly() {
+            dwServiceType = WinNT.SERVICE_DRIVER;
+            return this;
+        }
+
+        /**
+         * Specifies that using this filter will return all services, both drivers and non-drivers.
+         *
+         * @return This filter.
+         */
+        public Filter allTypes() {
+            dwServiceType = WinNT.SERVICE_TYPE_ALL;
+            return this;
+        }
+
+        /**
+         * Specifies that using this filter will return only active services.
+         *
+         * @return This filter.
+         */
+        public Filter activeOnly() {
+            dwServiceState = Winsvc.SERVICE_ACTIVE;
+            return this;
+        }
+
+        /**
+         * Specifies that using this filter will return only inactive services.
+         *
+         * @return This filter.
+         */
+        public Filter inactiveOnly() {
+            dwServiceState = Winsvc.SERVICE_INACTIVE;
+            return this;
+        }
+    }
+
     private static boolean isSet(int value, int flag) {
         return (value & flag) == flag;
     }

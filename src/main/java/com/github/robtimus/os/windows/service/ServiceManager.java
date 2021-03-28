@@ -130,7 +130,7 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     /**
-     * Returns all Windows services for this service manager.
+     * Returns all non-driver Windows services for this service manager.
      *
      * @return A stream with handles to all Windows services.
      * @throws IllegalStateException If this service manager is closed.
@@ -141,7 +141,7 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     /**
-     * Returns all Windows services for this service manager.
+     * Returns all non-driver Windows services for this service manager.
      *
      * @param <T> The type of objects to return.
      * @param query The query defining the type of objects to return.
@@ -151,18 +151,47 @@ public final class ServiceManager implements AutoCloseable {
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
     public <T> Stream<T> services(Service.Query<T> query) {
+        return services(query, Service.Filter.DEFAULT);
+    }
+
+    /**
+     * Returns all Windows services for this service manager.
+     *
+     * @param filter The filter that determines which services are returned.
+     * @return A stream with handles to all Windows services.
+     * @throws NullPointerException If the filter is {@code null}.
+     * @throws IllegalStateException If this service manager is closed.
+     * @throws ServiceException If the services could not be retrieved for another reason.
+     */
+    public Stream<Service.Handle> services(Service.Filter filter) {
+        return services(Service.Query.HANDLE, filter);
+    }
+
+    /**
+     * Returns all Windows services for this service manager.
+     *
+     * @param <T> The type of objects to return.
+     * @param query The query defining the type of objects to return.
+     * @param filter The filter that determines which services are returned.
+     * @return A stream with all Windows services, as instances of the type defined by the query.
+     * @throws NullPointerException If the query or filter is {@code null}.
+     * @throws IllegalStateException If this service manager is closed.
+     * @throws ServiceException If the services could not be retrieved for another reason.
+     */
+    public <T> Stream<T> services(Service.Query<T> query, Service.Filter filter) {
         Objects.requireNonNull(query);
         checkClosed();
 
         final int infoLevel = Winsvc.SC_ENUM_PROCESS_INFO;
-        final int dwServiceType = WinNT.SERVICE_WIN32;
-        final int dwServiceState = Winsvc.SERVICE_STATE_ALL;
+        final int dwServiceType = filter != null ? filter.dwServiceType : WinNT.SERVICE_WIN32;
+        final int dwServiceState = filter != null ? filter.dwServiceState : Winsvc.SERVICE_STATE_ALL;
+        final String pszGroupName = filter != null ? filter.pszGroupName : null;
 
         IntByReference pcbBytesNeeded = new IntByReference();
         IntByReference lpServicesReturned = new IntByReference();
         IntByReference lpResumeHandle = new IntByReference(0);
         if (!api.EnumServicesStatusEx(scmHandle, infoLevel, dwServiceType, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned,
-                lpResumeHandle, null)) {
+                lpResumeHandle, pszGroupName)) {
 
             throwLastErrorUnless(WinError.ERROR_MORE_DATA);
         }
@@ -173,7 +202,7 @@ public final class ServiceManager implements AutoCloseable {
 
         Memory lpServices = new Memory(pcbBytesNeeded.getValue());
         if (!api.EnumServicesStatusEx(scmHandle, infoLevel, dwServiceType, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
-                lpServicesReturned, lpResumeHandle, null)) {
+                lpServicesReturned, lpResumeHandle, pszGroupName)) {
 
             throwLastError();
         }
@@ -584,7 +613,7 @@ public final class ServiceManager implements AutoCloseable {
 //            service.stop();
 //            System.out.printf("%s%n", service.awaitStatusTransition(5000));
 
-            serviceManager.services(Service.Query.HANDLE_AND_STATUS_INFO)
+            serviceManager.services(Service.Query.ALL_INFO, new Service.Filter().activeOnly())
                     .limit(10)
                     .forEach(s -> System.out.printf("%s, %s, %s%n", s, s.handle(), s.statusInfo()));
 
