@@ -347,7 +347,7 @@ public final class Service {
 
         Info(QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
             this.displayName = config.lpDisplayName;
-            this.description = description.lpDescription;
+            this.description = description != null ? description.lpDescription : null;
             this.executable = config.lpBinaryPathName;
             this.typeInfo = new TypeInfo(config.dwServiceType);
             this.startInfo = new StartInfo(config, delayedAutoStartInfo);
@@ -367,7 +367,8 @@ public final class Service {
         /**
          * Returns the service description.
          *
-         * @return An {@link Optional} describing the service description, or {@link Optional#empty()} if the service has no description.
+         * @return An {@link Optional} describing the service description,
+         *         or {@link Optional#empty()} if the service has no description or the description is not available.
          */
         public Optional<String> description() {
             return Optional.ofNullable(description);

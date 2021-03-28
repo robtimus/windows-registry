@@ -26,7 +26,6 @@ import com.github.robtimus.os.windows.AccessDeniedException;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
-import com.github.robtimus.os.windows.service.Service.StatusInfo;
 import com.sun.jna.Memory;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.Kernel32;
@@ -286,7 +285,7 @@ public final class ServiceManager implements AutoCloseable {
 
     Service.Info info(Handle serviceHandle) {
         QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
-        SERVICE_DESCRIPTION description = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
+        SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
         SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
                 SERVICE_DELAYED_AUTO_START_INFO::new);
 
@@ -349,7 +348,7 @@ public final class ServiceManager implements AutoCloseable {
 
         QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
         SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
-        SERVICE_DESCRIPTION description = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
+        SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
         SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
                 SERVICE_DELAYED_AUTO_START_INFO::new);
 
@@ -519,13 +518,23 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     private <T extends Structure> T queryServiceConfig2(Handle serviceHandle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
+        T config = queryOptionalServiceConfig2(serviceHandle, dwInfoLevel, bufferFactory);
+        if (config == null) {
+            throwLastError();
+        }
+        return config;
+    }
+
+    private <T extends Structure> T queryOptionalServiceConfig2(Handle serviceHandle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, null, 0, pcbBytesNeeded)) {
-            throwLastErrorUnless(WinError.ERROR_INSUFFICIENT_BUFFER);
+        if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, null, 0, pcbBytesNeeded)
+                && kernel32.GetLastError() != WinError.ERROR_INSUFFICIENT_BUFFER) {
+
+            return null;
         }
         Memory lpBuffer = new Memory(pcbBytesNeeded.getValue());
         if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, lpBuffer, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
-            throwLastError();
+            return null;
         }
         T lpConfig = bufferFactory.apply(lpBuffer);
         lpConfig.read();
@@ -591,59 +600,5 @@ public final class ServiceManager implements AutoCloseable {
                 throwLastError();
             }
         }
-    }
-
-    @SuppressWarnings("nls")
-    public static void main(String[] args) {
-        try (ServiceManager serviceManager = local()) {
-            testService(serviceManager, "Apache2.4");
-            testService(serviceManager, "MariaDB");
-            testService(serviceManager, "AxInstSV");
-            testService(serviceManager, "RpcSs");
-            testService(serviceManager, "UserManager");
-            testService(serviceManager, "DoSvc");
-
-//            Service.Handle service = serviceManager.service("Apache2.4").orElseThrow();
-//            service.startAndWait(5000);
-//            System.out.printf("%s%n", service.status());
-//            service.stopAndWait(5000);
-//            System.out.printf("%s%n", service.status());
-//            service.start();
-//            System.out.printf("%s%n", service.awaitStatusTransition(5000));
-//            service.stop();
-//            System.out.printf("%s%n", service.awaitStatusTransition(5000));
-
-            serviceManager.services(Service.Query.ALL_INFO, new Service.Filter().activeOnly())
-                    .limit(10)
-                    .forEach(s -> System.out.printf("%s, %s, %s%n", s, s.handle(), s.statusInfo()));
-
-            serviceManager.service("PrintWorkflowUserSvc_29f05", Service.Query.ALL_INFO).ifPresent(System.out::println);
-            serviceManager.service("PrintWorkflowUserSvc", Service.Query.ALL_INFO).ifPresent(System.out::println);
-
-            serviceManager.services().mapToInt(s -> {
-                try (Handle handle = serviceManager.openService(s, Winsvc.SERVICE_QUERY_CONFIG | Winsvc.SERVICE_QUERY_STATUS)) {
-                    //return serviceManager.queryStatus(handle).dwServiceType;
-                    return serviceManager.queryServiceConfig(handle).dwServiceType;
-                }
-            }).distinct().sorted().forEach(System.out::println);
-        }
-    }
-
-    @SuppressWarnings("nls")
-    private static void testService(ServiceManager serviceManager, String name) {
-        Service.Handle service = serviceManager.service(name).orElseThrow();
-        Service.Info info = service.info();
-        StatusInfo status = service.status();
-        System.out.printf("%s (%s)%n", service, service.serviceName());
-        System.out.printf("Info: %s%n", info);
-        System.out.printf("Status: %s%n", status);
-        System.out.printf("Status: %s%n", serviceManager.service(name, Service.Query.STATUS_INFO));
-        System.out.printf("Dependencies:%n");
-        service.dependencies(Service.Query.HANDLE_AND_INFO).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
-        System.out.printf("Dependent:%n");
-        service.dependents(Service.Query.HANDLE_AND_INFO).limit(10).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
-        System.out.printf("Process:%n");
-        status.process().map(ProcessHandle::info).ifPresent(System.out::println);
-        System.out.printf("---%n");
     }
 }
