@@ -25,6 +25,7 @@ import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.Structure.FieldOrder;
 import com.sun.jna.platform.win32.Advapi32;
+import com.sun.jna.platform.win32.Winsvc.ChangeServiceConfig2Info;
 import com.sun.jna.platform.win32.Winsvc.SC_HANDLE;
 import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.W32APIOptions;
@@ -77,20 +78,20 @@ interface Advapi32Extended extends Advapi32 {
     }
 
     @FieldOrder({"lpDescription"})
-    public static class SERVICE_DESCRIPTION extends Structure {
+    public static class SERVICE_DESCRIPTION extends ChangeServiceConfig2Info {
         public String lpDescription;
 
         public SERVICE_DESCRIPTION(Pointer p) {
-            super(p, ALIGN_DEFAULT, W32APITypeMapper.DEFAULT);
+            super(p);
         }
     }
 
     @FieldOrder("fDelayedAutostart")
-    class SERVICE_DELAYED_AUTO_START_INFO extends Structure {
+    class SERVICE_DELAYED_AUTO_START_INFO extends ChangeServiceConfig2Info {
         public boolean fDelayedAutostart;
 
         public SERVICE_DELAYED_AUTO_START_INFO(Pointer p) {
-            super(p, ALIGN_DEFAULT, W32APITypeMapper.DEFAULT);
+            super(p);
         }
     }
 }

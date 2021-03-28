@@ -446,6 +446,9 @@ public final class Service {
         private static final int SERVICE_USER_SERVICE = 0x00000040;
         private static final int SERVICE_USER_OWN_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_OWN_PROCESS; // 0x00000050
         private static final int SERVICE_USER_SHARE_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_SHARE_PROCESS; // 0x00000060
+        // Possible other useful constants:
+        // SERVICE_USERSERVICE_INSTANCE 0x00000080
+        // SERVICE_PKG_SERVICE 0x00000200
 
         private final Type type;
         private final Boolean sharedProcess;
