@@ -246,20 +246,17 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If the sub keys cannot be deleted for another reason.
      */
     public void deleteSubKeys(Predicate<? super String> namePredicate) {
-        HKEY hKey = openKey(WinNT.KEY_READ);
-        try {
+        try (Key key = new Key(openKey(WinNT.KEY_READ))) {
             List<String> subKeys = new ArrayList<>();
-            for (Iterator<String> i = subKeys(hKey); i.hasNext(); ) {
+            for (Iterator<String> i = subKeys(key.hKey); i.hasNext(); ) {
                 String subKey = i.next();
                 if (namePredicate.test(subKey)) {
                     subKeys.add(subKey);
                 }
             }
             for (String subKey : subKeys) {
-                deleteSubKey(hKey, subKey);
+                deleteSubKey(key.hKey, subKey);
             }
-        } finally {
-            closeKey(hKey);
         }
     }
 
@@ -284,11 +281,10 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public Optional<RegistryValue> getValue(String name) {
         Objects.requireNonNull(name);
 
-        HKEY hKey = openKey(WinNT.KEY_READ | WinNT.KEY_QUERY_VALUE);
-        try {
+        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_QUERY_VALUE))) {
             IntByReference lpType = new IntByReference();
             IntByReference lpcbData = new IntByReference();
-            int code = api.RegQueryValueEx(hKey, name, 0, lpType, (byte[]) null, lpcbData);
+            int code = api.RegQueryValueEx(key.hKey, name, 0, lpType, (byte[]) null, lpcbData);
             if (code == WinError.ERROR_FILE_NOT_FOUND) {
                 return Optional.empty();
             }
@@ -297,16 +293,13 @@ public final class RegistryKey implements Comparable<RegistryKey> {
                 Arrays.fill(byteData, (byte) 0);
                 lpcbData.setValue(0);
 
-                code = api.RegQueryValueEx(hKey, name, 0, null, byteData, lpcbData);
+                code = api.RegQueryValueEx(key.hKey, name, 0, null, byteData, lpcbData);
                 if (code == WinError.ERROR_SUCCESS) {
                     RegistryValue value = RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue());
                     return Optional.of(value);
                 }
             }
             throw RegistryException.of(code, path, name);
-
-        } finally {
-            closeKey(hKey);
         }
     }
 
@@ -321,15 +314,12 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public void setValue(RegistryValue value) {
         Objects.requireNonNull(value);
 
-        HKEY hKey = openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE);
-        try {
+        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
             byte[] data = value.rawData();
-            int code = api.RegSetValueEx(hKey, value.name(), 0, value.type(), data, data.length);
+            int code = api.RegSetValueEx(key.hKey, value.name(), 0, value.type(), data, data.length);
             if (code != WinError.ERROR_SUCCESS) {
                 throw RegistryException.of(code, path, name);
             }
-        } finally {
-            closeKey(hKey);
         }
     }
 
@@ -344,14 +334,11 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public void deleteValue(String name) {
         Objects.requireNonNull(name);
 
-        HKEY hKey = openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE);
-        try {
-            int code = api.RegDeleteValue(hKey, name);
+        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
+            int code = api.RegDeleteValue(key.hKey, name);
             if (code != WinError.ERROR_SUCCESS) {
                 throw RegistryException.of(code, path);
             }
-        } finally {
-            closeKey(hKey);
         }
     }
 
@@ -366,9 +353,8 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public boolean deleteValueIfExists(String name) {
         Objects.requireNonNull(name);
 
-        HKEY hKey = openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE);
-        try {
-            int code = api.RegDeleteValue(hKey, name);
+        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
+            int code = api.RegDeleteValue(key.hKey, name);
             if (code == WinError.ERROR_FILE_NOT_FOUND) {
                 return false;
             }
@@ -376,9 +362,6 @@ public final class RegistryKey implements Comparable<RegistryKey> {
                 return true;
             }
             throw RegistryException.of(code, path);
-
-        } finally {
-            closeKey(hKey);
         }
     }
 
@@ -445,20 +428,17 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If the values cannot be deleted for another reason.
      */
     public void deleteValues(Predicate<? super RegistryValue> valuePredicate) {
-        HKEY hKey = openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE);
-        try {
+        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
             List<String> values = new ArrayList<>();
-            for (Iterator<RegistryValue> i = values(hKey); i.hasNext(); ) {
+            for (Iterator<RegistryValue> i = values(key.hKey); i.hasNext(); ) {
                 RegistryValue value = i.next();
                 if (valuePredicate.test(value)) {
                     values.add(value.name());
                 }
             }
             for (String value : values) {
-                deleteValue(hKey, value);
+                deleteValue(key.hKey, value);
             }
-        } finally {
-            closeKey(hKey);
         }
     }
 
@@ -616,6 +596,20 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         int code = api.RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.of(code, path);
+        }
+    }
+
+    final class Key implements AutoCloseable {
+
+        private final HKEY hKey;
+
+        private Key(HKEY hKey) {
+            this.hKey = hKey;
+        }
+
+        @Override
+        public void close() {
+            closeKey(hKey);
         }
     }
 }
