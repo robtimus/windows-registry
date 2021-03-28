@@ -443,51 +443,96 @@ public final class Service {
      */
     public static final class TypeInfo {
 
-        private final int serviceType;
+        private static final int SERVICE_USER_SERVICE = 0x00000040;
+        private static final int SERVICE_USER_OWN_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_OWN_PROCESS; // 0x00000050
+        private static final int SERVICE_USER_SHARE_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_SHARE_PROCESS; // 0x00000060
+
+        private final Type type;
+        private final Boolean sharedProcess;
+        private final Boolean userProcess;
+        private final Boolean template;
+        private final Boolean interactiveProcess;
 
         private TypeInfo(int serviceType) {
-            this.serviceType = serviceType;
+            type = Type.of(serviceType);
+            // SERVICE_USER_SHARED_PROCESS (0x60) includes SERVICE_WIN32_SHARE_PROCESS (0x20)
+            if (type == Type.PROCESS) {
+                sharedProcess = isSet(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS);
+                userProcess = isSet(serviceType, SERVICE_USER_SERVICE);
+                template = userProcess.booleanValue() ? isUserProcessTemplate(serviceType) : null;
+                interactiveProcess = isSet(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS);
+            } else {
+                sharedProcess = null;
+                userProcess = null;
+                interactiveProcess = null;
+                template = null;
+            }
+        }
+
+        private static boolean isUserProcessTemplate(int serviceType) {
+            // User processes come in two variants:
+            // * templates: this is how they are created, with value SERVICE_USER_OWN_PROCESS or SERVICE_USER_SHARE_PROCESS, and optionally
+            //   SERVICE_INTERACTIVE_PROCESS
+            // * instances: automatically created from a template, they share the same type but with an additional value added
+            //   (from experimentation
+            int remaining = serviceType & ~SERVICE_USER_OWN_PROCESS & ~SERVICE_USER_SHARE_PROCESS & ~WinNT.SERVICE_INTERACTIVE_PROCESS;
+            // for user processes, remaining should usually be 0x80
+            // for user process templates, remaining should be 0
+            return isSet(serviceType, SERVICE_USER_SERVICE) && remaining == 0;
         }
 
         /**
-         * Returns whether or not the service is a driver service.
+         * Returns the service type.
          *
-         * @return {@code true} if the service is a driver service, or {@code false} otherwise.
+         * @return The service type.
          */
-        public boolean isDriver() {
-            return isSet(serviceType, WinNT.SERVICE_KERNEL_DRIVER)
-                    || isSet(serviceType, WinNT.SERVICE_FILE_SYSTEM_DRIVER)
-                    || isSet(serviceType, WinNT.SERVICE_ADAPTER)
-                    || isSet(serviceType, WinNT.SERVICE_RECOGNIZER_DRIVER);
+        public Type type() {
+            return type;
         }
 
         /**
          * Returns whether or not the service shares a process with one or more other services.
          *
-         * @return {@code true} if the service shares a process with one or more other services, or {@code false} if runs in its own process.
+         * @return An {@link Optional} with value {@code true} if the service shares a process with one or more other services,
+         *         an {@link Optional} with value {@code false} if the service runs in its own process,
+         *         or {@link Optional#empty()} if the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public boolean isShared() {
-            return isSet(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS)
-                    || isSet(serviceType, 0x00000060); // SERVICE_USER_SHARE_PROCESS
+        public Optional<Boolean> sharedProcess() {
+            return Optional.ofNullable(sharedProcess);
         }
 
         /**
-         * Returns whether or not the service runs under the logged-on user account.
+         * Returns whether or not the service runs in a process under the logged-on user account.
          *
-         * @return {@code true} if the service under the logged-on user account, or {@code false} otherwise.
+         * @return An {@link Optional} with value {@code true} if the service runs in a process under the logged-on user account,
+         *         an {@link Optional} with value {@code false} if the service runs in a process but not under the logged-on user account,
+         *         or {@link Optional#empty()} if the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public boolean isUserProcess() {
-            return isSet(serviceType, 0x00000050) // WinNT.SERVICE_USER_OWN_PROCESS
-                    || isSet(serviceType, 0x00000060); // SERVICE_USER_SHARE_PROCESS
+        public Optional<Boolean> userProcess() {
+            return Optional.ofNullable(userProcess);
+        }
+
+        /**
+         * Returns whether or not the service is a template for user processes.
+         *
+         * @return An {@link Optional} with value {@code true} if the service is a template for user process services,
+         *         an {@link Optional} with value {@code false} if the service is an instance of a user process service,
+         *         or {@link Optional#empty()} if the service does not run in a process under the logged-on user account.
+         * @see #userProcess()
+         */
+        public Optional<Boolean> template() {
+            return Optional.ofNullable(template);
         }
 
         /**
          * Returns whether or not the service can interact with the desktop.
          *
-         * @return {@code true} if the service can interact with the desktop, or {@code false} otherwise.
+         * @return An {@link Optional} with value {@code true} if the service can interact with the desktop,
+         *         an {@link Optional} with value {@code false} if the service cannot interact with the desktop,
+         *         or {@link Optional#empty()} if the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public boolean isInteractiveProcess() {
-            return isSet(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS);
+        public Optional<Boolean> interactiveProcess() {
+            return Optional.ofNullable(interactiveProcess);
         }
 
         @Override
@@ -495,12 +540,73 @@ public final class Service {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
-            appendField(sb, "driver", isDriver());
-            appendField(sb, "shared", isShared());
-            appendField(sb, "userProcess", isUserProcess());
-            appendField(sb, "interactiveProcess", isInteractiveProcess());
+            appendField(sb, "type", type());
+            appendField(sb, "sharedProcess", sharedProcess);
+            appendField(sb, "userProcess", userProcess);
+            appendField(sb, "template", template);
+            appendField(sb, "interactiveProcess", interactiveProcess);
             sb.append(']');
             return sb.toString();
+        }
+    }
+
+    /**
+     * The possible Windows service types.
+     *
+     * @author Rob Spoor
+     */
+    public enum Type {
+        /** Indicates a service is a driver service. */
+        KERNEL_DRIVER(true),
+
+        /** Indicates a service is a file system driver service. */
+        FILE_SYSTEM_DRIVER(true),
+
+        /** Indicates a service is an adapter. */
+        ADAPTER(false),
+
+        /** Indicates a service is a recognizer driver. */
+        RECOGNIZER_DRIVER(true),
+
+        /** Indicates a service runs in a process. */
+        PROCESS(false),
+        ;
+
+        private final boolean driver;
+
+        Type(boolean driver) {
+            this.driver = driver;
+        }
+
+        /**
+         * Returns whether or not this type is a driver type.
+         *
+         * @return {@code true} if this type is a driver type, or {@code false} otherwise.
+         */
+        public boolean isDriver() {
+            return driver;
+        }
+
+        static Type of(int value) {
+            switch (value) {
+            case WinNT.SERVICE_KERNEL_DRIVER:
+                return KERNEL_DRIVER;
+            case WinNT.SERVICE_FILE_SYSTEM_DRIVER:
+                return FILE_SYSTEM_DRIVER;
+            case WinNT.SERVICE_ADAPTER:
+                return ADAPTER;
+            case WinNT.SERVICE_RECOGNIZER_DRIVER:
+                return RECOGNIZER_DRIVER;
+            default:
+                return ofProcess(value);
+            }
+        }
+
+        private static Type ofProcess(int value) {
+            if (isSet(value, WinNT.SERVICE_WIN32_OWN_PROCESS) || isSet(value, WinNT.SERVICE_WIN32_SHARE_PROCESS)) {
+                return PROCESS;
+            }
+            throw new IllegalArgumentException(Messages.Service.StartType.unsupported.get(value));
         }
     }
 
@@ -598,17 +704,20 @@ public final class Service {
 
         private final Status status;
         private final int controlsAccepted;
+        private final int serviceType;
         private final ProcessHandle process;
 
         StatusInfo(SERVICE_STATUS_PROCESS status) {
             this.status = Status.of(status.dwCurrentState);
             controlsAccepted = status.dwControlsAccepted;
+            serviceType = status.dwServiceType;
             process = ProcessHandle.of(status.dwProcessId).orElse(null);
         }
 
         StatusInfo(SERVICE_STATUS status) {
             this.status = Status.of(status.dwCurrentState);
             controlsAccepted = status.dwControlsAccepted;
+            serviceType = status.dwServiceType;
             process = null;
         }
 
@@ -628,7 +737,7 @@ public final class Service {
          */
         public boolean canStart() {
             // The controlsAccepted flag doesn't mention starting, but services can only be started when they are actually stopped
-            return status == Status.STOPPED;
+            return status == Status.STOPPED && !TypeInfo.isUserProcessTemplate(serviceType);
         }
 
         /**
@@ -1064,20 +1173,30 @@ public final class Service {
     @SuppressWarnings("nls")
     private static void appendField(StringBuilder sb, String name, Object value) {
         if (value != null) {
-            if (sb.length() != 1) {
-                sb.append(", ");
-            }
+            addSeparatorIfNeeded(sb);
             sb.append(name).append(": ").append(value);
+        }
+    }
+
+    private static void appendField(StringBuilder sb, String name, Boolean value) {
+        if (Boolean.TRUE.equals(value)) {
+            addSeparatorIfNeeded(sb);
+            sb.append(name);
         }
     }
 
     @SuppressWarnings("nls")
     private static void appendField(StringBuilder sb, String name, Collection<?> value) {
         if (value != null && !value.isEmpty()) {
-            if (sb.length() != 1) {
-                sb.append(", ");
-            }
+            addSeparatorIfNeeded(sb);
             sb.append(name).append(": ").append(value);
+        }
+    }
+
+    @SuppressWarnings("nls")
+    private static void addSeparatorIfNeeded(StringBuilder sb) {
+        if (sb.length() != 1) {
+            sb.append(", ");
         }
     }
 }
