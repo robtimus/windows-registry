@@ -20,10 +20,11 @@ package com.github.robtimus.os.windows.service;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
+import com.github.robtimus.os.windows.AccessDeniedException;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
-import com.github.robtimus.os.windows.service.ServiceManager.ServiceHandle;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.Winsvc;
 import com.sun.jna.platform.win32.Winsvc.ENUM_SERVICE_STATUS;
@@ -43,38 +44,24 @@ public final class Service {
     }
 
     /**
-     * A descriptor of a Windows service.
+     * Identifies and provides control of Windows services.
      *
      * @author Rob Spoor
      */
-    public static final class Descriptor {
+    public static final class Handle {
 
-        /** An {@link Extractor} for {@code Descriptor} instances. */
-        public static final Extractor<Descriptor> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new Descriptor(status),
-                (manager, name, handle) -> manager.extractDescriptor(name, handle),
-                (maanger, status) -> new Descriptor(status));
+        /** An {@link Extractor} for {@code Handle} instances. */
+        public static final Extractor<Handle> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new Handle(manager, status.lpServiceName),
+                (manager, name, handle) -> new Handle(manager, name),
+                (manager, status) -> new Handle(manager, status.lpServiceName));
 
+        private final ServiceManager serviceManager;
         private final String serviceName;
-        private final String displayName;
-        private final TypeInfo typeInfo;
 
-        Descriptor(ENUM_SERVICE_STATUS_PROCESS status) {
-            this.serviceName = status.lpServiceName;
-            this.displayName = status.lpDisplayName;
-            this.typeInfo = new TypeInfo(status.ServiceStatusProcess.dwServiceType);
-        }
-
-        Descriptor(String serviceName, QUERY_SERVICE_CONFIG config) {
+        Handle(ServiceManager serviceManager, String serviceName) {
+            this.serviceManager = serviceManager;
             this.serviceName = serviceName;
-            this.displayName = config.lpDisplayName;
-            this.typeInfo = new TypeInfo(config.dwServiceType);
-        }
-
-        Descriptor(ENUM_SERVICE_STATUS status) {
-            this.serviceName = status.lpServiceName;
-            this.displayName = status.lpDisplayName;
-            this.typeInfo = new TypeInfo(status.ServiceStatus.dwServiceType);
         }
 
         /**
@@ -87,12 +74,324 @@ public final class Service {
         }
 
         /**
+         * Returns the current status of the service.
+         *
+         * @return The current status of the service.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the status could not be retrieved for another reason.
+         */
+        public StatusInfo status() {
+            return serviceManager.status(this);
+        }
+
+        /**
+         * Returns information about the service.
+         *
+         * @return An object with information about the service.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the status could not be retrieved for another reason.
+         */
+        public Info info() {
+            return serviceManager.info(this);
+        }
+
+        /**
+         * Returns all dependencies of the service.
+         * <p>
+         * To get only the names of the dependencies, use {@link #info()}.
+         *
+         * @return A stream with handles to all dependencies of the service.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the dependencies could not be retrieved for another reason.
+         */
+        public Stream<Handle> dependencies() {
+            return dependencies(EXTRACTOR);
+        }
+
+        /**
+         * Returns all dependencies of the service.
+         * <p>
+         * To get only the names of the dependencies, use {@link #info()}.
+         *
+         * @param <T> The type of objects to extract.
+         * @param extractor An object that determines what type of objects the dependencies will be returned as.
+         * @return A stream with all dependencies of the service, extracted as specified by the extractor.
+         * @throws NullPointerException If the extractor is {@code null}.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the dependencies could not be retrieved for another reason.
+         */
+        public <T> Stream<T> dependencies(Extractor<T> extractor) {
+            return serviceManager.dependencies(this, extractor);
+        }
+
+        /**
+         * Returns all dependents of the service.
+         *
+         * @return A stream with handles to all services that have a dependency on the service.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the dependents could not be retrieved for another reason.
+         */
+        public Stream<Handle> dependents() {
+            return dependents(EXTRACTOR);
+        }
+
+        /**
+         * Returns all dependents of the service.
+         *
+         * @param <T> The type of objects to extract.
+         * @param extractor An object that determines what type of objects the dependents will be returned as.
+         * @return A stream with all services that have a dependency on the service, extracted as specified by the extractor.
+         * @throws NullPointerException If the extractor is {@code null}.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the dependencies could not be retrieved for another reason.
+         */
+        public <T> Stream<T> dependents(Extractor<T> extractor) {
+            return serviceManager.dependents(this, extractor);
+        }
+
+        /**
+         * Starts the service.
+         * This method does not wait until the service has started but returns immediately.
+         *
+         * @param args Additional arguments for the service.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to start services.
+         * @throws ServiceException If the service could not be started for another reason.
+         */
+        public void start(String... args) {
+            serviceManager.start(this, args);
+        }
+
+        /**
+         * Starts a Windows service.
+         * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
+         * <p>
+         * If all goes well, the resulting status will be {@link Status#RUNNING}.
+         * However, if the Windows service fails to start a different non-transitional status may be returned (usually {@link Status#STOPPED}.
+         * If the maximum wait time passes before the service finishes starting, a {@link Status#isTransitionStatus() transition status} may be
+         * returned.
+         *
+         * @param maxWaitTime The maximum time in milliseconds to wait for the service to start.
+         * @param args Additional arguments for the service.
+         * @return The status of the service after this method ends.
+         * @throws NullPointerException If the service descriptor is {@code null}.
+         * @throws IllegalArgumentException If the maximum wait time is negative.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service does not exist in this service manager.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to start services.
+         * @throws ServiceException If the service could not be started for another reason.
+         */
+        public StatusInfo startAndWait(long maxWaitTime, String... args) {
+            return serviceManager.startAndWait(this, maxWaitTime, args);
+        }
+
+        /**
+         * Stops the service.
+         * This method does not wait until the service has stopped but returns immediately.
+         *
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to stop services.
+         * @throws ServiceException If the service could not be stopped for another reason.
+         */
+        public void stop() {
+            serviceManager.stop(this);
+        }
+
+        /**
+         * Stops the service.
+         * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
+         * <p>
+         * If all goes well, the resulting status will be {@link Status#STOPPED}.
+         * However, if the Windows service fails to stop a different non-transitional status may be returned.
+         * If the maximum wait time passes before the service finishes stopping, a {@link Status#isTransitionStatus() transition status} may be
+         * returned.
+         *
+         * @param maxWaitTime The maximum time in milliseconds to wait for the service to stop.
+         * @return The status of the service after this method ends.
+         * @throws IllegalArgumentException If the maximum wait time is negative.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to stop services.
+         * @throws ServiceException If the service could not be stopped for another reason.
+         */
+        public StatusInfo stopAndWait(long maxWaitTime) {
+            return serviceManager.stopAndWait(this, maxWaitTime);
+        }
+
+        /**
+         * Pauses the service.
+         * This method does not wait until the service has paused but returns immediately.
+         *
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to pause services.
+         * @throws ServiceException If the service could not be paused for another reason.
+         */
+        public void pause() {
+            serviceManager.pause(this);
+        }
+
+        /**
+         * Pauses the service.
+         * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
+         * <p>
+         * If all goes well, the resulting status will be {@link Status#PAUSED}.
+         * However, if the Windows service fails to pause a different non-transitional status may be returned.
+         * If the maximum wait time passes before the service finishes pausing, a {@link Status#isTransitionStatus() transition status} may be
+         * returned.
+         *
+         * @param maxWaitTime The maximum time in milliseconds to wait for the service to pause.
+         * @return The status of the service after this method ends.
+         * @throws IllegalArgumentException If the maximum wait time is negative.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to pause services.
+         * @throws ServiceException If the service could not be paused for another reason.
+         */
+        public StatusInfo pauseAndWait(long maxWaitTime) {
+            return serviceManager.pauseAndWait(this, maxWaitTime);
+        }
+
+        /**
+         * Resumes the service.
+         * This method does not wait until the service has stopped but returns immediately.
+         *
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to resume services.
+         * @throws ServiceException If the service could not be resumed for another reason.
+         */
+        public void resume() {
+            serviceManager.resume(this);
+        }
+
+        /**
+         * Resumes the service.
+         * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
+         * <p>
+         * If all goes well, the resulting status will be {@link Status#RUNNING}.
+         * However, if the Windows service fails to resume a different non-transitional status may be returned.
+         * If the maximum wait time passes before the service finishes resuming, a {@link Status#isTransitionStatus() transition status} may be
+         * returned.
+         *
+         * @param maxWaitTime The maximum time in milliseconds to wait for the service to resume.
+         * @return The status of the service after this method ends.
+         * @throws IllegalArgumentException If the maximum wait time is negative.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to resume services.
+         * @throws ServiceException If the service could not be resumed for another reason.
+         */
+        public StatusInfo resumeAndWait(long maxWaitTime) {
+            return serviceManager.resumeAndWait(this, maxWaitTime);
+        }
+
+        /**
+         * Awaits until the service has finished its latest status transition.
+         * If the service is in a non-transition status this method will return immediately.
+         * <p>
+         * If the maximum wait time passes before the service finishes its latest status transition,
+         * a {@link Status#isTransitionStatus() transition status} may be returned.
+         *
+         * @param maxWaitTime The maximum time in milliseconds to wait for the service to finish its latest status transition.
+         * @return The status of the service after this method ends.
+         * @throws IllegalArgumentException If the maximum wait time is negative.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to resume services.
+         * @throws ServiceException If the service could not be resumed for another reason.
+         */
+        public StatusInfo awaitStatusTransition(long maxWaitTime) {
+            return serviceManager.awaitStatusTransition(this, maxWaitTime);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || o.getClass() != getClass()) {
+                return false;
+            }
+            Handle other = (Handle) o;
+            return serviceManager.equals(other.serviceManager) && serviceName.equals(other.serviceName);
+        }
+
+        @Override
+        public int hashCode() {
+            return serviceManager.hashCode() ^ serviceName.hashCode();
+        }
+
+        @Override
+        public String toString() {
+            return serviceName;
+        }
+    }
+
+    /**
+     * Information about a Windows service. This information is fixed as long as the service is not updated.
+     *
+     * @author Rob Spoor
+     */
+    public static final class Info {
+
+        /** An {@link Extractor} for {@code Info} instances. */
+        public static final Extractor<Info> EXTRACTOR = new Extractor<>(
+                (manager, status) -> manager.info(status.lpServiceName),
+                (manager, name, handle) -> manager.info(handle),
+                (manager, status) -> manager.info(status.lpServiceName));
+
+        private final String displayName;
+        private final String description;
+        private final String executable;
+        private final TypeInfo typeInfo;
+        private final StartInfo startInfo;
+        private final String logonAccount;
+        private final List<String> dependencies;
+
+        Info(QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
+            this.displayName = config.lpDisplayName;
+            this.description = description.lpDescription;
+            this.executable = config.lpBinaryPathName;
+            this.typeInfo = new TypeInfo(config.dwServiceType);
+            this.startInfo = new StartInfo(config, delayedAutoStartInfo);
+            this.logonAccount = config.lpServiceStartName;
+            this.dependencies = config.dependencies();
+        }
+
+        /**
          * Returns the service display name.
          *
          * @return The service display name.
          */
         public String displayName() {
             return displayName;
+        }
+
+        /**
+         * Returns the service description.
+         *
+         * @return An {@link Optional} describing the service description, or {@link Optional#empty()} if the service has no description.
+         */
+        public Optional<String> description() {
+            return Optional.ofNullable(description);
+        }
+
+        /**
+         * Returns the service executable.
+         *
+         * @return The service executable.
+         */
+        public String executable() {
+            return executable;
         }
 
         /**
@@ -104,31 +403,52 @@ public final class Service {
             return typeInfo;
         }
 
-        @Override
-        public boolean equals(Object o) {
-            if (this == o) {
-                return true;
-            }
-            if (o == null || o.getClass() != getClass()) {
-                return false;
-            }
-            Service.Descriptor other = (Service.Descriptor) o;
-            return serviceName.equals(other.serviceName);
+        /**
+         * Returns information about how the service starts.
+         *
+         * @return An object containing information about how the service starts.
+         */
+        public StartInfo startInfo() {
+            return startInfo;
+        }
+
+        /**
+         * Returns the service logon account.
+         *
+         * @return The service logon account.
+         */
+        public String logonAccount() {
+            return logonAccount;
+        }
+
+        /**
+         * Returns the names of the dependencies of the service.
+         *
+         * @return A list with the names of the dependencies of the service; empty if there are no dependencies.
+         */
+        public List<String> dependencies() {
+            return dependencies;
         }
 
         @Override
-        public int hashCode() {
-            return serviceName.hashCode();
-        }
-
-        @Override
+        @SuppressWarnings("nls")
         public String toString() {
-            return displayName;
+            StringBuilder sb = new StringBuilder();
+            sb.append('[');
+            appendField(sb, "displayName", displayName);
+            appendField(sb, "description", description);
+            appendField(sb, "executable", executable);
+            appendField(sb, "typeInfo", typeInfo);
+            appendField(sb, "startInfo", startInfo);
+            appendField(sb, "logonAccount", logonAccount);
+            appendField(sb, "dependencies", dependencies);
+            sb.append(']');
+            return sb.toString();
         }
     }
 
     /**
-     * Information about a Windows service's type. This information is fixed as long as the service is not updated externally.
+     * Information about a Windows service's type. This information is fixed as long as the service is not updated.
      *
      * @author Rob Spoor
      */
@@ -136,7 +456,7 @@ public final class Service {
 
         private final int serviceType;
 
-        TypeInfo(int serviceType) {
+        private TypeInfo(int serviceType) {
             this.serviceType = serviceType;
         }
 
@@ -196,94 +516,7 @@ public final class Service {
     }
 
     /**
-     * Information about a Windows service. This information is fixed as long as the service is not updated explicitly.
-     *
-     * @author Rob Spoor
-     */
-    public static final class Info {
-
-        /** An {@link Extractor} for {@code Info} instances. */
-        public static final Extractor<Info> EXTRACTOR = new Extractor<>(
-                (manager, status) -> manager.info(status.lpServiceName),
-                (manager, name, handle) -> manager.info(handle),
-                (manager, status) -> manager.info(status.lpServiceName));
-
-        private final String description;
-        private final String executable;
-        private final StartInfo startInfo;
-        private final String logonAccount;
-        private final List<String> dependencies;
-
-        Info(QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
-            this.description = description.lpDescription;
-            this.executable = config.lpBinaryPathName;
-            this.startInfo = new StartInfo(config, delayedAutoStartInfo);
-            this.logonAccount = config.lpServiceStartName;
-            this.dependencies = config.dependencies();
-        }
-
-        /**
-         * Returns the service description.
-         *
-         * @return An {@link Optional} describing the service description, or {@link Optional#empty()} if the service has no description.
-         */
-        public Optional<String> description() {
-            return Optional.ofNullable(description);
-        }
-
-        /**
-         * Returns the service executable.
-         *
-         * @return The service executable.
-         */
-        public String executable() {
-            return executable;
-        }
-
-        /**
-         * Returns information about how the service starts.
-         *
-         * @return An object containing information about how the service starts.
-         */
-        public StartInfo startInfo() {
-            return startInfo;
-        }
-
-        /**
-         * Returns the service logon account.
-         *
-         * @return The service logon account.
-         */
-        public String logonAccount() {
-            return logonAccount;
-        }
-
-        /**
-         * Returns the names of the dependencies of the service.
-         *
-         * @return A list with the names of the dependencies of the service; empty if there are no dependencies.
-         */
-        public List<String> dependencies() {
-            return dependencies;
-        }
-
-        @Override
-        @SuppressWarnings("nls")
-        public String toString() {
-            StringBuilder sb = new StringBuilder();
-            sb.append('[');
-            appendField(sb, "description", description);
-            appendField(sb, "executable", executable);
-            appendField(sb, "startInfo", startInfo);
-            appendField(sb, "logonAccount", logonAccount);
-            appendField(sb, "dependencies", dependencies);
-            sb.append(']');
-            return sb.toString();
-        }
-    }
-
-    /**
-     * Information about how a Windows service starts. This information is fixed as long as the service is not updated explicitly.
+     * Information about how a Windows service starts. This information is fixed as long as the service is not updated.
      *
      * @author Rob Spoor
      */
@@ -292,7 +525,7 @@ public final class Service {
         private final StartType startType;
         private final Boolean delayedStart;
 
-        StartInfo(QUERY_SERVICE_CONFIG config, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
+        private StartInfo(QUERY_SERVICE_CONFIG config, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
             this.startType = StartType.of(config.dwStartType);
             this.delayedStart = startType == StartType.AUTOMATIC ? delayedAutoStartInfo.fDelayedAutostart : null;
         }
@@ -527,46 +760,34 @@ public final class Service {
     }
 
     /**
-     * A class encapsulating both a {@link Descriptor} and an {@link Info} for a Windows service.
+     * A class encapsulating both a {@link Handle} and an {@link Info} for a Windows service.
      *
      * @author Rob Spoor
      */
-    public static final class DescriptorAndInfo {
+    public static final class HandleAndInfo {
 
-        /** An {@link Extractor} for {@code DescriptorAndInfo} instances. */
-        public static final Extractor<DescriptorAndInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new DescriptorAndInfo(status, manager.info(status.lpServiceName)),
-                (manager, name, handle) -> manager.extractDescriptorAndInfo(name, handle),
-                (manager, status) -> new DescriptorAndInfo(status, manager.info(status.lpServiceName)),
+        /** An {@link Extractor} for {@code HandleAndInfo} instances. */
+        public static final Extractor<HandleAndInfo> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new HandleAndInfo(new Handle(manager, status.lpServiceName), manager.info(status.lpServiceName)),
+                (manager, name, handle) -> new HandleAndInfo(new Handle(manager, name), manager.info(handle)),
+                (manager, status) -> new HandleAndInfo(new Handle(manager, status.lpServiceName), manager.info(status.lpServiceName)),
                 Winsvc.SERVICE_QUERY_STATUS);
 
-        private final Descriptor descriptor;
+        private final Handle handle;
         private final Info info;
 
-        DescriptorAndInfo(ENUM_SERVICE_STATUS_PROCESS status, Info info) {
-            this.descriptor = new Descriptor(status);
-            this.info = info;
-        }
-
-        DescriptorAndInfo(String serviceName, QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description,
-                SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
-
-            this.descriptor = new Descriptor(serviceName, config);
-            this.info = new Info(config, description, delayedAutoStartInfo);
-        }
-
-        DescriptorAndInfo(ENUM_SERVICE_STATUS status, Info info) {
-            this.descriptor = new Descriptor(status);
+        private HandleAndInfo(Handle handle, Info info) {
+            this.handle = handle;
             this.info = info;
         }
 
         /**
-         * Returns the service descriptor.
+         * Returns the service handle.
          *
-         * @return The service descriptor.
+         * @return The service handle.
          */
-        public Descriptor descriptor() {
-            return descriptor;
+        public Handle handle() {
+            return handle;
         }
 
         /**
@@ -583,7 +804,7 @@ public final class Service {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
-            appendField(sb, "descriptor", descriptor);
+            appendField(sb, "handle", handle);
             appendField(sb, "info", info);
             sb.append(']');
             return sb.toString();
@@ -591,44 +812,34 @@ public final class Service {
     }
 
     /**
-     * A class encapsulating both a {@link Descriptor} and a {@link StatusInfo} for a Windows service.
+     * A class encapsulating both a {@link Handle} and a {@link StatusInfo} for a Windows service.
      *
      * @author Rob Spoor
      */
-    public static final class DescriptorAndStatusInfo {
+    public static final class HandleAndStatusInfo {
 
-        /** An {@link Extractor} for {@code DescriptorAndStatusInfo} instances. */
-        public static final Extractor<DescriptorAndStatusInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new DescriptorAndStatusInfo(status),
-                (manager, name, handle) -> manager.extractDescriptorAndStatusInfo(name, handle),
-                (manager, status) -> new DescriptorAndStatusInfo(status),
+        /** An {@link Extractor} for {@code HandleAndStatusInfo} instances. */
+        public static final Extractor<HandleAndStatusInfo> EXTRACTOR = new Extractor<>(
+                (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatusProcess)),
+                (manager, name, handle) -> new HandleAndStatusInfo(new Handle(manager, name), manager.status(handle)),
+                (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatus)),
                 Winsvc.SERVICE_QUERY_STATUS);
 
-        private final Descriptor descriptor;
+        private final Handle handle;
         private final StatusInfo statusInfo;
 
-        DescriptorAndStatusInfo(ENUM_SERVICE_STATUS_PROCESS status) {
-            this.descriptor = new Descriptor(status);
-            this.statusInfo = new StatusInfo(status.ServiceStatusProcess);
-        }
-
-        DescriptorAndStatusInfo(String serviceName, SERVICE_STATUS_PROCESS status, QUERY_SERVICE_CONFIG config) {
-            this.descriptor = new Descriptor(serviceName, config);
-            this.statusInfo = new StatusInfo(status);
-        }
-
-        DescriptorAndStatusInfo(ENUM_SERVICE_STATUS status) {
-            this.descriptor = new Descriptor(status);
-            this.statusInfo = new StatusInfo(status.ServiceStatus);
+        private HandleAndStatusInfo(Handle handle, StatusInfo statusInfo) {
+            this.handle = handle;
+            this.statusInfo = statusInfo;
         }
 
         /**
-         * Returns the service descriptor.
+         * Returns the service handle.
          *
-         * @return The service descriptor.
+         * @return The service handle.
          */
-        public Descriptor descriptor() {
-            return descriptor;
+        public Handle handle() {
+            return handle;
         }
 
         /**
@@ -645,7 +856,7 @@ public final class Service {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
-            appendField(sb, "descriptor", descriptor);
+            appendField(sb, "handle", handle);
             appendField(sb, "statusInfo", statusInfo);
             sb.append(']');
             return sb.toString();
@@ -661,42 +872,42 @@ public final class Service {
 
         /** An {@link Extractor} for {@code AllInfo} instances. */
         public static final Extractor<AllInfo> EXTRACTOR = new Extractor<>(
-                (manager, status) -> new AllInfo(status, manager.info(status.lpServiceName)),
-                (manager, name, handle) -> manager.extractAllInfo(name, handle),
-                (manager, status) -> new AllInfo(status, manager.info(status.lpServiceName)),
+                (manager, status) -> new AllInfo(manager, status, manager.info(status.lpServiceName)),
+                (manager, name, handle) -> manager.allInfo(name, handle),
+                (manager, status) -> new AllInfo(manager, status, manager.info(status.lpServiceName)),
                 Winsvc.SERVICE_QUERY_STATUS);
 
-        private final Descriptor descriptor;
+        private final Handle handle;
         private final Info info;
         private final StatusInfo statusInfo;
 
-        AllInfo(ENUM_SERVICE_STATUS_PROCESS status, Info info) {
-            this.descriptor = new Descriptor(status);
+        AllInfo(ServiceManager serviceManager, ENUM_SERVICE_STATUS_PROCESS status, Info info) {
+            this.handle = new Handle(serviceManager, status.lpServiceName);
             this.info = info;
             this.statusInfo = new StatusInfo(status.ServiceStatusProcess);
         }
 
-        AllInfo(String serviceName, SERVICE_STATUS_PROCESS status, QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description,
+        AllInfo(Handle handle, SERVICE_STATUS_PROCESS status, QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description,
                 SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
 
-            this.descriptor = new Descriptor(serviceName, config);
+            this.handle = handle;
             this.info = new Info(config, description, delayedAutoStartInfo);
             this.statusInfo = new StatusInfo(status);
         }
 
-        AllInfo(ENUM_SERVICE_STATUS status, Info info) {
-            this.descriptor = new Descriptor(status);
+        AllInfo(ServiceManager serviceManager, ENUM_SERVICE_STATUS status, Info info) {
+            this.handle = new Handle(serviceManager, status.lpServiceName);
             this.info = info;
             this.statusInfo = new StatusInfo(status.ServiceStatus);
         }
 
         /**
-         * Returns the service descriptor.
+         * Returns the service handle.
          *
-         * @return The service descriptor.
+         * @return The service handle.
          */
-        public Descriptor descriptor() {
-            return descriptor;
+        public Handle handle() {
+            return handle;
         }
 
         /**
@@ -722,7 +933,7 @@ public final class Service {
         public String toString() {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
-            appendField(sb, "descriptor", descriptor);
+            appendField(sb, "handle", handle);
             appendField(sb, "info", info);
             appendField(sb, "statusInfo", statusInfo);
             sb.append(']');
@@ -736,8 +947,8 @@ public final class Service {
      * <ul>
      * <li>{@link ServiceManager#services(Extractor)}</li>
      * <li>{@link ServiceManager#service(String, Extractor)}</li>
-     * <li>{@link ServiceManager#dependencies(Descriptor, Extractor)}</li>
-     * <li>{@link ServiceManager#dependents(Descriptor, Extractor)}</li>
+     * <li>{@link Handle#dependencies(Extractor)}</li>
+     * <li>{@link Handle#dependents(Extractor)}</li>
      * </ul>
      *
      * @author Rob Spoor
@@ -772,7 +983,7 @@ public final class Service {
 
         interface ServiceExtractor<T> {
 
-            T extract(ServiceManager serviceManager, String serviceName, ServiceHandle serviceHandle);
+            T extract(ServiceManager serviceManager, String serviceName, ServiceManager.Handle serviceHandle);
         }
 
         interface DependentExtractor<T> {

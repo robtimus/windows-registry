@@ -26,7 +26,6 @@ import com.github.robtimus.os.windows.AccessDeniedException;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
-import com.github.robtimus.os.windows.service.Service.Status;
 import com.github.robtimus.os.windows.service.Service.StatusInfo;
 import com.sun.jna.Memory;
 import com.sun.jna.Structure;
@@ -60,10 +59,10 @@ public final class ServiceManager implements AutoCloseable {
 
     private static Kernel32 kernel32 = Kernel32.INSTANCE;
 
-    private SC_HANDLE handle;
+    private SC_HANDLE scmHandle;
 
-    private ServiceManager(SC_HANDLE handle) {
-        this.handle = handle;
+    private ServiceManager(SC_HANDLE scmHandle) {
+        this.scmHandle = scmHandle;
     }
 
     /**
@@ -99,11 +98,11 @@ public final class ServiceManager implements AutoCloseable {
 
     private static ServiceManager create(String machineName, ServiceOption... options) {
         int dwDesiredAccess = dwDesiredAccess(DEFAULT_SERVICE_MANAGER_ACCESS, options);
-        SC_HANDLE handle = api.OpenSCManager(machineName, null, dwDesiredAccess);
-        if (handle == null) {
+        SC_HANDLE scmHandle = api.OpenSCManager(machineName, null, dwDesiredAccess);
+        if (scmHandle == null) {
             throwLastError();
         }
-        return new ServiceManager(handle);
+        return new ServiceManager(scmHandle);
     }
 
     private static int dwDesiredAccess(int defaultAccess, ServiceOption... options) {
@@ -116,16 +115,16 @@ public final class ServiceManager implements AutoCloseable {
 
     @Override
     public void close() {
-        if (handle != null) {
-            if (!api.CloseServiceHandle(handle)) {
+        if (scmHandle != null) {
+            if (!api.CloseServiceHandle(scmHandle)) {
                 throwLastError();
             }
-            handle = null;
+            scmHandle = null;
         }
     }
 
     private void checkClosed() {
-        if (handle == null) {
+        if (scmHandle == null) {
             throw new IllegalStateException(Messages.ServiceManager.closed.get());
         }
     }
@@ -133,12 +132,12 @@ public final class ServiceManager implements AutoCloseable {
     /**
      * Returns all Windows services for this service manager.
      *
-     * @return A stream with all Windows services, as a descriptor only.
+     * @return A stream with handles to all Windows services.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
-    public Stream<Service.Descriptor> services() {
-        return services(Service.Descriptor.EXTRACTOR);
+    public Stream<Service.Handle> services() {
+        return services(Service.Handle.EXTRACTOR);
     }
 
     /**
@@ -156,13 +155,14 @@ public final class ServiceManager implements AutoCloseable {
         checkClosed();
 
         final int infoLevel = Winsvc.SC_ENUM_PROCESS_INFO;
-        final int dwServiceType = WinNT.SERVICE_WIN32;
+        //final int dwServiceType = WinNT.SERVICE_WIN32;
+        final int dwServiceType = WinNT.SERVICE_TYPE_ALL;
         final int dwServiceState = Winsvc.SERVICE_STATE_ALL;
 
         IntByReference pcbBytesNeeded = new IntByReference();
         IntByReference lpServicesReturned = new IntByReference();
         IntByReference lpResumeHandle = new IntByReference(0);
-        if (!api.EnumServicesStatusEx(handle, infoLevel, dwServiceType, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned,
+        if (!api.EnumServicesStatusEx(scmHandle, infoLevel, dwServiceType, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned,
                 lpResumeHandle, null)) {
 
             throwLastErrorUnless(WinError.ERROR_MORE_DATA);
@@ -173,7 +173,7 @@ public final class ServiceManager implements AutoCloseable {
         }
 
         Memory lpServices = new Memory(pcbBytesNeeded.getValue());
-        if (!api.EnumServicesStatusEx(handle, infoLevel, dwServiceType, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
+        if (!api.EnumServicesStatusEx(scmHandle, infoLevel, dwServiceType, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
                 lpServicesReturned, lpResumeHandle, null)) {
 
             throwLastError();
@@ -186,21 +186,24 @@ public final class ServiceManager implements AutoCloseable {
         ENUM_SERVICE_STATUS_PROCESS status = Structure.newInstance(ENUM_SERVICE_STATUS_PROCESS.class, lpServices);
         status.read();
         ENUM_SERVICE_STATUS_PROCESS[] statuses = (ENUM_SERVICE_STATUS_PROCESS[]) status.toArray(lpServicesReturned.getValue());
-        return Arrays.stream(statuses).map(s -> extractor.servicesExtractor.extract(this, s));
+        //return Arrays.stream(statuses).map(s -> extractor.servicesExtractor.extract(this, s));
+        return Arrays.stream(statuses).map(s -> {
+            System.out.printf("%-60s: %10d%n", s.lpServiceName, s.ServiceStatusProcess.dwServiceType);
+            return extractor.servicesExtractor.extract(this, s);
+        });
     }
 
     /**
      * Returns a specific Windows service if available.
      *
      * @param serviceName The name of the service to return. Note that this is case insensitive.
-     * @return An optional describing a handle to the specified Windows service, as a descriptor only,
-     *         or {@link Optional#empty()} if no such service exists.
+     * @return An optional describing a handle to the specified Windows service, or {@link Optional#empty()} if no such service exists.
      * @throws NullPointerException If the service name is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
      */
-    public Optional<Service.Descriptor> service(String serviceName) {
-        return service(serviceName, Service.Descriptor.EXTRACTOR);
+    public Optional<Service.Handle> service(String serviceName) {
+        return service(serviceName, Service.Handle.EXTRACTOR);
     }
 
     /**
@@ -209,7 +212,7 @@ public final class ServiceManager implements AutoCloseable {
      * @param <T> The type of objects to extract.
      * @param serviceName The name of the service to return. Note that this is case insensitive.
      * @param extractor An object that determines what type of object the service will be returned as.
-     * @return An optional describing a handle to the specified Windows service, extracted as specified by the extractor,
+     * @return An optional describing the specified Windows service, extracted as specified by the extractor,
      *         or {@link Optional#empty()} if no such service exists.
      * @throws NullPointerException If the service name or extractor is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
@@ -220,7 +223,7 @@ public final class ServiceManager implements AutoCloseable {
         Objects.requireNonNull(extractor);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = tryOpenService(serviceName, Winsvc.SERVICE_QUERY_CONFIG | extractor.dwDesiredServiceAccess)) {
+        try (Handle serviceHandle = tryOpenService(serviceName, Winsvc.SERVICE_QUERY_CONFIG | extractor.dwDesiredServiceAccess)) {
             if (serviceHandle == null) {
                 return Optional.empty();
             }
@@ -229,42 +232,22 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    /**
-     * Returns the current status of a Windows service.
-     *
-     * @param service A descriptor for the service.
-     * @return The current status of the service.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws ServiceException If the status could not be retrieved for another reason.
-     */
-    public Service.StatusInfo status(Service.Descriptor service) {
+    Service.StatusInfo status(Service.Handle service) {
         Objects.requireNonNull(service);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
+        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
             return status(serviceHandle);
         }
     }
 
-    Service.StatusInfo status(ServiceHandle serviceHandle) {
+    Service.StatusInfo status(Handle serviceHandle) {
         SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
 
         return new Service.StatusInfo(status);
     }
 
-    /**
-     * Returns information about a Windows service.
-     *
-     * @param service A descriptor for the service.
-     * @return An object with information about the service.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws ServiceException If the status could not be retrieved for another reason.
-     */
-    public Service.Info info(Service.Descriptor service) {
+    Service.Info info(Service.Handle service) {
         Objects.requireNonNull(service);
         checkClosed();
 
@@ -272,12 +255,12 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     Service.Info info(String serviceName) {
-        try (ServiceHandle serviceHandle = openService(serviceName, Winsvc.SERVICE_QUERY_CONFIG)) {
+        try (Handle serviceHandle = openService(serviceName, Winsvc.SERVICE_QUERY_CONFIG)) {
             return info(serviceHandle);
         }
     }
 
-    Service.Info info(ServiceHandle serviceHandle) {
+    Service.Info info(Handle serviceHandle) {
         QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
         SERVICE_DESCRIPTION description = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
         SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
@@ -286,42 +269,12 @@ public final class ServiceManager implements AutoCloseable {
         return new Service.Info(config, description, delayedAutoStartInfo);
     }
 
-    /**
-     * Returns all dependencies of a Windows service.
-     * <p>
-     * To get only the names of the dependencies, use {@link #info(Service.Descriptor)}.
-     *
-     * @param service A descriptor for the service.
-     * @return A stream with all dependencies of the service, as a descriptor only.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws ServiceException If the dependencies could not be retrieved for another reason.
-     */
-    public Stream<Service.Descriptor> dependencies(Service.Descriptor service) {
-        return dependencies(service, Service.Descriptor.EXTRACTOR);
-    }
-
-    /**
-     * Returns all dependencies of a Windows service.
-     * <p>
-     * To get only the names of the dependencies, use {@link #info(Service.Descriptor)}.
-     *
-     * @param <T> The type of objects to extract.
-     * @param service A descriptor for the service.
-     * @param extractor An object that determines what type of objects the dependencies will be returned as.
-     * @return A stream with all dependencies of the service, extracted as specified by the extractor.
-     * @throws NullPointerException If the service descriptor or extractor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws ServiceException If the dependencies could not be retrieved for another reason.
-     */
-    public <T> Stream<T> dependencies(Service.Descriptor service, Service.Extractor<T> extractor) {
+    <T> Stream<T> dependencies(Service.Handle service, Service.Extractor<T> extractor) {
         Objects.requireNonNull(service);
         Objects.requireNonNull(extractor);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_CONFIG)) {
+        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_CONFIG)) {
             QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
 
             return config.dependencies().stream()
@@ -331,43 +284,17 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    /**
-     * Returns all dependents of a Windows service.
-     *
-     * @param service A descriptor for the service.
-     * @return A stream with all services that have a dependency on the service, as a descriptor only.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws ServiceException If the dependents could not be retrieved for another reason.
-     */
-    public Stream<Service.Descriptor> dependents(Service.Descriptor service) {
-        return dependents(service, Service.Descriptor.EXTRACTOR);
-    }
-
-    /**
-     * Returns all dependents of a Windows service.
-     *
-     * @param <T> The type of objects to extract.
-     * @param service A descriptor for the service.
-     * @param extractor An object that determines what type of objects the dependents will be returned as.
-     * @return A stream with all services that have a dependency on the service, extracted as specified by the extractor.
-     * @throws NullPointerException If the service descriptor or extractor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws ServiceException If the dependencies could not be retrieved for another reason.
-     */
-    public <T> Stream<T> dependents(Service.Descriptor service, Service.Extractor<T> extractor) {
+    <T> Stream<T> dependents(Service.Handle service, Service.Extractor<T> extractor) {
         Objects.requireNonNull(service);
         Objects.requireNonNull(extractor);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, Winsvc.SERVICE_ENUMERATE_DEPENDENTS)) {
+        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_ENUMERATE_DEPENDENTS)) {
             final int dwServiceState = Winsvc.SERVICE_STATE_ALL;
 
             IntByReference pcbBytesNeeded = new IntByReference();
             IntByReference lpServicesReturned = new IntByReference();
-            if (!api.EnumDependentServices(serviceHandle.handle, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned)) {
+            if (!api.EnumDependentServices(serviceHandle.scHandle, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned)) {
                 throwLastErrorUnless(WinError.ERROR_MORE_DATA);
             }
 
@@ -376,7 +303,7 @@ public final class ServiceManager implements AutoCloseable {
             }
 
             Memory lpServices = new Memory(pcbBytesNeeded.getValue());
-            if (!api.EnumDependentServices(serviceHandle.handle, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
+            if (!api.EnumDependentServices(serviceHandle.scHandle, dwServiceState, lpServices, pcbBytesNeeded.getValue(), pcbBytesNeeded,
                     lpServicesReturned)) {
 
                 throwLastError();
@@ -393,255 +320,100 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    Service.Descriptor extractDescriptor(String serviceName, ServiceHandle serviceHandle) {
-        QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
+    Service.AllInfo allInfo(String serviceName, Handle serviceHandle) {
+        Service.Handle handle = new Service.Handle(this, serviceName);
 
-        return new Service.Descriptor(serviceName, config);
-    }
-
-    Service.DescriptorAndInfo extractDescriptorAndInfo(String serviceName, ServiceHandle serviceHandle) {
-        QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
-        SERVICE_DESCRIPTION description = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
-        SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
-                SERVICE_DELAYED_AUTO_START_INFO::new);
-
-        return new Service.DescriptorAndInfo(serviceName, config, description, delayedAutoStartInfo);
-    }
-
-    Service.DescriptorAndStatusInfo extractDescriptorAndStatusInfo(String serviceName, ServiceHandle serviceHandle) {
-        QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
-        SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
-
-        return new Service.DescriptorAndStatusInfo(serviceName, status, config);
-    }
-
-    Service.AllInfo extractAllInfo(String serviceName, ServiceHandle serviceHandle) {
         QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
         SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
         SERVICE_DESCRIPTION description = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
         SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
                 SERVICE_DELAYED_AUTO_START_INFO::new);
 
-        return new Service.AllInfo(serviceName, status, config, description, delayedAutoStartInfo);
+        return new Service.AllInfo(handle, status, config, description, delayedAutoStartInfo);
     }
 
-    /**
-     * Starts a Windows service.
-     * This method does not wait until the service has started but returns immediately.
-     *
-     * @param service A descriptor for the service.
-     * @param args Additional arguments for the service.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to start services.
-     * @throws ServiceException If the service could not be started for another reason.
-     */
-    public void start(Service.Descriptor service, String... args) {
+    void start(Service.Handle service, String... args) {
         Objects.requireNonNull(service);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, Winsvc.SERVICE_START)) {
+        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_START)) {
             int dwNumServiceArgs = args != null ? args.length : 0;
-            if (!api.StartService(serviceHandle.handle, dwNumServiceArgs, args)) {
+            if (!api.StartService(serviceHandle.scHandle, dwNumServiceArgs, args)) {
                 throwLastError();
             }
         }
     }
 
-    /**
-     * Starts a Windows service.
-     * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
-     * <p>
-     * If all goes well, the resulting status will be {@link Status#RUNNING}.
-     * However, if the Windows service fails to start a different non-transitional status may be returned (usually {@link Status#STOPPED}.
-     * If the maximum wait time passes before the service finishes starting, a {@link Status#isTransitionStatus() transition status} may be returned.
-     *
-     * @param service A descriptor for the service.
-     * @param maxWaitTime The maximum time in milliseconds to wait for the service to start.
-     * @param args Additional arguments for the service.
-     * @return The status of the service after this method ends.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalArgumentException If the maximum wait time is negative.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to start services.
-     * @throws ServiceException If the service could not be started for another reason.
-     */
-    public Service.StatusInfo startAndWait(Service.Descriptor service, long maxWaitTime, String... args) {
+    Service.StatusInfo startAndWait(Service.Handle service, long maxWaitTime, String... args) {
         Objects.requireNonNull(service);
         checkWaitTime(maxWaitTime);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, Winsvc.SERVICE_START | Winsvc.SERVICE_QUERY_STATUS)) {
+        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_START | Winsvc.SERVICE_QUERY_STATUS)) {
             int dwNumServiceArgs = args != null ? args.length : 0;
-            if (!api.StartService(serviceHandle.handle, dwNumServiceArgs, args)) {
+            if (!api.StartService(serviceHandle.scHandle, dwNumServiceArgs, args)) {
                 throwLastError();
             }
             return awaitStatusTransition(serviceHandle, maxWaitTime);
         }
     }
 
-    /**
-     * Stops a Windows service.
-     * This method does not wait until the service has stopped but returns immediately.
-     *
-     * @param service A descriptor for the service.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to stop services.
-     * @throws ServiceException If the service could not be stopped for another reason.
-     */
-    public void stop(Service.Descriptor service) {
+    void stop(Service.Handle service) {
         control(service, Winsvc.SERVICE_CONTROL_STOP, Winsvc.SERVICE_STOP);
     }
 
-    /**
-     * Stops a Windows service.
-     * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
-     * <p>
-     * If all goes well, the resulting status will be {@link Status#STOPPED}.
-     * However, if the Windows service fails to stop a different non-transitional status may be returned.
-     * If the maximum wait time passes before the service finishes stopping, a {@link Status#isTransitionStatus() transition status} may be returned.
-     *
-     * @param service A descriptor for the service.
-     * @param maxWaitTime The maximum time in milliseconds to wait for the service to stop.
-     * @return The status of the service after this method ends.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalArgumentException If the maximum wait time is negative.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to stop services.
-     * @throws ServiceException If the service could not be stopped for another reason.
-     */
-    public Service.StatusInfo stopAndWait(Service.Descriptor service, long maxWaitTime) {
-        return control(service, Winsvc.SERVICE_CONTROL_STOP, Winsvc.SERVICE_STOP, maxWaitTime);
+    Service.StatusInfo stopAndWait(Service.Handle service, long maxWaitTime) {
+        return controlAndWait(service, Winsvc.SERVICE_CONTROL_STOP, Winsvc.SERVICE_STOP, maxWaitTime);
     }
 
-    /**
-     * Pauses a Windows service.
-     * This method does not wait until the service has paused but returns immediately.
-     *
-     * @param service A descriptor for the service.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to pause services.
-     * @throws ServiceException If the service could not be paused for another reason.
-     */
-    public void pause(Service.Descriptor service) {
+    void pause(Service.Handle service) {
         control(service, Winsvc.SERVICE_CONTROL_PAUSE, Winsvc.SERVICE_PAUSE_CONTINUE);
     }
 
-    /**
-     * Pauses a Windows service.
-     * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
-     * <p>
-     * If all goes well, the resulting status will be {@link Status#PAUSED}.
-     * However, if the Windows service fails to pause a different non-transitional status may be returned.
-     * If the maximum wait time passes before the service finishes pausing, a {@link Status#isTransitionStatus() transition status} may be returned.
-     *
-     * @param service A descriptor for the service.
-     * @param maxWaitTime The maximum time in milliseconds to wait for the service to pause.
-     * @return The status of the service after this method ends.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalArgumentException If the maximum wait time is negative.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to pause services.
-     * @throws ServiceException If the service could not be paused for another reason.
-     */
-    public Service.StatusInfo pauseAndWait(Service.Descriptor service, long maxWaitTime) {
-        return control(service, Winsvc.SERVICE_CONTROL_PAUSE, Winsvc.SERVICE_PAUSE_CONTINUE, maxWaitTime);
+    Service.StatusInfo pauseAndWait(Service.Handle service, long maxWaitTime) {
+        return controlAndWait(service, Winsvc.SERVICE_CONTROL_PAUSE, Winsvc.SERVICE_PAUSE_CONTINUE, maxWaitTime);
     }
 
-    /**
-     * Resumes a Windows service.
-     * This method does not wait until the service has stopped but returns immediately.
-     *
-     * @param service A descriptor for the service.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to resume services.
-     * @throws ServiceException If the service could not be resumed for another reason.
-     */
-    public void resume(Service.Descriptor service) {
+    void resume(Service.Handle service) {
         control(service, Winsvc.SERVICE_CONTROL_CONTINUE, Winsvc.SERVICE_PAUSE_CONTINUE);
     }
 
-    /**
-     * Resumes a Windows service.
-     * This method waits until the service has entered a non-transitional state, or the given maximum wait time has passed.
-     * <p>
-     * If all goes well, the resulting status will be {@link Status#RUNNING}.
-     * However, if the Windows service fails to resume a different non-transitional status may be returned.
-     * If the maximum wait time passes before the service finishes resuming, a {@link Status#isTransitionStatus() transition status} may be returned.
-     *
-     * @param service A descriptor for the service.
-     * @param maxWaitTime The maximum time in milliseconds to wait for the service to resume.
-     * @return The status of the service after this method ends.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalArgumentException If the maximum wait time is negative.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to resume services.
-     * @throws ServiceException If the service could not be resumed for another reason.
-     */
-    public Service.StatusInfo resumeAndWait(Service.Descriptor service, long maxWaitTime) {
-        return control(service, Winsvc.SERVICE_CONTROL_CONTINUE, Winsvc.SERVICE_PAUSE_CONTINUE, maxWaitTime);
+    Service.StatusInfo resumeAndWait(Service.Handle service, long maxWaitTime) {
+        return controlAndWait(service, Winsvc.SERVICE_CONTROL_CONTINUE, Winsvc.SERVICE_PAUSE_CONTINUE, maxWaitTime);
     }
 
-    private void control(Service.Descriptor service, int dwControl, int dwDesiredAccess) {
+    private void control(Service.Handle service, int dwControl, int dwDesiredAccess) {
         Objects.requireNonNull(service);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, dwDesiredAccess)) {
+        try (Handle serviceHandle = openService(service, dwDesiredAccess)) {
             SERVICE_STATUS lpServiceStatus = new SERVICE_STATUS();
-            if (!api.ControlService(serviceHandle.handle, dwControl, lpServiceStatus)) {
+            if (!api.ControlService(serviceHandle.scHandle, dwControl, lpServiceStatus)) {
                 throwLastError();
             }
         }
     }
 
-    private Service.StatusInfo control(Service.Descriptor service, int dwControl, int dwDesiredAccess, long maxWaitTime) {
+    Service.StatusInfo controlAndWait(Service.Handle service, int dwControl, int dwDesiredAccess, long maxWaitTime) {
         Objects.requireNonNull(service);
         checkWaitTime(maxWaitTime);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, dwDesiredAccess | Winsvc.SERVICE_QUERY_STATUS)) {
+        try (Handle serviceHandle = openService(service, dwDesiredAccess | Winsvc.SERVICE_QUERY_STATUS)) {
             SERVICE_STATUS lpServiceStatus = new SERVICE_STATUS();
-            if (!api.ControlService(serviceHandle.handle, dwControl, lpServiceStatus)) {
+            if (!api.ControlService(serviceHandle.scHandle, dwControl, lpServiceStatus)) {
                 throwLastError();
             }
             return awaitStatusTransition(serviceHandle, maxWaitTime);
         }
     }
 
-    /**
-     * Awaits until a Windows service has finished its latest status transition.
-     * If the service is in a non-transition status this method will return immediately.
-     * <p>
-     * If the maximum wait time passes before the service finishes its latest status transition,
-     * a {@link Status#isTransitionStatus() transition status} may be returned.
-     *
-     * @param service A descriptor for the service.
-     * @param maxWaitTime The maximum time in milliseconds to wait for the service to finish its latest status transition.
-     * @return The status of the service after this method ends.
-     * @throws NullPointerException If the service descriptor is {@code null}.
-     * @throws IllegalArgumentException If the maximum wait time is negative.
-     * @throws IllegalStateException If this service manager is closed.
-     * @throws NoSuchServiceException If the service does not exist in this service manager.
-     * @throws AccessDeniedException If the current user does not have sufficient rights to resume services.
-     * @throws ServiceException If the service could not be resumed for another reason.
-     */
-    public Service.StatusInfo awaitStatusTransition(Service.Descriptor service, long maxWaitTime) {
+    Service.StatusInfo awaitStatusTransition(Service.Handle service, long maxWaitTime) {
         Objects.requireNonNull(service);
         checkWaitTime(maxWaitTime);
         checkClosed();
 
-        try (ServiceHandle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
+        try (Handle serviceHandle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
             return awaitStatusTransition(serviceHandle, maxWaitTime);
         }
     }
@@ -652,14 +424,14 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    private Service.StatusInfo awaitStatusTransition(ServiceHandle serviceHandle, long maxWaitTime) {
+    private Service.StatusInfo awaitStatusTransition(Handle serviceHandle, long maxWaitTime) {
         // Code based on https://docs.microsoft.com/en-us/windows/win32/services/starting-a-service
 
         final int infoLevel = SC_STATUS_TYPE.SC_STATUS_PROCESS_INFO;
 
         SERVICE_STATUS_PROCESS lpBuffer = new SERVICE_STATUS_PROCESS();
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceStatusEx(serviceHandle.handle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
+        if (!api.QueryServiceStatusEx(serviceHandle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
             throwLastError();
         }
 
@@ -679,7 +451,7 @@ public final class ServiceManager implements AutoCloseable {
                 break;
             }
 
-            if (!api.QueryServiceStatusEx(serviceHandle.handle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
+            if (!api.QueryServiceStatusEx(serviceHandle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
                 throwLastError();
             }
 
@@ -699,36 +471,36 @@ public final class ServiceManager implements AutoCloseable {
         return new Service.StatusInfo(lpBuffer);
     }
 
-    private SERVICE_STATUS_PROCESS queryStatus(ServiceHandle serviceHandle) {
+    private SERVICE_STATUS_PROCESS queryStatus(Handle serviceHandle) {
         final int infoLevel = SC_STATUS_TYPE.SC_STATUS_PROCESS_INFO;
 
         SERVICE_STATUS_PROCESS lpBuffer = new SERVICE_STATUS_PROCESS();
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceStatusEx(serviceHandle.handle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
+        if (!api.QueryServiceStatusEx(serviceHandle.scHandle, infoLevel, lpBuffer, lpBuffer.size(), pcbBytesNeeded)) {
             throwLastError();
         }
         return lpBuffer;
     }
 
-    private QUERY_SERVICE_CONFIG queryServiceConfig(ServiceHandle serviceHandle) {
+    private QUERY_SERVICE_CONFIG queryServiceConfig(Handle serviceHandle) {
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceConfig(serviceHandle.handle, null, 0, pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig(serviceHandle.scHandle, null, 0, pcbBytesNeeded)) {
             throwLastErrorUnless(WinError.ERROR_INSUFFICIENT_BUFFER);
         }
         QUERY_SERVICE_CONFIG lpServiceConfig = new QUERY_SERVICE_CONFIG(new Memory(pcbBytesNeeded.getValue()));
-        if (!api.QueryServiceConfig(serviceHandle.handle, lpServiceConfig, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig(serviceHandle.scHandle, lpServiceConfig, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
             throwLastError();
         }
         return lpServiceConfig;
     }
 
-    private <T extends Structure> T queryServiceConfig2(ServiceHandle serviceHandle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
+    private <T extends Structure> T queryServiceConfig2(Handle serviceHandle, int dwInfoLevel, Function<Memory, T> bufferFactory) {
         IntByReference pcbBytesNeeded = new IntByReference();
-        if (!api.QueryServiceConfig2(serviceHandle.handle, dwInfoLevel, null, 0, pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, null, 0, pcbBytesNeeded)) {
             throwLastErrorUnless(WinError.ERROR_INSUFFICIENT_BUFFER);
         }
         Memory lpBuffer = new Memory(pcbBytesNeeded.getValue());
-        if (!api.QueryServiceConfig2(serviceHandle.handle, dwInfoLevel, lpBuffer, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
+        if (!api.QueryServiceConfig2(serviceHandle.scHandle, dwInfoLevel, lpBuffer, pcbBytesNeeded.getValue(), pcbBytesNeeded)) {
             throwLastError();
         }
         T lpConfig = bufferFactory.apply(lpBuffer);
@@ -736,25 +508,25 @@ public final class ServiceManager implements AutoCloseable {
         return lpConfig;
     }
 
-    private ServiceHandle openService(Service.Descriptor service, int dwDesiredAccess) {
+    private Handle openService(Service.Handle service, int dwDesiredAccess) {
         return openService(service.serviceName(), dwDesiredAccess);
     }
 
-    private ServiceHandle openService(String serviceName, int dwDesiredAccess) {
-        SC_HANDLE scHandle = api.OpenService(handle, serviceName, dwDesiredAccess);
+    private Handle openService(String serviceName, int dwDesiredAccess) {
+        SC_HANDLE scHandle = api.OpenService(scmHandle, serviceName, dwDesiredAccess);
         if (scHandle == null) {
             throwLastError();
         }
-        return new ServiceHandle(scHandle);
+        return new Handle(scHandle);
     }
 
-    private ServiceHandle tryOpenService(String serviceName, int dwDesiredAccess) {
-        SC_HANDLE scHandle = api.OpenService(handle, serviceName, dwDesiredAccess);
+    private Handle tryOpenService(String serviceName, int dwDesiredAccess) {
+        SC_HANDLE scHandle = api.OpenService(scmHandle, serviceName, dwDesiredAccess);
         if (scHandle == null) {
             throwLastErrorUnless(WinError.ERROR_SERVICE_DOES_NOT_EXIST);
             return null;
         }
-        return new ServiceHandle(scHandle);
+        return new Handle(scHandle);
     }
 
     private static void throwLastError() {
@@ -781,17 +553,17 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    static final class ServiceHandle implements AutoCloseable {
+    static final class Handle implements AutoCloseable {
 
-        private final SC_HANDLE handle;
+        private final SC_HANDLE scHandle;
 
-        private ServiceHandle(SC_HANDLE handle) {
-            this.handle = handle;
+        private Handle(SC_HANDLE handle) {
+            this.scHandle = handle;
         }
 
         @Override
         public void close() {
-            if (!api.CloseServiceHandle(handle)) {
+            if (!api.CloseServiceHandle(scHandle)) {
                 throwLastError();
             }
         }
@@ -807,35 +579,49 @@ public final class ServiceManager implements AutoCloseable {
             testService(serviceManager, "UserManager");
             testService(serviceManager, "DoSvc");
 
-            Service.Descriptor service = serviceManager.service("Apache2.4").orElseThrow();
-//            serviceManager.startAndWait(service, 5000);
-//            System.out.printf("%s%n", serviceManager.status(service));
-//            serviceManager.stopAndWait(service, 5000);
-//            System.out.printf("%s%n", serviceManager.status(service));
-//            serviceManager.start(service);
-//            System.out.printf("%s%n", serviceManager.awaitStatusTransition(service, 5000));
-//            serviceManager.stop(service);
-//            System.out.printf("%s%n", serviceManager.awaitStatusTransition(service, 5000));
+//            Service.Handle service = serviceManager.service("Apache2.4").orElseThrow();
+//            service.startAndWait(5000);
+//            System.out.printf("%s%n", service.status());
+//            service.stopAndWait(5000);
+//            System.out.printf("%s%n", service.status());
+//            service.start();
+//            System.out.printf("%s%n", service.awaitStatusTransition(5000));
+//            service.stop();
+//            System.out.printf("%s%n", service.awaitStatusTransition(5000));
 
-            serviceManager.services(Service.DescriptorAndStatusInfo.EXTRACTOR)
+            serviceManager.services(Service.HandleAndStatusInfo.EXTRACTOR)
                     .limit(10)
-                    .forEach(s -> System.out.printf("%s, %s, %s%n", s, s.descriptor(), s.statusInfo()));
+                    .forEach(s -> System.out.printf("%s, %s, %s%n", s, s.handle(), s.statusInfo()));
+
+            serviceManager.service("PrintWorkflowUserSvc_29f05", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
+            serviceManager.service("PrintWorkflowUserSvc", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
+
+            serviceManager.services().mapToInt(s -> {
+                try (Handle handle = serviceManager.openService(s, Winsvc.SERVICE_QUERY_CONFIG | Winsvc.SERVICE_QUERY_STATUS)) {
+                    //return serviceManager.queryStatus(handle).dwServiceType;
+                    return serviceManager.queryServiceConfig(handle).dwServiceType;
+                }
+            }).distinct().sorted().forEach(System.out::println);
+            serviceManager.service("wuauserv", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
+            serviceManager.service("WpnUserService_29f05", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
+            serviceManager.service("PrintNotify", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
+            serviceManager.service("SamsungUPDUtilSvc", Service.AllInfo.EXTRACTOR).ifPresent(System.out::println);
         }
     }
 
     @SuppressWarnings("nls")
     private static void testService(ServiceManager serviceManager, String name) {
-        Service.Descriptor service = serviceManager.service(name).orElseThrow();
-        Service.Info info = serviceManager.info(service);
-        StatusInfo status = serviceManager.status(service);
+        Service.Handle service = serviceManager.service(name).orElseThrow();
+        Service.Info info = service.info();
+        StatusInfo status = service.status();
         System.out.printf("%s (%s)%n", service, service.serviceName());
         System.out.printf("Info: %s%n", info);
         System.out.printf("Status: %s%n", status);
         System.out.printf("Status: %s%n", serviceManager.service(name, Service.StatusInfo.EXTRACTOR));
         System.out.printf("Dependencies:%n");
-        serviceManager.dependencies(service).forEach(d -> System.out.printf("- %s, %s%n", d.serviceName(), d.displayName()));
+        service.dependencies(Service.HandleAndInfo.EXTRACTOR).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
         System.out.printf("Dependent:%n");
-        serviceManager.dependents(service).limit(10).forEach(d -> System.out.printf("- %s, %s%n", d.serviceName(), d.displayName()));
+        service.dependents(Service.HandleAndInfo.EXTRACTOR).limit(10).forEach(d -> System.out.printf("- %s, %s%n", d.handle().serviceName(), d.info().displayName()));
         System.out.printf("Process:%n");
         status.process().map(ProcessHandle::info).ifPresent(System.out::println);
         System.out.printf("---%n");
