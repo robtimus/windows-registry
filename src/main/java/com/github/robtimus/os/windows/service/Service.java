@@ -444,44 +444,29 @@ public final class Service {
     public static final class TypeInfo {
 
         private static final int SERVICE_USER_SERVICE = 0x00000040;
-        private static final int SERVICE_USER_OWN_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_OWN_PROCESS; // 0x00000050
-        private static final int SERVICE_USER_SHARE_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_SHARE_PROCESS; // 0x00000060
+        private static final int SERVICE_USERSERVICE_INSTANCE = 0x00000080;
         // Possible other useful constants:
-        // SERVICE_USERSERVICE_INSTANCE 0x00000080
+        // SERVICE_USER_OWN_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_OWN_PROCESS; // 0x00000050
+        // SERVICE_USER_SHARE_PROCESS = SERVICE_USER_SERVICE | WinNT.SERVICE_WIN32_SHARE_PROCESS; // 0x00000060
         // SERVICE_PKG_SERVICE 0x00000200
 
         private final Type type;
-        private final Boolean sharedProcess;
-        private final Boolean userProcess;
-        private final Boolean template;
-        private final Boolean interactiveProcess;
+        private final boolean sharedProcess;
+        private final boolean userProcess;
+        private final boolean template;
+        private final boolean interactiveProcess;
 
         private TypeInfo(int serviceType) {
             type = Type.of(serviceType);
             // SERVICE_USER_SHARED_PROCESS (0x60) includes SERVICE_WIN32_SHARE_PROCESS (0x20)
-            if (type == Type.PROCESS) {
-                sharedProcess = isSet(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS);
-                userProcess = isSet(serviceType, SERVICE_USER_SERVICE);
-                template = userProcess.booleanValue() ? isUserProcessTemplate(serviceType) : null;
-                interactiveProcess = isSet(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS);
-            } else {
-                sharedProcess = null;
-                userProcess = null;
-                interactiveProcess = null;
-                template = null;
-            }
+            sharedProcess = isSet(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS);
+            userProcess = isSet(serviceType, SERVICE_USER_SERVICE);
+            template = isUserProcessTemplate(serviceType);
+            interactiveProcess = isSet(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS);
         }
 
         private static boolean isUserProcessTemplate(int serviceType) {
-            // User processes come in two variants:
-            // * templates: this is how they are created, with value SERVICE_USER_OWN_PROCESS or SERVICE_USER_SHARE_PROCESS, and optionally
-            //   SERVICE_INTERACTIVE_PROCESS
-            // * instances: automatically created from a template, they share the same type but with an additional value added
-            //   (from experimentation
-            int remaining = serviceType & ~SERVICE_USER_OWN_PROCESS & ~SERVICE_USER_SHARE_PROCESS & ~WinNT.SERVICE_INTERACTIVE_PROCESS;
-            // for user processes, remaining should usually be 0x80
-            // for user process templates, remaining should be 0
-            return isSet(serviceType, SERVICE_USER_SERVICE) && remaining == 0;
+            return isSet(serviceType, SERVICE_USER_SERVICE) && !isSet(serviceType, SERVICE_USERSERVICE_INSTANCE);
         }
 
         /**
@@ -496,46 +481,55 @@ public final class Service {
         /**
          * Returns whether or not the service shares a process with one or more other services.
          *
-         * @return An {@link Optional} with value {@code true} if the service shares a process with one or more other services,
-         *         an {@link Optional} with value {@code false} if the service runs in its own process,
-         *         or {@link Optional#empty()} if the {@link #type()} is not {@link Type#PROCESS}.
+         * @return {@code true} if the service shares a process with one or more other services,
+         *         or {@code false} if the service runs in its own process,
+         * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public Optional<Boolean> sharedProcess() {
-            return Optional.ofNullable(sharedProcess);
+        public boolean sharedProcess() {
+            if (type == Type.PROCESS) {
+                return sharedProcess;
+            }
+            throw new IllegalStateException(Messages.Service.TypeInfo.noProcessType.get());
         }
 
         /**
          * Returns whether or not the service runs in a process under the logged-on user account.
          *
-         * @return An {@link Optional} with value {@code true} if the service runs in a process under the logged-on user account,
-         *         an {@link Optional} with value {@code false} if the service runs in a process but not under the logged-on user account,
-         *         or {@link Optional#empty()} if the {@link #type()} is not {@link Type#PROCESS}.
+         * @return {@code true} if the service runs in a process under the logged-on user account, or {@code false} otherwise.
+         * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public Optional<Boolean> userProcess() {
-            return Optional.ofNullable(userProcess);
+        public boolean userProcess() {
+            if (type == Type.PROCESS) {
+                return userProcess;
+            }
+            throw new IllegalStateException(Messages.Service.TypeInfo.noProcessType.get());
         }
 
         /**
          * Returns whether or not the service is a template for user processes.
          *
-         * @return An {@link Optional} with value {@code true} if the service is a template for user process services,
-         *         an {@link Optional} with value {@code false} if the service is an instance of a user process service,
-         *         or {@link Optional#empty()} if the service does not run in a process under the logged-on user account.
+         * @return {@code true} if the service is a template for user process services, or {@code false} otherwise.
+         * @throws IllegalStateException If the service does not run in a process under the logged-on user account.
          * @see #userProcess()
          */
-        public Optional<Boolean> template() {
-            return Optional.ofNullable(template);
+        public boolean template() {
+            if (userProcess()) {
+                return template;
+            }
+            throw new IllegalStateException(Messages.Service.TypeInfo.noUserProcessType.get());
         }
 
         /**
          * Returns whether or not the service can interact with the desktop.
          *
-         * @return An {@link Optional} with value {@code true} if the service can interact with the desktop,
-         *         an {@link Optional} with value {@code false} if the service cannot interact with the desktop,
-         *         or {@link Optional#empty()} if the {@link #type()} is not {@link Type#PROCESS}.
+         * @return {@code true} if the service can interact with the desktop, or {@code false} otherwise.
+         * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public Optional<Boolean> interactiveProcess() {
-            return Optional.ofNullable(interactiveProcess);
+        public boolean interactiveProcess() {
+            if (type == Type.PROCESS) {
+                return interactiveProcess;
+            }
+            throw new IllegalStateException(Messages.Service.TypeInfo.noProcessType.get());
         }
 
         @Override
@@ -544,10 +538,12 @@ public final class Service {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
             appendField(sb, "type", type());
-            appendField(sb, "sharedProcess", sharedProcess);
-            appendField(sb, "userProcess", userProcess);
-            appendField(sb, "template", template);
-            appendField(sb, "interactiveProcess", interactiveProcess);
+            if (type == Type.PROCESS) {
+                appendField(sb, "sharedProcess", sharedProcess);
+                appendField(sb, "userProcess", userProcess);
+                appendField(sb, "template", template && userProcess);
+                appendField(sb, "interactiveProcess", interactiveProcess);
+            }
             sb.append(']');
             return sb.toString();
         }
@@ -621,11 +617,11 @@ public final class Service {
     public static final class StartInfo {
 
         private final StartType startType;
-        private final Boolean delayedStart;
+        private final boolean delayedStart;
 
         private StartInfo(QUERY_SERVICE_CONFIG config, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
             this.startType = StartType.of(config.dwStartType);
-            this.delayedStart = startType == StartType.AUTOMATIC ? delayedAutoStartInfo.fDelayedAutostart : null;
+            this.delayedStart = delayedAutoStartInfo != null && delayedAutoStartInfo.fDelayedAutostart;
         }
 
         /**
@@ -640,12 +636,15 @@ public final class Service {
         /**
          * Returns whether the service is started after other auto-start services are started plus a short delay, or during system boot.
          *
-         * @return An {@link Optional} with value {@code true} if the service is started after other auto-start services are started plus a short
-         *         delay, an {@link Optional} with value {@code false} if the service is started during system boot,
-         *         or {@link Optional#empty()} if the {@link #startType()} is not {@link StartType#AUTOMATIC}.
+         * @return {@code true} if the service is started after other auto-start services are started plus a short delay,
+         *         or {@code false} if the service is started during system boot.
+         * @throws IllegalStateException If the {@link #startType()} is not {@link StartType#AUTOMATIC}.
          */
-        public Optional<Boolean> delayedStart() {
-            return Optional.ofNullable(delayedStart);
+        public boolean delayedStart() {
+            if (startType == StartType.AUTOMATIC) {
+                return delayedStart;
+            }
+            throw new IllegalStateException(Messages.Service.StartInfo.noAutomaticStartType.get());
         }
 
         @Override
@@ -654,7 +653,9 @@ public final class Service {
             StringBuilder sb = new StringBuilder();
             sb.append('[');
             appendField(sb, "startType", startType);
-            appendField(sb, "delayedStart", delayedStart);
+            if (startType == StartType.AUTOMATIC) {
+                appendField(sb, "delayedStart", delayedStart);
+            }
             sb.append(']');
             return sb.toString();
         }
@@ -1181,8 +1182,8 @@ public final class Service {
         }
     }
 
-    private static void appendField(StringBuilder sb, String name, Boolean value) {
-        if (Boolean.TRUE.equals(value)) {
+    private static void appendField(StringBuilder sb, String name, boolean value) {
+        if (value) {
             addSeparatorIfNeeded(sb);
             sb.append(name);
         }

@@ -286,8 +286,9 @@ public final class ServiceManager implements AutoCloseable {
     Service.Info info(Handle serviceHandle) {
         QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
         SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
-        SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
-                SERVICE_DELAYED_AUTO_START_INFO::new);
+        SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = config.dwStartType == WinNT.SERVICE_AUTO_START
+                ? queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, SERVICE_DELAYED_AUTO_START_INFO::new)
+                : null;
 
         return new Service.Info(config, description, delayedAutoStartInfo);
     }
@@ -349,8 +350,9 @@ public final class ServiceManager implements AutoCloseable {
         QUERY_SERVICE_CONFIG config = queryServiceConfig(serviceHandle);
         SERVICE_STATUS_PROCESS status = queryStatus(serviceHandle);
         SERVICE_DESCRIPTION description = queryOptionalServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, SERVICE_DESCRIPTION::new);
-        SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO,
-                SERVICE_DELAYED_AUTO_START_INFO::new);
+        SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = config.dwStartType == WinNT.SERVICE_AUTO_START
+                ? queryServiceConfig2(serviceHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, SERVICE_DELAYED_AUTO_START_INFO::new)
+                : null;
 
         return new Service.AllInfo(handle, status, config, description, delayedAutoStartInfo);
     }
