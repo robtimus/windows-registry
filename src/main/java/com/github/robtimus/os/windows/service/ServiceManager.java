@@ -29,6 +29,7 @@ import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CON
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
 import com.sun.jna.Memory;
+import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.Win32Exception;
@@ -271,6 +272,59 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     /**
+     * Returns an object that can be used to create a Windows service.
+     *
+     * @param serviceName The service name.
+     * @param executable The service executable.
+     * @return An object that can be used to create a Windows service.
+     * @throws NullPointerException If the given service name or executable is {@code null}.
+     * @throws IllegalArgumentException If the given service name is blank or larger than {@code 256} characters,
+     *                                      or if the given executable is blank or larger than {@code 2048} characters.
+     */
+    public Service.Creator newService(String serviceName, String executable) {
+        Objects.requireNonNull(serviceName);
+        Objects.requireNonNull(executable);
+
+        return new Service.CreatorImpl(this, serviceName, executable);
+    }
+
+    Service.Handle create(Service.CreatorImpl creator) {
+        int dwDesiredAccess = Winsvc.SERVICE_CHANGE_CONFIG | WinNT.DELETE;
+        Pointer dependencies = QUERY_SERVICE_CONFIG.dependencies(creator.dependencies);
+
+        SC_HANDLE scHandle = api.CreateService(scmHandle, creator.serviceName, creator.displayName, dwDesiredAccess,
+                creator.serviceType, creator.startType, creator.errorControl, creator.executable, creator.loadOrderGroup, null, dependencies,
+                creator.logOnAccount, creator.logOnAccountPassword);
+        if (scHandle == null) {
+            throwLastError();
+        }
+        try (Handle handle = new Handle(scHandle)) {
+            if (creator.description != null && !creator.description.isEmpty()) {
+                SERVICE_DESCRIPTION description = new SERVICE_DESCRIPTION();
+                description.lpDescription = creator.description;
+                if (!api.ChangeServiceConfig2(scHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, description)) {
+                    int error = kernel32.GetLastError();
+                    // Delete the newly created service
+                    delete(handle);
+                    throw error(error);
+                }
+            }
+            if (creator.delayedStart) {
+                SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = new SERVICE_DELAYED_AUTO_START_INFO();
+                delayedAutoStartInfo.fDelayedAutostart = creator.delayedStart;
+                if (!api.ChangeServiceConfig2(scHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, delayedAutoStartInfo)) {
+                    int error = kernel32.GetLastError();
+                    // Delete the newly created service
+                    delete(handle);
+                    throw error(error);
+                }
+            }
+        }
+
+        return new Service.Handle(this, creator.serviceName);
+    }
+
+    /**
      * Deletes a specific Windows service.
      * <p>
      * This service manager must have been opened with option {@link OpenOption#DELETE}.
@@ -291,9 +345,13 @@ public final class ServiceManager implements AutoCloseable {
 
         int dwDesiredAccess = options.contains(OpenOption.DELETE) ? WinNT.DELETE : 0;
         try (Handle handle = openService(service, dwDesiredAccess)) {
-            if (!api.DeleteService(handle.scHandle)) {
-                throwLastError();
-            }
+            delete(handle);
+        }
+    }
+
+    private void delete(Handle handle) {
+        if (!api.DeleteService(handle.scHandle)) {
+            throwLastError();
         }
     }
 
@@ -619,10 +677,13 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     private static Win32Exception error(int code) {
-        System.out.printf("Code: %d%n", code);
+        System.err.printf("Code: %d%n", code);
         switch (code) {
         case WinError.ERROR_ACCESS_DENIED:
             return new AccessDeniedException();
+        case WinError.ERROR_SERVICE_EXISTS:
+        case WinError.ERROR_DUPLICATE_SERVICE_NAME:
+            return new ServiceAlreadyExistsException(code);
         case WinError.ERROR_SERVICE_NOT_FOUND:
             return new NoSuchServiceException();
         default:

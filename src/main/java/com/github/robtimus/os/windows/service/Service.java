@@ -17,14 +17,19 @@
 
 package com.github.robtimus.os.windows.service;
 
+import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import com.github.robtimus.os.windows.AccessDeniedException;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
+import com.github.robtimus.os.windows.service.ServiceManager.OpenOption;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.Winsvc;
 import com.sun.jna.platform.win32.Winsvc.ENUM_SERVICE_STATUS;
@@ -342,7 +347,7 @@ public final class Service {
         private final String executable;
         private final TypeInfo typeInfo;
         private final StartInfo startInfo;
-        private final String logonAccount;
+        private final String logOnAccount;
         private final List<String> dependencies;
 
         Info(QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
@@ -351,7 +356,7 @@ public final class Service {
             this.executable = config.lpBinaryPathName;
             this.typeInfo = new TypeInfo(config.dwServiceType);
             this.startInfo = new StartInfo(config, delayedAutoStartInfo);
-            this.logonAccount = config.lpServiceStartName;
+            this.logOnAccount = config.lpServiceStartName;
             this.dependencies = config.dependencies();
         }
 
@@ -402,12 +407,12 @@ public final class Service {
         }
 
         /**
-         * Returns the service logon account.
+         * Returns the service log-on account.
          *
-         * @return The service logon account.
+         * @return The service log-on account.
          */
-        public String logonAccount() {
-            return logonAccount;
+        public String logOnAccount() {
+            return logOnAccount;
         }
 
         /**
@@ -429,7 +434,7 @@ public final class Service {
             appendField(sb, "executable", executable);
             appendField(sb, "typeInfo", typeInfo);
             appendField(sb, "startInfo", startInfo);
-            appendField(sb, "logonAccount", logonAccount);
+            appendField(sb, "logOnAccount", logOnAccount);
             appendField(sb, "dependencies", dependencies);
             sb.append(']');
             return sb.toString();
@@ -482,7 +487,7 @@ public final class Service {
          * Returns whether or not the service shares a process with one or more other services.
          *
          * @return {@code true} if the service shares a process with one or more other services,
-         *         or {@code false} if the service runs in its own process,
+         *         or {@code false} if the service runs in its own process.
          * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
         public boolean sharedProcess() {
@@ -1170,8 +1175,453 @@ public final class Service {
         }
     }
 
+    /**
+     * An object that will help create new Windows services.
+     * <p>
+     * By default, if no modifying methods are called, services created will have the following characteristics:
+     * <ul>
+     * <li>The display name is equal to the service name.</li>
+     * <li>There is no description.</li>
+     * <li>The type is {@link Type#PROCESS}, and calling {@link TypeInfo#sharedProcess()}, {@link TypeInfo#userProcess()} and
+     *     {@link TypeInfo#interactiveProcess()} would all return {@code false}.</li>
+     * <li>The start type is {@link StartType#MANUAL}.</li>
+     * <li>The log-on account is the <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
+     *     </li>
+     * <li>There are no dependencies.</li>
+     * </ul>
+     * The following code snippets will all create the same service:
+     * <pre><code>
+     * serviceManager.newService(serviceName, executable).create();
+     *
+     * serviceManager.newService(serviceName, executable)
+     *         .process()
+     *             .endProcess()
+     *         .create();
+     *
+     * serviceManager.newService(serviceName, executable)
+     *         .displayName(serviceName)
+     *         .description(null)
+     *         .process()
+     *             .shared(false)
+     *             .user(false)
+     *             .logOnAccount()
+     *                 .localSystem(false)
+     *                 .endLogOnAccount()
+     *             .startType()
+     *                 .manual()
+     *                 .endStartType()
+     *             .endProcess()
+     *         .dependencies()
+     *         .create();
+     * </code></pre>
+     *
+     * @author Rob Spoor
+     */
+    public interface Creator {
+
+        /**
+         * Sets the display name.
+         *
+         * @param displayName The display name to set.
+         * @return This object.
+         * @throws NullPointerException If the given display name is {@code null}.
+         * @throws IllegalArgumentException If the given display name is blank or larger than {@code 256} characters.
+         */
+        Service.Creator displayName(String displayName);
+
+        /**
+         * Sets the description.
+         *
+         * @param description The description name to set. If {@code null} or blank, the description is cleared.
+         * @return This object.
+         * @throws NullPointerException If the given description is {@code null}.
+         * @throws IllegalArgumentException If the given description is larger than {@code 2048} characters.
+         */
+        Service.Creator description(String description);
+
+        /**
+         * Sets the dependencies.
+         *
+         * @param dependencies Handles to the dependencies to set; possibly none.
+         * @return This object.
+         * @throws NullPointerException If any {@code null} dependencies are given.
+         */
+        default Service.Creator dependencies(Service.Handle... dependencies) {
+            return dependencies(Arrays.asList(dependencies));
+        }
+
+        /**
+         * Sets the dependencies.
+         *
+         * @param dependencies A collection with handles to the dependencies to set; possibly empty.
+         * @return This object.
+         * @throws NullPointerException If the collection or any of its elements is {@code null}.
+         */
+        Service.Creator dependencies(Collection<Service.Handle> dependencies);
+
+        /**
+         * Sets the type to {@link Type#PROCESS}.
+         *
+         * @return An object that can be used to further configure the process.
+         */
+        Process process();
+
+        /**
+         * An object that can be used to configure a Windows service of type {@link Type#PROCESS}.
+         *
+         * @author Rob Spoor
+         */
+        interface Process {
+
+            /**
+             * Sets whether the service should share a process with one or more other services, or run in its own process.
+             *
+             * @param shared {@code true} if the service should share a process with one or more other services,
+             *                   or {@code false} if the service should run in its own process.
+             * @return This object.
+             */
+            Process shared(boolean shared);
+
+            /**
+             * Sets whether or not the service should run in a process under the logged-on user account.
+             *
+             * @param user {@code true} if the service should run in a process under the logged-on user account, or {@code false} otherwise.
+             * @return This object.
+             */
+            Process user(boolean user);
+
+            /**
+             * Returns an object that can be used to specify the log-on account.
+             *
+             * @return An object that can be used to specify the log-on account.
+             */
+            LogOnAccount logOnAccount();
+
+            /**
+             * An object that can be used to configure the log-on account for a Windows service of type {@link Type#PROCESS}.
+             *
+             * @author Rob Spoor
+             */
+            interface LogOnAccount {
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
+                 * The service will not be able to interact with the desktop.
+                 *
+                 * @return This object.
+                 */
+                default LogOnAccount localSystem() {
+                    return localSystem(false);
+                }
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
+                 *
+                 * @param interactive {@code true} if the service should be able to interact with the desktop, or {@code false} otherwise.
+                 * @return This object.
+                 */
+                LogOnAccount localSystem(boolean interactive);
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localservice-account">LocalService</a> account.
+                 *
+                 * @return This object.
+                 */
+                LogOnAccount localService();
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/networkservice-account">NetworkService</a> account.
+                 *
+                 * @return This object.
+                 */
+                LogOnAccount networkService();
+
+                /**
+                 * Specifies the log-on account that should be used.
+                 *
+                 * @param userName The name of the account. It should be in the form <i>DomainName\UserName</i>.
+                 * @param password The password for the account; an empty string if the account has no password.
+                 * @return This object.
+                 * @throws NullPointerException If the user name or password is {@code null}.
+                 */
+                LogOnAccount account(String userName, String password);
+
+                /**
+                 * Specifies the log-on account that should be used.
+                 *
+                 * @param userName The name of the account, within the given domain.
+                 * @param password The password for the account; an empty string if the account has no password.
+                 * @param domain The domain of the account; {@code .} for the built-in domain.
+                 * @return This object.
+                 * @throws NullPointerException If the user name, password or domain is {@code null}.
+                 */
+                LogOnAccount account(String userName, String password, String domain);
+
+                /**
+                 * Ends configuring the log-on account.
+                 *
+                 * @return The {@link Process} instance from which this object originated.
+                 */
+                Process endLogOnAccount();
+            }
+
+            /**
+             * Returns an object that can be used to specify the start type.
+             *
+             * @return An object that can be used to specify the start type.
+             */
+            StartType startType();
+
+            interface StartType {
+
+                /**
+                 * Specifies that the service should start automatically during system startup.
+                 *
+                 * @return This object.
+                 */
+                default StartType automatic() {
+                    return automatic(false);
+                }
+
+                /**
+                 * Specifies that the service should start automatically during system startup.
+                 *
+                 * @param delayedStart {@code true} if the service should be started after other auto-start services are started plus a short delay,
+                 *                         or {@code false} if the service should be started during system boot.
+                 * @return This object.
+                 */
+                StartType automatic(boolean delayedStart);
+
+                /**
+                 * Specifies that the service should be started manually.
+                 *
+                 * @return This object.
+                 */
+                StartType manual();
+
+                /**
+                 * Specifies that the service should be disabled.
+                 *
+                 * @return This object.
+                 */
+                StartType disabled();
+
+                /**
+                 * Ends configuring the start type.
+                 *
+                 * @return The {@link Process} instance from which this object originated.
+                 */
+                Process endStartType();
+            }
+
+            /**
+             * Ends configuring the service type.
+             *
+             * @return The {@link Creator} instance from which this object originated.
+             */
+            Creator endProcess();
+        }
+
+        /**
+         * Creates a service with the current settings of this object.
+         *
+         * @return A handle to the created service.
+         * @throws IllegalStateException If the service manager from which this object originated is closed.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to create services,
+         *                                   or if the {@link OpenOption#CREATE} option is not given when opening the service manager from which this
+         *                                   object originated.
+         * @throws ServiceAlreadyExistsException If there already is a service with the service name and/or display name of this object.
+         * @throws ServiceException If a service could not be created for another reason.
+         */
+        Handle create();
+    }
+
+    static final class CreatorImpl implements Creator, Creator.Process, Creator.Process.LogOnAccount, Creator.Process.StartType {
+
+        private final ServiceManager serviceManager;
+
+        final String serviceName;
+        final String executable;
+
+        String displayName;
+        int serviceType = WinNT.SERVICE_WIN32_OWN_PROCESS;
+        int startType = WinNT.SERVICE_DEMAND_START;
+        int errorControl = WinNT.SERVICE_ERROR_NORMAL;
+        String loadOrderGroup = null;
+        List<String> dependencies = Collections.emptyList();
+        String logOnAccount = null;
+        String logOnAccountPassword = null;
+
+        String description = null;
+        boolean delayedStart = false;
+
+        CreatorImpl(ServiceManager serviceManager, String serviceName, String executable) {
+            this.serviceManager = serviceManager;
+            this.serviceName = validateServiceName(serviceName);
+            this.executable = validateExecutable(executable);
+
+            displayName = serviceName;
+        }
+
+        // Creator
+
+        @Override
+        public Creator displayName(String displayName) {
+            this.displayName = validateDisplayName(displayName);
+            return this;
+        }
+
+        @Override
+        public Creator description(String description) {
+            this.description = validateDescription(description, null);
+            return this;
+        }
+
+        @Override
+        public Creator dependencies(Collection<Handle> dependencies) {
+            this.dependencies = dependencies.stream()
+                    .map(Objects::requireNonNull)
+                    .map(Handle::serviceName)
+                    .collect(Collectors.toUnmodifiableList());
+            return this;
+        }
+
+        // Creator.Process
+
+        @Override
+        public Creator.Process process() {
+            serviceType = WinNT.SERVICE_WIN32_OWN_PROCESS;
+            startType = WinNT.SERVICE_DEMAND_START;
+            logOnAccount = null;
+            logOnAccountPassword = null;
+            return this;
+        }
+
+        @Override
+        public Creator.Process shared(boolean shared) {
+            serviceType = set(serviceType, WinNT.SERVICE_WIN32_OWN_PROCESS, !shared);
+            serviceType = set(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS, shared);
+            return this;
+        }
+
+        @Override
+        public Creator.Process user(boolean user) {
+            serviceType = set(serviceType, TypeInfo.SERVICE_USER_SERVICE, user);
+            return this;
+        }
+
+        // Creator.Process.LogonAccount
+
+        @Override
+        public Creator.Process.LogOnAccount logOnAccount() {
+            // No need to reset anything
+            return this;
+        }
+
+        @Override
+        public Creator.Process.LogOnAccount localSystem(boolean interactive) {
+            serviceType = set(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS, interactive);
+            logOnAccount = null;
+            logOnAccountPassword = null;
+            return this;
+        }
+
+        @Override
+        public Creator.Process.LogOnAccount localService() {
+            serviceType = set(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS, false);
+            logOnAccount = "NT AUTHORITY\\LocalService"; //$NON-NLS-1$
+            logOnAccountPassword = null;
+            return this;
+        }
+
+        @Override
+        public Creator.Process.LogOnAccount networkService() {
+            serviceType = set(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS, false);
+            logOnAccount = "NT AUTHORITY\\NetworkService"; //$NON-NLS-1$
+            logOnAccountPassword = null;
+            return this;
+        }
+
+        @Override
+        public Creator.Process.LogOnAccount account(String userName, String password) {
+            Objects.requireNonNull(userName);
+            Objects.requireNonNull(password);
+
+            serviceType = set(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS, false);
+            logOnAccount = userName;
+            logOnAccountPassword = password;
+            return this;
+        }
+
+        @Override
+        public Creator.Process.LogOnAccount account(String userName, String password, String domain) {
+            Objects.requireNonNull(userName);
+            Objects.requireNonNull(password);
+            Objects.requireNonNull(domain);
+
+            return account(domain + "\\" + userName, password); //$NON-NLS-1$
+        }
+
+        @Override
+        public Creator.Process endLogOnAccount() {
+            return this;
+        }
+
+        // Creator.Process.StartType
+
+        @Override
+        public Creator.Process.StartType startType() {
+            // No need to reset anything
+            return this;
+        }
+
+        @Override
+        public Creator.Process.StartType automatic(boolean delayedStart) {
+            startType = WinNT.SERVICE_AUTO_START;
+            this.delayedStart = delayedStart;
+            return this;
+        }
+
+        @Override
+        public Creator.Process.StartType manual() {
+            startType = WinNT.SERVICE_DEMAND_START;
+            delayedStart = false;
+            return this;
+        }
+
+        @Override
+        public Creator.Process.StartType disabled() {
+            startType = WinNT.SERVICE_DISABLED;
+            delayedStart = false;
+            return null;
+        }
+
+        @Override
+        public Creator.Process endStartType() {
+            return this;
+        }
+
+        @Override
+        public Creator endProcess() {
+            return this;
+        }
+
+        @Override
+        public Handle create() {
+            return serviceManager.create(this);
+        }
+    }
+
     private static boolean isSet(int value, int flag) {
         return (value & flag) == flag;
+    }
+
+    private static int set(int value, int flag, boolean set) {
+        return set ? (value | flag) : (value & ~flag);
     }
 
     @SuppressWarnings("nls")
@@ -1202,5 +1652,39 @@ public final class Service {
         if (sb.length() != 1) {
             sb.append(", ");
         }
+    }
+
+    private static String validateServiceName(String serviceName) {
+        return validateString(serviceName, "serviceName", 256); //$NON-NLS-1$
+    }
+
+    private static String validateExecutable(String executable) {
+        // The maximum length for the executable has not been specified.
+        // The actual executable length may be larger, but let's use a sensible length
+        return validateString(executable, "executable", 2048); //$NON-NLS-1$
+    }
+
+    private static String validateDisplayName(String displayName) {
+        return validateString(displayName, "displayName", 256); //$NON-NLS-1$
+    }
+
+    private static String validateDescription(String description, String defaultValue) {
+        if (description == null || description.isBlank()) {
+            return defaultValue;
+        }
+        // The maximum length for the description has not been specified.
+        // The actual executable length may be larger, but let's use a sensible length
+        return validateString(description, "description", 2048); //$NON-NLS-1$
+    }
+
+    private static String validateString(String value, String name, int maxLength) {
+        String result = value.trim();
+        if (result.isEmpty()) {
+            throw new IllegalArgumentException(Messages.Service.validation.stringBlank.get(name));
+        }
+        if (result.length() > maxLength) {
+            throw new IllegalArgumentException(Messages.Service.validation.stringTooLong.get(name, maxLength));
+        }
+        return result;
     }
 }

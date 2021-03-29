@@ -20,6 +20,7 @@ package com.github.robtimus.os.windows.service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import com.sun.jna.Memory;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
@@ -35,6 +36,10 @@ interface Advapi32Extended extends Advapi32 {
     Advapi32Extended INSTANCE = Native.load("Advapi32", Advapi32Extended.class, W32APIOptions.DEFAULT_OPTIONS); //$NON-NLS-1$
 
     boolean QueryServiceConfig(SC_HANDLE hService, QUERY_SERVICE_CONFIG lpServiceConfig, int cbBufSize, IntByReference pcbBytesNeeded);
+
+    SC_HANDLE CreateService(SC_HANDLE hSCManager, String lpServiceName, String lpDisplayName, int dwDesiredAccess, int dwServiceType, int dwStartType,
+            int dwErrorControl, String lpBinaryPathName, String lpLoadOrderGroup, IntByReference lpdwTagId, Pointer lpDependencies,
+            String lpServiceStartName, String lpPassword);
 
     @FieldOrder({ "dwServiceType", "dwStartType", "dwErrorControl", "lpBinaryPathName", "lpLoadOrderGroup", "dwTagId", "lpDependencies",
             "lpServiceStartName", "lpDisplayName" })
@@ -58,6 +63,8 @@ interface Advapi32Extended extends Advapi32 {
                 return Collections.emptyList();
             }
 
+            int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+
             List<String> result = new ArrayList<>();
             int offset = 0;
             while (true) {
@@ -68,18 +75,50 @@ interface Advapi32Extended extends Advapi32 {
                     break;
                 }
                 result.add(s);
-                offset += W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
-                        ? (s.length() + 1) * Native.WCHAR_SIZE
-                        : s.length() + 1;
+                offset += (s.length() + 1) * charWidth;
             }
 
             return Collections.unmodifiableList(result);
+        }
+
+        public static Pointer dependencies(List<String> dependencies) {
+            if (dependencies.isEmpty()) {
+                return Pointer.NULL;
+            }
+
+            int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+
+            int size = 0;
+            for (String s : dependencies) {
+                size += s.length() * charWidth;
+                size += charWidth;
+            }
+            size += charWidth;
+
+            int offset = 0;
+            Memory data = new Memory(size);
+            data.clear();
+            for (String s : dependencies) {
+                if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
+                    data.setWideString(offset, s);
+                } else {
+                    data.setString(offset, s);
+                }
+                offset += s.length() * charWidth;
+                offset += charWidth;
+            }
+
+            return data;
         }
     }
 
     @FieldOrder({"lpDescription"})
     public static class SERVICE_DESCRIPTION extends ChangeServiceConfig2Info {
         public String lpDescription;
+
+        public SERVICE_DESCRIPTION() {
+            super();
+        }
 
         public SERVICE_DESCRIPTION(Pointer p) {
             super(p);
@@ -89,6 +128,10 @@ interface Advapi32Extended extends Advapi32 {
     @FieldOrder("fDelayedAutostart")
     class SERVICE_DELAYED_AUTO_START_INFO extends ChangeServiceConfig2Info {
         public boolean fDelayedAutostart;
+
+        public SERVICE_DELAYED_AUTO_START_INFO() {
+            super();
+        }
 
         public SERVICE_DELAYED_AUTO_START_INFO(Pointer p) {
             super(p);
