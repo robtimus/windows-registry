@@ -404,7 +404,7 @@ public final class ServiceManager implements AutoCloseable {
      * @see #local(OpenOption...)
      * @see #remote(String, OpenOption...)
      */
-    public void delete(Service.Handle service) {
+    public void deleteService(Service.Handle service) {
         Objects.requireNonNull(service);
         checkClosed();
         // Fail early if the necessary options are not given
