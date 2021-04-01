@@ -41,6 +41,10 @@ interface Advapi32Extended extends Advapi32 {
             int dwErrorControl, String lpBinaryPathName, String lpLoadOrderGroup, IntByReference lpdwTagId, Pointer lpDependencies,
             String lpServiceStartName, String lpPassword);
 
+    boolean ChangeServiceConfig(SC_HANDLE hService, int dwServiceType, int dwStartType, int dwErrorControl, String lpBinaryPathName,
+            String lpLoadOrderGroup, IntByReference lpdwTagId, Pointer lpDependencies, String lpServiceStartName, String lpPassword,
+            String lpDisplayName);
+
     @FieldOrder({ "dwServiceType", "dwStartType", "dwErrorControl", "lpBinaryPathName", "lpLoadOrderGroup", "dwTagId", "lpDependencies",
             "lpServiceStartName", "lpDisplayName" })
     class QUERY_SERVICE_CONFIG extends Structure {
@@ -108,6 +112,24 @@ interface Advapi32Extended extends Advapi32 {
                 offset += charWidth;
             }
 
+            return data;
+        }
+
+        public static Pointer dependencies(List<String> dependencies, boolean emptyStringForNone) {
+            return emptyStringForNone && dependencies.isEmpty()
+                    ? emptyString()
+                    : dependencies(dependencies);
+        }
+
+        private static Pointer emptyString() {
+            int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+
+            Memory data = new Memory(charWidth);
+            if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
+                data.setWideString(0, ""); //$NON-NLS-1$
+            } else {
+                data.setString(0, ""); //$NON-NLS-1$
+            }
             return data;
         }
     }

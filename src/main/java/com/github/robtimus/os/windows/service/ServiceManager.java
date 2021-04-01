@@ -84,7 +84,6 @@ public final class ServiceManager implements AutoCloseable {
 
         /** Indicates services can be deleted. */
         DELETE,
-        ;
     }
 
     /**
@@ -141,6 +140,12 @@ public final class ServiceManager implements AutoCloseable {
     private void checkClosed() {
         if (scmHandle == null) {
             throw new IllegalStateException(Messages.ServiceManager.closed.get());
+        }
+    }
+
+    private void checkOption(OpenOption option) {
+        if (!options.contains(option)) {
+            throw new AccessDeniedException();
         }
     }
 
@@ -280,10 +285,17 @@ public final class ServiceManager implements AutoCloseable {
      * @throws NullPointerException If the given service name or executable is {@code null}.
      * @throws IllegalArgumentException If the given service name is blank or larger than {@code 256} characters,
      *                                      or if the given executable is blank or larger than {@code 2048} characters.
+     * @throws IllegalStateException If this service manager is closed.
+     * @throws AccessDeniedException If the {@link OpenOption#CREATE} option is not given when opening this service manager.
+     * @see #local(OpenOption...)
+     * @see #remote(String, OpenOption...)
      */
     public Service.Creator newService(String serviceName, String executable) {
         Objects.requireNonNull(serviceName);
         Objects.requireNonNull(executable);
+        checkClosed();
+        // Fail early if the necessary options are not given
+        checkOption(OpenOption.CREATE);
 
         return new Service.CreatorImpl(this, serviceName, executable);
     }
@@ -299,7 +311,7 @@ public final class ServiceManager implements AutoCloseable {
             throwLastError();
         }
         try (Handle handle = new Handle(scHandle)) {
-            if (creator.description != null && !creator.description.isEmpty()) {
+            if (creator.description != null) {
                 SERVICE_DESCRIPTION description = new SERVICE_DESCRIPTION();
                 description.lpDescription = creator.description;
                 if (!api.ChangeServiceConfig2(scHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, description)) {
@@ -325,6 +337,59 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     /**
+     * Returns an object that can be used to update a Windows service.
+     *
+     * @param service A handle to the service to update.
+     * @return An object that can be used to update the Windows service.
+     * @throws NullPointerException If the service handle is {@code null}.
+     * @throws IllegalStateException If this service manager is closed.
+     * @throws AccessDeniedException If the {@link OpenOption#CHANGE} option is not given when opening this service manager.
+     * @see #local(OpenOption...)
+     * @see #remote(String, OpenOption...)
+     */
+    public Service.Updater updateService(Service.Handle service) {
+        Objects.requireNonNull(service);
+        checkClosed();
+        // Fail early if the necessary options are not given
+        checkOption(OpenOption.CHANGE);
+
+        int dwDesiredAccess = Winsvc.SERVICE_QUERY_CONFIG | (options.contains(OpenOption.CHANGE) ? Winsvc.SERVICE_CHANGE_CONFIG : 0);
+        try (Handle handle = openService(service, dwDesiredAccess)) {
+            QUERY_SERVICE_CONFIG config = queryServiceConfig(handle);
+
+            return new Service.UpdaterImpl(this, service.serviceName(), config.dwServiceType);
+        }
+    }
+
+    void update(Service.UpdaterImpl updater) {
+        int dwDesiredAccess = options.contains(OpenOption.CHANGE) ? Winsvc.SERVICE_CHANGE_CONFIG : 0;
+        Pointer dependencies = updater.dependencies == null ? Pointer.NULL : QUERY_SERVICE_CONFIG.dependencies(updater.dependencies, true);
+
+        try (Handle handle = openService(updater.serviceName, dwDesiredAccess)) {
+            if (updater.needsConfigChange()
+                    && !api.ChangeServiceConfig(handle.scHandle, updater.serviceType, updater.startType, updater.errorControl, updater.executable,
+                            updater.loadOrderGroup, null, dependencies, updater.logOnAccount, updater.logOnAccountPassword, updater.displayName)) {
+
+                throwLastError();
+            }
+            if (updater.description != null) {
+                SERVICE_DESCRIPTION description = new SERVICE_DESCRIPTION();
+                description.lpDescription = updater.description;
+                if (!api.ChangeServiceConfig2(handle.scHandle, Winsvc.SERVICE_CONFIG_DESCRIPTION, description)) {
+                    throwLastError();
+                }
+            }
+            if (updater.needsDelayedStartChange()) {
+                SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo = new SERVICE_DELAYED_AUTO_START_INFO();
+                delayedAutoStartInfo.fDelayedAutostart = updater.delayedStart;
+                if (!api.ChangeServiceConfig2(handle.scHandle, Winsvc.SERVICE_CONFIG_DELAYED_AUTO_START_INFO, delayedAutoStartInfo)) {
+                    throwLastError();
+                }
+            }
+        }
+    }
+
+    /**
      * Deletes a specific Windows service.
      * <p>
      * This service manager must have been opened with option {@link OpenOption#DELETE}.
@@ -342,6 +407,8 @@ public final class ServiceManager implements AutoCloseable {
     public void delete(Service.Handle service) {
         Objects.requireNonNull(service);
         checkClosed();
+        // Fail early if the necessary options are not given
+        checkOption(OpenOption.DELETE);
 
         int dwDesiredAccess = options.contains(OpenOption.DELETE) ? WinNT.DELETE : 0;
         try (Handle handle = openService(service, dwDesiredAccess)) {

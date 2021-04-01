@@ -1227,7 +1227,7 @@ public final class Service {
          * @throws NullPointerException If the given display name is {@code null}.
          * @throws IllegalArgumentException If the given display name is blank or larger than {@code 256} characters.
          */
-        Service.Creator displayName(String displayName);
+        Creator displayName(String displayName);
 
         /**
          * Sets the description.
@@ -1237,7 +1237,7 @@ public final class Service {
          * @throws NullPointerException If the given description is {@code null}.
          * @throws IllegalArgumentException If the given description is larger than {@code 2048} characters.
          */
-        Service.Creator description(String description);
+        Creator description(String description);
 
         /**
          * Sets the dependencies.
@@ -1246,7 +1246,7 @@ public final class Service {
          * @return This object.
          * @throws NullPointerException If any {@code null} dependencies are given.
          */
-        default Service.Creator dependencies(Service.Handle... dependencies) {
+        default Creator dependencies(Handle... dependencies) {
             return dependencies(Arrays.asList(dependencies));
         }
 
@@ -1257,7 +1257,7 @@ public final class Service {
          * @return This object.
          * @throws NullPointerException If the collection or any of its elements is {@code null}.
          */
-        Service.Creator dependencies(Collection<Service.Handle> dependencies);
+        Creator dependencies(Collection<Handle> dependencies);
 
         /**
          * Sets the type to {@link Type#PROCESS}.
@@ -1613,6 +1613,459 @@ public final class Service {
         @Override
         public Handle create() {
             return serviceManager.create(this);
+        }
+    }
+
+    /**
+     * An object that will help update new Windows services.
+     * <p>
+     * By default, if no modifying methods are called, nothing will be updated.
+     *
+     * @author Rob Spoor
+     */
+    public interface Updater {
+
+        /**
+         * Sets the display name.
+         *
+         * @param displayName The display name to set.
+         * @return This object.
+         * @throws NullPointerException If the given display name is {@code null}.
+         * @throws IllegalArgumentException If the given display name is blank or larger than {@code 256} characters.
+         */
+        Updater displayName(String displayName);
+
+        /**
+         * Sets the description.
+         *
+         * @param description The description name to set. If {@code null} or blank, the description is cleared.
+         * @return This object.
+         * @throws IllegalArgumentException If the given description is larger than {@code 2048} characters.
+         */
+        Updater description(String description);
+
+        /**
+         * Sets the executable.
+         *
+         * @param executable The executable to set.
+         * @return This object.
+         * @throws NullPointerException If the given executable is {@code null}.
+         * @throws IllegalArgumentException If the given executable is larger than {@code 2048} characters.
+         */
+        Updater executable(String executable);
+
+        /**
+         * Sets the dependencies.
+         *
+         * @param dependencies Handles to the dependencies to set; possibly none.
+         * @return This object.
+         * @throws NullPointerException If any {@code null} dependencies are given.
+         */
+        default Updater dependencies(Handle... dependencies) {
+            return dependencies(Arrays.asList(dependencies));
+        }
+
+        /**
+         * Sets the dependencies.
+         *
+         * @param dependencies A collection with handles to the dependencies to set; possibly empty.
+         * @return This object.
+         * @throws NullPointerException If the collection or any of its elements is {@code null}.
+         */
+        Updater dependencies(Collection<Handle> dependencies);
+
+        /**
+         * Returns an object that can be used to further configure services of type {@link Type#PROCESS}.
+         * <p>
+         * Note that this method will not cause the service type to be changed; that is not supported.
+         *
+         * @return An object that can be used to further configure the process.
+         * @throws UnsupportedOperationException If the service to update has a type other than {@link Type#PROCESS}.
+         */
+        Process process();
+
+        /**
+         * An object that can be used to configure a Windows service of type {@link Type#PROCESS}.
+         *
+         * @author Rob Spoor
+         */
+        interface Process {
+
+            /**
+             * Sets whether the service should share a process with one or more other services, or run in its own process.
+             *
+             * @param shared {@code true} if the service should share a process with one or more other services,
+             *                   or {@code false} if the service should run in its own process.
+             * @return This object.
+             */
+            Process shared(boolean shared);
+
+            /**
+             * Sets whether or not the service should run in a process under the logged-on user account.
+             *
+             * @param user {@code true} if the service should run in a process under the logged-on user account, or {@code false} otherwise.
+             * @return This object.
+             */
+            Process user(boolean user);
+
+            /**
+             * Returns an object that can be used to specify the log-on account.
+             *
+             * @return An object that can be used to specify the log-on account.
+             */
+            LogOnAccount logOnAccount();
+
+            /**
+             * An object that can be used to configure the log-on account for a Windows service of type {@link Type#PROCESS}.
+             *
+             * @author Rob Spoor
+             */
+            interface LogOnAccount {
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
+                 * The service will not be able to interact with the desktop.
+                 *
+                 * @return This object.
+                 */
+                default LogOnAccount localSystem() {
+                    return localSystem(false);
+                }
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
+                 *
+                 * @param interactive {@code true} if the service should be able to interact with the desktop, or {@code false} otherwise.
+                 * @return This object.
+                 */
+                LogOnAccount localSystem(boolean interactive);
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localservice-account">LocalService</a> account.
+                 *
+                 * @return This object.
+                 */
+                LogOnAccount localService();
+
+                /**
+                 * Specifies that the log-on account should be the
+                 * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/networkservice-account">NetworkService</a> account.
+                 *
+                 * @return This object.
+                 */
+                LogOnAccount networkService();
+
+                /**
+                 * Specifies the log-on account that should be used.
+                 *
+                 * @param userName The name of the account. It should be in the form <i>DomainName\UserName</i>.
+                 * @param password The password for the account; an empty string if the account has no password.
+                 * @return This object.
+                 * @throws NullPointerException If the user name or password is {@code null}.
+                 */
+                LogOnAccount account(String userName, String password);
+
+                /**
+                 * Specifies the log-on account that should be used.
+                 *
+                 * @param userName The name of the account, within the given domain.
+                 * @param password The password for the account; an empty string if the account has no password.
+                 * @param domain The domain of the account; {@code .} for the built-in domain.
+                 * @return This object.
+                 * @throws NullPointerException If the user name, password or domain is {@code null}.
+                 */
+                LogOnAccount account(String userName, String password, String domain);
+
+                /**
+                 * Ends configuring the log-on account.
+                 *
+                 * @return The {@link Process} instance from which this object originated.
+                 */
+                Process endLogOnAccount();
+            }
+
+            /**
+             * Returns an object that can be used to specify the start type.
+             *
+             * @return An object that can be used to specify the start type.
+             */
+            StartType startType();
+
+            interface StartType {
+
+                /**
+                 * Specifies that the service should start automatically during system startup.
+                 *
+                 * @return This object.
+                 */
+                default StartType automatic() {
+                    return automatic(false);
+                }
+
+                /**
+                 * Specifies that the service should start automatically during system startup.
+                 *
+                 * @param delayedStart {@code true} if the service should be started after other auto-start services are started plus a short delay,
+                 *                         or {@code false} if the service should be started during system boot.
+                 * @return This object.
+                 */
+                StartType automatic(boolean delayedStart);
+
+                /**
+                 * Specifies that the service should be started manually.
+                 *
+                 * @return This object.
+                 */
+                StartType manual();
+
+                /**
+                 * Specifies that the service should be disabled.
+                 *
+                 * @return This object.
+                 */
+                StartType disabled();
+
+                /**
+                 * Ends configuring the start type.
+                 *
+                 * @return The {@link Process} instance from which this object originated.
+                 */
+                Process endStartType();
+            }
+
+            /**
+             * Ends configuring the service type.
+             *
+             * @return The {@link Updater} instance from which this object originated.
+             */
+            Updater endProcess();
+        }
+
+        /**
+         * Updates the service with the current settings of this object.
+         *
+         * @throws IllegalStateException If the service manager from which this object originated is closed.
+         * @throws AccessDeniedException If the current user does not have sufficient rights to create services,
+         *                                   or if the {@link OpenOption#CHANGE} option is not given when opening the service manager from which this
+         *                                   object originated.
+         * @throws ServiceAlreadyExistsException If there is a service with the display name of this object.
+         * @throws ServiceException If a service could not be created for another reason.
+         */
+        void update();
+    }
+
+    static final class UpdaterImpl implements Updater, Updater.Process, Updater.Process.LogOnAccount, Updater.Process.StartType {
+
+        private static final int SERVICE_NO_CHANGE = 0xFFFF_FFFF;
+
+        // To change values to empty strings, use an empty string, since null means no change
+        private static final String NO_VALUE = ""; //$NON-NLS-1$
+
+        private final ServiceManager serviceManager;
+
+        final String serviceName;
+        private final int originalServiceType;
+
+        String displayName = null;
+        String executable = null;
+        int serviceType = SERVICE_NO_CHANGE;
+        int startType = SERVICE_NO_CHANGE;
+        int errorControl = SERVICE_NO_CHANGE;
+        String loadOrderGroup = null;
+        List<String> dependencies = null;
+        String logOnAccount = null;
+        String logOnAccountPassword = null;
+
+        String description = null;
+        boolean delayedStart = false;
+
+        UpdaterImpl(ServiceManager serviceManager, String serviceName, int originalServiceType) {
+            this.serviceManager = serviceManager;
+            this.serviceName = validateServiceName(serviceName);
+            this.originalServiceType = originalServiceType;
+        }
+
+        // Updater
+
+        @Override
+        public Updater displayName(String displayName) {
+            this.displayName = validateDisplayName(displayName);
+            return this;
+        }
+
+        @Override
+        public Updater description(String description) {
+            this.description = validateDescription(description, NO_VALUE);
+            return this;
+        }
+
+        @Override
+        public Updater executable(String executable) {
+            this.executable = validateExecutable(executable);
+            return this;
+        }
+
+        @Override
+        public Updater dependencies(Collection<Handle> dependencies) {
+            this.dependencies = dependencies.stream()
+                    .map(Objects::requireNonNull)
+                    .map(Handle::serviceName)
+                    .collect(Collectors.toUnmodifiableList());
+            return this;
+        }
+
+        // Updater.Process
+
+        @Override
+        public Updater.Process process() {
+            // Don't update anything, just validate the type
+            validateServiceType(Type.PROCESS);
+            return this;
+        }
+
+        @Override
+        public Updater.Process shared(boolean shared) {
+            changeServiceType(WinNT.SERVICE_WIN32_OWN_PROCESS, !shared);
+            changeServiceType(WinNT.SERVICE_WIN32_SHARE_PROCESS, shared);
+            return this;
+        }
+
+        @Override
+        public Updater.Process user(boolean user) {
+            changeServiceType(TypeInfo.SERVICE_USER_SERVICE, user);
+            return this;
+        }
+
+        // Updater.Process.LogonAccount
+
+        @Override
+        public Updater.Process.LogOnAccount logOnAccount() {
+            // No need to update anything yet
+            return this;
+        }
+
+        @Override
+        public Updater.Process.LogOnAccount localSystem(boolean interactive) {
+            changeServiceType(WinNT.SERVICE_INTERACTIVE_PROCESS, interactive);
+            logOnAccount = "LocalSystem"; //$NON-NLS-1$
+            logOnAccountPassword = NO_VALUE;
+            return this;
+        }
+
+        @Override
+        public Updater.Process.LogOnAccount localService() {
+            changeServiceType(WinNT.SERVICE_INTERACTIVE_PROCESS, false);
+            logOnAccount = "NT AUTHORITY\\LocalService"; //$NON-NLS-1$
+            logOnAccountPassword = NO_VALUE;
+            return this;
+        }
+
+        @Override
+        public Updater.Process.LogOnAccount networkService() {
+            changeServiceType(WinNT.SERVICE_INTERACTIVE_PROCESS, false);
+            logOnAccount = "NT AUTHORITY\\NetworkService"; //$NON-NLS-1$
+            logOnAccountPassword = NO_VALUE;
+            return this;
+        }
+
+        @Override
+        public Updater.Process.LogOnAccount account(String userName, String password) {
+            Objects.requireNonNull(userName);
+            Objects.requireNonNull(password);
+
+            changeServiceType(WinNT.SERVICE_INTERACTIVE_PROCESS, false);
+            logOnAccount = userName;
+            logOnAccountPassword = password;
+            return this;
+        }
+
+        @Override
+        public Updater.Process.LogOnAccount account(String userName, String password, String domain) {
+            Objects.requireNonNull(userName);
+            Objects.requireNonNull(password);
+            Objects.requireNonNull(domain);
+
+            return account(domain + "\\" + userName, password); //$NON-NLS-1$
+        }
+
+        @Override
+        public Updater.Process endLogOnAccount() {
+            return this;
+        }
+
+        // Updater.Process.StartType
+
+        @Override
+        public Updater.Process.StartType startType() {
+            // No need to update anything yet
+            return this;
+        }
+
+        @Override
+        public Updater.Process.StartType automatic(boolean delayedStart) {
+            startType = WinNT.SERVICE_AUTO_START;
+            this.delayedStart = delayedStart;
+            return this;
+        }
+
+        @Override
+        public Updater.Process.StartType manual() {
+            startType = WinNT.SERVICE_DEMAND_START;
+            delayedStart = false;
+            return this;
+        }
+
+        @Override
+        public Updater.Process.StartType disabled() {
+            startType = WinNT.SERVICE_DISABLED;
+            delayedStart = false;
+            return null;
+        }
+
+        @Override
+        public Updater.Process endStartType() {
+            return this;
+        }
+
+        @Override
+        public Updater endProcess() {
+            return this;
+        }
+
+        @Override
+        public void update() {
+            serviceManager.update(this);
+        }
+
+        private void validateServiceType(Type expected) {
+            if (Type.of(originalServiceType) != expected) {
+                throw new UnsupportedOperationException(Messages.Service.Updater.unsupportedProcess.get(originalServiceType));
+            }
+        }
+
+        private void changeServiceType(int flag, boolean set) {
+            int newServiceType = set(originalServiceType, flag, set);
+            serviceType = newServiceType == originalServiceType ? SERVICE_NO_CHANGE : newServiceType;
+        }
+
+        boolean needsConfigChange() {
+            return displayName != null
+                    || executable != null
+                    || serviceType != SERVICE_NO_CHANGE
+                    || startType != SERVICE_NO_CHANGE
+                    || errorControl != SERVICE_NO_CHANGE
+                    || loadOrderGroup != null
+                    || dependencies != null
+                    || logOnAccount != null
+                    || logOnAccountPassword != null;
+        }
+
+        boolean needsDelayedStartChange() {
+            // delayedStart is always changed with startType
+            return startType != SERVICE_NO_CHANGE;
         }
     }
 
