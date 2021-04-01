@@ -345,6 +345,7 @@ public final class Service {
         private final String displayName;
         private final String description;
         private final String executable;
+        private final String loadOrderGroup;
         private final TypeInfo typeInfo;
         private final StartInfo startInfo;
         private final String logOnAccount;
@@ -352,12 +353,17 @@ public final class Service {
 
         Info(QUERY_SERVICE_CONFIG config, SERVICE_DESCRIPTION description, SERVICE_DELAYED_AUTO_START_INFO delayedAutoStartInfo) {
             this.displayName = config.lpDisplayName;
-            this.description = description != null ? description.lpDescription : null;
+            this.description = description != null ? nullIfBlank(description.lpDescription) : null;
             this.executable = config.lpBinaryPathName;
+            this.loadOrderGroup = nullIfBlank(config.lpLoadOrderGroup);
             this.typeInfo = new TypeInfo(config.dwServiceType);
             this.startInfo = new StartInfo(config, delayedAutoStartInfo);
-            this.logOnAccount = config.lpServiceStartName;
+            this.logOnAccount = nullIfBlank(config.lpServiceStartName);
             this.dependencies = config.dependencies();
+        }
+
+        private String nullIfBlank(String value) {
+            return value == null || value.isBlank() ? null : value;
         }
 
         /**
@@ -389,6 +395,16 @@ public final class Service {
         }
 
         /**
+         * Returns the name of the load ordering group of which the service is a member.
+         *
+         * @return An {@link Optional} describing the load ordering group of which the service is a member,
+         *         or {@link Optional#empty()} if the service is not a member of any load ordering group.
+         */
+        public Optional<String> loadOrderGroup() {
+            return Optional.ofNullable(loadOrderGroup);
+        }
+
+        /**
          * Returns information about the service type.
          *
          * @return An object containing information about the service type.
@@ -409,10 +425,11 @@ public final class Service {
         /**
          * Returns the service log-on account.
          *
-         * @return The service log-on account.
+         * @return An {@link Optional} describing the service log-on account, or {@link Optional#empty()} if the service has no log-on account.
+         *         This should usually only occur for drivers.
          */
-        public String logOnAccount() {
-            return logOnAccount;
+        public Optional<String> logOnAccount() {
+            return Optional.ofNullable(logOnAccount);
         }
 
         /**
@@ -432,6 +449,7 @@ public final class Service {
             appendField(sb, "displayName", displayName);
             appendField(sb, "description", description);
             appendField(sb, "executable", executable);
+            appendField(sb, "loadOrderGroup", loadOrderGroup);
             appendField(sb, "typeInfo", typeInfo);
             appendField(sb, "startInfo", startInfo);
             appendField(sb, "logOnAccount", logOnAccount);
@@ -1173,6 +1191,17 @@ public final class Service {
             dwServiceState = Winsvc.SERVICE_INACTIVE;
             return this;
         }
+
+        /**
+         * Specifies the load order group to filter on.
+         *
+         * @param loadOrderGroup The load order group to filter on; {@code null} to not filter on the load order group.
+         * @return This filter.
+         */
+        public Filter loadOrderGroup(String loadOrderGroup) {
+            this.pszGroupName = loadOrderGroup;
+            return this;
+        }
     }
 
     /**
@@ -1201,6 +1230,7 @@ public final class Service {
      * serviceManager.newService(serviceName, executable)
      *         .displayName(serviceName)
      *         .description(null)
+     *         .loadOrderGroup(null)
      *         .process()
      *             .shared(false)
      *             .user(false)
@@ -1234,10 +1264,18 @@ public final class Service {
          *
          * @param description The description name to set. If {@code null} or blank, the description is cleared.
          * @return This object.
-         * @throws NullPointerException If the given description is {@code null}.
          * @throws IllegalArgumentException If the given description is larger than {@code 2048} characters.
          */
         Creator description(String description);
+
+        /**
+         * Sets the load order group.
+         *
+         * @param loadOrderGroup The load order group to set. If {@code null} or blank, the load order group is cleared.
+         * @return This object.
+         * @throws IllegalArgumentException If the given load order group is larger than {@code 256} characters.
+         */
+        Creator loadOrderGroup(String loadOrderGroup);
 
         /**
          * Sets the dependencies.
@@ -1482,6 +1520,12 @@ public final class Service {
         }
 
         @Override
+        public Creator loadOrderGroup(String loadOrderGroup) {
+            this.loadOrderGroup = validateLoadOrderGroup(loadOrderGroup, null);
+            return this;
+        }
+
+        @Override
         public Creator dependencies(Collection<Handle> dependencies) {
             this.dependencies = dependencies.stream()
                     .map(Objects::requireNonNull)
@@ -1653,6 +1697,15 @@ public final class Service {
          * @throws IllegalArgumentException If the given executable is larger than {@code 2048} characters.
          */
         Updater executable(String executable);
+
+        /**
+         * Sets the load order group.
+         *
+         * @param loadOrderGroup The load order group to set. If {@code null} or blank, the load order group is cleared.
+         * @return This object.
+         * @throws IllegalArgumentException If the given load order group is larger than {@code 256} characters.
+         */
+        Updater loadOrderGroup(String loadOrderGroup);
 
         /**
          * Sets the dependencies.
@@ -1909,6 +1962,12 @@ public final class Service {
         }
 
         @Override
+        public Updater loadOrderGroup(String loadOrderGroup) {
+            this.loadOrderGroup = validateLoadOrderGroup(loadOrderGroup, NO_VALUE);
+            return this;
+        }
+
+        @Override
         public Updater dependencies(Collection<Handle> dependencies) {
             this.dependencies = dependencies.stream()
                     .map(Objects::requireNonNull)
@@ -2126,8 +2185,17 @@ public final class Service {
             return defaultValue;
         }
         // The maximum length for the description has not been specified.
-        // The actual executable length may be larger, but let's use a sensible length
+        // The actual description length may be larger, but let's use a sensible length
         return validateString(description, "description", 2048); //$NON-NLS-1$
+    }
+
+    private static String validateLoadOrderGroup(String loadOrderGroup, String defaultValue) {
+        if (loadOrderGroup == null || loadOrderGroup.isBlank()) {
+            return defaultValue;
+        }
+        // The maximum length for the load order group has not been specified.
+        // The actual load order group length may be larger, but let's use a sensible length
+        return validateString(loadOrderGroup, "loadOrderGroup", 256); //$NON-NLS-1$
     }
 
     private static String validateString(String value, String name, int maxLength) {
