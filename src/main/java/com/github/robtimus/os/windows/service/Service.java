@@ -73,15 +73,15 @@ public final class Service {
         }
 
         /**
-         * Returns the current status of the service.
+         * Returns information about the current status of the service.
          *
-         * @return The current status of the service.
+         * @return Information about the current status of the service.
          * @throws IllegalStateException If the service manager from which this service handle originated is closed.
          * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
-         * @throws ServiceException If the status could not be retrieved for another reason.
+         * @throws ServiceException If the status information could not be retrieved for another reason.
          */
-        public StatusInfo status() {
-            return serviceManager.status(this);
+        public StatusInfo statusInfo() {
+            return serviceManager.statusInfo(this);
         }
 
         /**
@@ -1067,7 +1067,7 @@ public final class Service {
         /** A query for {@code StatusInfo} instances. */
         public static final Query<StatusInfo> STATUS_INFO = new Query<>(
                 (manager, status) -> new StatusInfo(status.ServiceStatusProcess),
-                (manager, name, handle) -> manager.status(handle),
+                (manager, name, handle) -> manager.statusInfo(handle),
                 (manager, status) -> new StatusInfo(status.ServiceStatus),
                 Winsvc.SERVICE_QUERY_STATUS);
 
@@ -1081,7 +1081,7 @@ public final class Service {
         /** A query for {@code HandleAndStatusInfo} instances. */
         public static final Query<HandleAndStatusInfo> HANDLE_AND_STATUS_INFO = new Query<>(
                 (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatusProcess)),
-                (manager, name, handle) -> new HandleAndStatusInfo(new Handle(manager, name), manager.status(handle)),
+                (manager, name, handle) -> new HandleAndStatusInfo(new Handle(manager, name), manager.statusInfo(handle)),
                 (manager, status) -> new HandleAndStatusInfo(new Handle(manager, status.lpServiceName), new StatusInfo(status.ServiceStatus)),
                 Winsvc.SERVICE_QUERY_STATUS);
 
@@ -1110,16 +1110,19 @@ public final class Service {
             this.dwDesiredServiceAccess = dwDesiredServiceAccess;
         }
 
+        @FunctionalInterface
         interface ServicesQuery<T> {
 
             T queryFrom(ServiceManager serviceManager, ENUM_SERVICE_STATUS_PROCESS status);
         }
 
+        @FunctionalInterface
         interface ServiceQuery<T> {
 
             T queryFrom(ServiceManager serviceManager, String serviceName, ServiceManager.Handle serviceHandle);
         }
 
+        @FunctionalInterface
         interface DependentQuery<T> {
 
             T queryFrom(ServiceManager serviceManager, ENUM_SERVICE_STATUS status);

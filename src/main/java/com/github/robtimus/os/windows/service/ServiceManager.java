@@ -422,16 +422,16 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    Service.StatusInfo status(Service.Handle service) {
+    Service.StatusInfo statusInfo(Service.Handle service) {
         Objects.requireNonNull(service);
         checkClosed();
 
         try (Handle handle = openService(service, Winsvc.SERVICE_QUERY_STATUS)) {
-            return status(handle);
+            return statusInfo(handle);
         }
     }
 
-    Service.StatusInfo status(Handle handle) {
+    Service.StatusInfo statusInfo(Handle handle) {
         SERVICE_STATUS_PROCESS status = queryStatus(handle);
 
         return new Service.StatusInfo(status);
