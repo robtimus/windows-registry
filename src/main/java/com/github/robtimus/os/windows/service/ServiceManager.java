@@ -29,6 +29,7 @@ import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CON
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
 import com.sun.jna.Memory;
+import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.Kernel32;
@@ -43,6 +44,7 @@ import com.sun.jna.platform.win32.Winsvc.SC_STATUS_TYPE;
 import com.sun.jna.platform.win32.Winsvc.SERVICE_STATUS;
 import com.sun.jna.platform.win32.Winsvc.SERVICE_STATUS_PROCESS;
 import com.sun.jna.ptr.IntByReference;
+import com.sun.jna.win32.W32APITypeMapper;
 
 /**
  * A representation of a Windows service manager.
@@ -274,6 +276,40 @@ public final class ServiceManager implements AutoCloseable {
 
             return Optional.of(query.serviceQuery.queryFrom(this, serviceName, handle));
         }
+    }
+
+    /**
+     * Returns the name of a Windows service if available.
+     *
+     * @param displayName The display name of the service to return.
+     * @return An {@link Optional} describing the name of the service, or {@link Optional#empty()} if no such service exists.
+     */
+    public Optional<String> serviceName(String displayName) {
+        IntByReference lpcchBuffer = new IntByReference(0);
+        if (!api.GetServiceKeyName(scmHandle, displayName, null, lpcchBuffer)) {
+            int lastError = kernel32.GetLastError();
+            switch (lastError) {
+            case WinError.ERROR_SERVICE_DOES_NOT_EXIST:
+                return Optional.empty();
+            case WinError.ERROR_INSUFFICIENT_BUFFER:
+                // Continue
+                break;
+            default:
+                throw error(lastError);
+            }
+        }
+
+        int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+        Memory lpServiceName = new Memory((lpcchBuffer.getValue() + 1L) * charWidth);
+        lpcchBuffer.setValue((int) lpServiceName.size());
+        if (!api.GetServiceKeyName(scmHandle, displayName, lpServiceName, lpcchBuffer)) {
+            throwLastError();
+        }
+
+        String serviceName = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
+                ? lpServiceName.getWideString(0)
+                : lpServiceName.getString(0);
+        return Optional.of(serviceName);
     }
 
     /**

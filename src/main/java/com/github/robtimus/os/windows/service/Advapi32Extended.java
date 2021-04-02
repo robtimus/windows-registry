@@ -35,6 +35,8 @@ import com.sun.jna.win32.W32APITypeMapper;
 interface Advapi32Extended extends Advapi32 {
     Advapi32Extended INSTANCE = Native.load("Advapi32", Advapi32Extended.class, W32APIOptions.DEFAULT_OPTIONS); //$NON-NLS-1$
 
+    boolean GetServiceKeyName(SC_HANDLE hSCManager, String lpDisplayName, Pointer lpServiceName, IntByReference lpcchBuffer);
+
     boolean QueryServiceConfig(SC_HANDLE hService, QUERY_SERVICE_CONFIG lpServiceConfig, int cbBufSize, IntByReference pcbBytesNeeded);
 
     SC_HANDLE CreateService(SC_HANDLE hSCManager, String lpServiceName, String lpDisplayName, int dwDesiredAccess, int dwServiceType, int dwStartType,
@@ -67,10 +69,10 @@ interface Advapi32Extended extends Advapi32 {
                 return Collections.emptyList();
             }
 
-            int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+            long charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1L;
 
             List<String> result = new ArrayList<>();
-            int offset = 0;
+            long offset = 0L;
             while (true) {
                 String s = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
                         ? lpDependencies.getWideString(offset)
@@ -90,16 +92,16 @@ interface Advapi32Extended extends Advapi32 {
                 return Pointer.NULL;
             }
 
-            int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+            long charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1L;
 
-            int size = 0;
+            long size = 0;
             for (String s : dependencies) {
                 size += s.length() * charWidth;
                 size += charWidth;
             }
             size += charWidth;
 
-            int offset = 0;
+            long offset = 0;
             Memory data = new Memory(size);
             data.clear();
             for (String s : dependencies) {
@@ -122,7 +124,7 @@ interface Advapi32Extended extends Advapi32 {
         }
 
         private static Pointer emptyString() {
-            int charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
+            long charWidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1L;
 
             Memory data = new Memory(charWidth);
             if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
