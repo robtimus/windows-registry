@@ -177,10 +177,10 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     /**
-     * Returns all Windows services for this service manager.
+     * Returns all Windows services for this service manager that match a specific filter.
      *
      * @param filter The filter that determines which services are returned.
-     * @return A stream with handles to all Windows services.
+     * @return A stream with handles to all Windows services that match the filter.
      * @throws NullPointerException If the filter is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
@@ -190,12 +190,12 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     /**
-     * Returns all Windows services for this service manager.
+     * Returns all Windows services for this service manager that match a specific filter.
      *
      * @param <T> The type of objects to return.
      * @param query The query defining the type of objects to return.
      * @param filter The filter that determines which services are returned.
-     * @return A stream with all Windows services, as instances of the type defined by the query.
+     * @return A stream with all Windows services that match the filter, as instances of the type defined by the query.
      * @throws NullPointerException If the query or filter is {@code null}.
      * @throws IllegalStateException If this service manager is closed.
      * @throws ServiceException If the services could not be retrieved for another reason.
