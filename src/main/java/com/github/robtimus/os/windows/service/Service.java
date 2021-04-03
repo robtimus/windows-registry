@@ -17,13 +17,12 @@
 
 package com.github.robtimus.os.windows.service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import com.github.robtimus.os.windows.AccessDeniedException;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
@@ -1245,6 +1244,7 @@ public final class Service {
      *                 .endStartType()
      *             .endProcess()
      *         .dependencies()
+     *             .endDependencies()
      *         .create();
      * </code></pre>
      *
@@ -1281,24 +1281,68 @@ public final class Service {
         Creator loadOrderGroup(String loadOrderGroup);
 
         /**
-         * Sets the dependencies.
+         * Returns an object that can be used to configure the dependencies. This will clear any previously configured dependencies.
          *
-         * @param dependencies Handles to the dependencies to set; possibly none.
-         * @return This object.
-         * @throws NullPointerException If any {@code null} dependencies are given.
+         * @return An object that can be used to configure the dependencies.
          */
-        default Creator dependencies(Handle... dependencies) {
-            return dependencies(Arrays.asList(dependencies));
-        }
+        Dependencies dependencies();
 
         /**
-         * Sets the dependencies.
+         * An object that can be used to configure the dependencies of a Windows service.
          *
-         * @param dependencies A collection with handles to the dependencies to set; possibly empty.
-         * @return This object.
-         * @throws NullPointerException If the collection or any of its elements is {@code null}.
+         * @author Rob Spoor
          */
-        Creator dependencies(Collection<Handle> dependencies);
+        interface Dependencies {
+
+            /**
+             * Adds dependencies to several services.
+             *
+             * @param services Handles to the service.
+             * @return This object.
+             * @throws NullPointerException If any of the services is {@code null}.
+             */
+            default Dependencies services(Handle... services) {
+                return services(Arrays.asList(services));
+            }
+
+            /**
+             * Adds dependencies to several services.
+             *
+             * @param services A collection with handles to the services.
+             * @return This object.
+             * @throws NullPointerException If the collection or any of its elements is {@code null}.
+             */
+            Dependencies services(Collection<Handle> services);
+
+            /**
+             * Adds dependencies to several load order groups.
+             *
+             * @param loadOrderGroups The names of the load order groups.
+             * @return This object.
+             * @throws NullPointerException If any of the load order groups is {@code null}.
+             * @throws IllegalArgumentException If any of the load order groups is blank.
+             */
+            default Dependencies loadOrderGroups(String... loadOrderGroups) {
+                return loadOrderGroups(Arrays.asList(loadOrderGroups));
+            }
+
+            /**
+             * Adds dependencies to several load order groups.
+             *
+             * @param loadOrderGroups A collection with the names of the load order groups.
+             * @return This object.
+             * @throws NullPointerException If the collection or any of its elements is {@code null}.
+             * @throws IllegalArgumentException If any of the load order groups is blank.
+             */
+            Dependencies loadOrderGroups(Collection<String> loadOrderGroups);
+
+            /**
+             * Ends configuring the dependencies.
+             *
+             * @return The {@link Creator} instance from which this object originated.
+             */
+            Creator endDependencies();
+        }
 
         /**
          * Sets the type to {@link Type#PROCESS}.
@@ -1481,7 +1525,8 @@ public final class Service {
         Handle create();
     }
 
-    static final class CreatorImpl implements Creator, Creator.Process, Creator.Process.LogOnAccount, Creator.Process.StartType {
+    static final class CreatorImpl
+            implements Creator, Creator.Dependencies, Creator.Process, Creator.Process.LogOnAccount, Creator.Process.StartType {
 
         private final ServiceManager serviceManager;
 
@@ -1493,7 +1538,7 @@ public final class Service {
         int startType = WinNT.SERVICE_DEMAND_START;
         int errorControl = WinNT.SERVICE_ERROR_NORMAL;
         String loadOrderGroup = null;
-        List<String> dependencies = Collections.emptyList();
+        List<String> dependencies = new ArrayList<>();
         String logOnAccount = null;
         String logOnAccountPassword = null;
 
@@ -1528,12 +1573,34 @@ public final class Service {
             return this;
         }
 
+        // Creator.Dependencies
+
         @Override
-        public Creator dependencies(Collection<Handle> dependencies) {
-            this.dependencies = dependencies.stream()
+        public Dependencies dependencies() {
+            dependencies.clear();
+            return this;
+        }
+
+        @Override
+        public Dependencies services(Collection<Handle> services) {
+            services.stream()
                     .map(Objects::requireNonNull)
                     .map(Handle::serviceName)
-                    .collect(Collectors.toUnmodifiableList());
+                    .forEach(dependencies::add);
+            return this;
+        }
+
+        @Override
+        public Dependencies loadOrderGroups(Collection<String> loadOrderGroups) {
+            loadOrderGroups.stream()
+                    .map(g -> validateString(g, "loadOrderGroups", Integer.MAX_VALUE)) //$NON-NLS-1$
+                    .map(g -> "+" + g) //$NON-NLS-1$
+                    .forEach(dependencies::add);
+            return this;
+        }
+
+        @Override
+        public Creator endDependencies() {
             return this;
         }
 
@@ -1711,24 +1778,68 @@ public final class Service {
         Updater loadOrderGroup(String loadOrderGroup);
 
         /**
-         * Sets the dependencies.
+         * Returns an object that can be used to configure the dependencies. This will clear any previously configured dependencies.
          *
-         * @param dependencies Handles to the dependencies to set; possibly none.
-         * @return This object.
-         * @throws NullPointerException If any {@code null} dependencies are given.
+         * @return An object that can be used to configure the dependencies.
          */
-        default Updater dependencies(Handle... dependencies) {
-            return dependencies(Arrays.asList(dependencies));
-        }
+        Dependencies dependencies();
 
         /**
-         * Sets the dependencies.
+         * An object that can be used to configure the dependencies of a Windows service.
          *
-         * @param dependencies A collection with handles to the dependencies to set; possibly empty.
-         * @return This object.
-         * @throws NullPointerException If the collection or any of its elements is {@code null}.
+         * @author Rob Spoor
          */
-        Updater dependencies(Collection<Handle> dependencies);
+        interface Dependencies {
+
+            /**
+             * Adds dependencies to several services.
+             *
+             * @param services Handles to the service.
+             * @return This object.
+             * @throws NullPointerException If any of the services is {@code null}.
+             */
+            default Dependencies services(Handle... services) {
+                return services(Arrays.asList(services));
+            }
+
+            /**
+             * Adds dependencies to several services.
+             *
+             * @param services A collection with handles to the services.
+             * @return This object.
+             * @throws NullPointerException If the collection or any of its elements is {@code null}.
+             */
+            Dependencies services(Collection<Handle> services);
+
+            /**
+             * Adds dependencies to several load order groups.
+             *
+             * @param loadOrderGroups The names of the load order groups.
+             * @return This object.
+             * @throws NullPointerException If any of the load order groups is {@code null}.
+             * @throws IllegalArgumentException If any of the load order groups is blank.
+             */
+            default Dependencies loadOrderGroups(String... loadOrderGroups) {
+                return loadOrderGroups(Arrays.asList(loadOrderGroups));
+            }
+
+            /**
+             * Adds dependencies to several load order groups.
+             *
+             * @param loadOrderGroups A collection with the names of the load order groups.
+             * @return This object.
+             * @throws NullPointerException If the collection or any of its elements is {@code null}.
+             * @throws IllegalArgumentException If any of the load order groups is blank.
+             */
+            Dependencies loadOrderGroups(Collection<String> loadOrderGroups);
+
+            /**
+             * Ends configuring the dependencies.
+             *
+             * @return The {@link Updater} instance from which this object originated.
+             */
+            Updater endDependencies();
+        }
 
         /**
          * Returns an object that can be used to further configure services of type {@link Type#PROCESS}.
@@ -1913,7 +2024,8 @@ public final class Service {
         void update();
     }
 
-    static final class UpdaterImpl implements Updater, Updater.Process, Updater.Process.LogOnAccount, Updater.Process.StartType {
+    static final class UpdaterImpl
+            implements Updater, Updater.Dependencies, Updater.Process, Updater.Process.LogOnAccount, Updater.Process.StartType {
 
         private static final int SERVICE_NO_CHANGE = 0xFFFF_FFFF;
 
@@ -1970,12 +2082,38 @@ public final class Service {
             return this;
         }
 
+        // Updater.Dependencies
+
         @Override
-        public Updater dependencies(Collection<Handle> dependencies) {
-            this.dependencies = dependencies.stream()
+        public Dependencies dependencies() {
+            if (dependencies == null) {
+                dependencies = new ArrayList<>();
+            } else {
+                dependencies.clear();
+            }
+            return this;
+        }
+
+        @Override
+        public Dependencies services(Collection<Handle> services) {
+            services.stream()
                     .map(Objects::requireNonNull)
                     .map(Handle::serviceName)
-                    .collect(Collectors.toUnmodifiableList());
+                    .forEach(dependencies::add);
+            return this;
+        }
+
+        @Override
+        public Dependencies loadOrderGroups(Collection<String> loadOrderGroups) {
+            loadOrderGroups.stream()
+                    .map(g -> validateString(g, "loadOrderGroups", Integer.MAX_VALUE)) //$NON-NLS-1$
+                    .map(g -> "+" + g) //$NON-NLS-1$
+                    .forEach(dependencies::add);
+            return this;
+        }
+
+        @Override
+        public Updater endDependencies() {
             return this;
         }
 
