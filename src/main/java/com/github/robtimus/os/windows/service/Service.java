@@ -72,18 +72,6 @@ public final class Service {
         }
 
         /**
-         * Returns information about the current status of the service.
-         *
-         * @return Information about the current status of the service.
-         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
-         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
-         * @throws ServiceException If the status information could not be retrieved for another reason.
-         */
-        public StatusInfo statusInfo() {
-            return serviceManager.statusInfo(this);
-        }
-
-        /**
          * Returns information about the service.
          *
          * @return An object with information about the service.
@@ -96,21 +84,34 @@ public final class Service {
         }
 
         /**
-         * Returns all dependencies of the service.
-         * <p>
-         * To get only the names of the dependencies, use {@link #info()}.
+         * Returns information about the current status of the service.
          *
-         * @return A stream with handles to all dependencies of the service.
+         * @return Information about the current status of the service.
          * @throws IllegalStateException If the service manager from which this service handle originated is closed.
          * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
-         * @throws ServiceException If the dependencies could not be retrieved for another reason.
+         * @throws ServiceException If the status information could not be retrieved for another reason.
          */
-        public Stream<Handle> dependencies() {
-            return dependencies(Query.HANDLE);
+        public StatusInfo statusInfo() {
+            return serviceManager.statusInfo(this);
         }
 
         /**
          * Returns all dependencies of the service.
+         * <p>
+         * To get only the names of the dependencies, use {@link #info()}.
+         *
+         * @return A stream with all dependencies of the service.
+         * @throws IllegalStateException If the service manager from which this service handle originated is closed.
+         * @throws NoSuchServiceException If the service no longer exists in the service manager from which this service handle originated.
+         * @throws ServiceException If the dependencies could not be retrieved for another reason.
+         */
+        public Stream<Dependency> dependencies() {
+            return serviceManager.dependencies(this);
+        }
+
+        /**
+         * Returns all dependencies of the service.
+         * If any dependency is a load order group, the returned stream will contain the group's members.
          * <p>
          * To get only the names of the dependencies, use {@link #info()}.
          *
@@ -873,6 +874,95 @@ public final class Service {
                 }
             }
             throw new IllegalArgumentException(Messages.Service.Status.unsupported.get(value));
+        }
+    }
+
+    /**
+     * Identifies a Windows service dependency.
+     *
+     * @author Rob Spoor
+     */
+    public static final class Dependency {
+
+        private final Handle service;
+        private final String loadOrderGroup;
+
+        Dependency(Handle service) {
+            this.service = service;
+            this.loadOrderGroup = null;
+        }
+
+        Dependency(String loadOrderGroup) {
+            this.service = null;
+            this.loadOrderGroup = loadOrderGroup;
+        }
+
+        /**
+         * Returns the dependency as a service handle.
+         *
+         * @return An {@link Optional} describing the dependency as a service handle,
+         *         or {@link Optional#empty()} if the dependency is not a service but a load order group.
+         * @see #loadOrderGroup()
+         */
+        public Optional<Handle> service() {
+            return Optional.ofNullable(service);
+        }
+
+        /**
+         * Returns the dependency as a load order group.
+         *
+         * @return An {@link Optional} describing the dependency as a load order group,
+         *         or {@link Optional#empty()} if the dependency is not a load order group but a service.
+         * @see #service()
+         */
+        public Optional<String> loadOrderGroup() {
+            return Optional.ofNullable(loadOrderGroup);
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || o.getClass() != getClass()) {
+                return false;
+            }
+            Service.Dependency other = (Service.Dependency) o;
+            return Objects.equals(service, other.service) && Objects.equals(loadOrderGroup, other.loadOrderGroup);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(service) ^ Objects.hashCode(loadOrderGroup);
+        }
+
+        @Override
+        public String toString() {
+            return service != null ? service.toString() : loadOrderGroup;
+        }
+
+        /**
+         * Checks whether or not a dependency is a load order group.
+         *
+         * @param dependency The dependency to check.
+         * @return {@code true} if the dependency is a load order group, or {@code false} if it's a service.
+         */
+        public static boolean isLoadOrderGroup(String dependency) {
+            return dependency != null && dependency.startsWith("+"); //$NON-NLS-1$
+        }
+
+        /**
+         * Returns a dependency as a load order group.
+         *
+         * @param dependency The dependency to return as a load order group.
+         * @return An {@link Optional} describing the dependency as a load order group,
+         *         or {@link Optional#empty()} if the dependency is not a load order group.
+         * @see #isLoadOrderGroup(String)
+         */
+        public static Optional<String> asLoadOrderGroup(String dependency) {
+            return isLoadOrderGroup(dependency)
+                    ? Optional.of(dependency.substring(1))
+                    : Optional.empty();
         }
     }
 

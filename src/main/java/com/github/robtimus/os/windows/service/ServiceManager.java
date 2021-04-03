@@ -215,6 +215,9 @@ public final class ServiceManager implements AutoCloseable {
         if (!api.EnumServicesStatusEx(scmHandle, infoLevel, dwServiceType, dwServiceState, null, 0, pcbBytesNeeded, lpServicesReturned,
                 lpResumeHandle, pszGroupName)) {
 
+            if (pszGroupName != null && kernel32.GetLastError() == WinError.ERROR_SERVICE_DOES_NOT_EXIST) {
+                return Stream.empty();
+            }
             throwLastErrorUnless(WinError.ERROR_MORE_DATA);
         }
 
@@ -496,6 +499,26 @@ public final class ServiceManager implements AutoCloseable {
         return new Service.Info(config, description, delayedAutoStartInfo);
     }
 
+    Stream<Service.Dependency> dependencies(Service.Handle service) {
+        Objects.requireNonNull(service);
+        checkClosed();
+
+        try (Handle handle = openService(service, Winsvc.SERVICE_QUERY_CONFIG)) {
+            QUERY_SERVICE_CONFIG config = queryServiceConfig(handle);
+
+            return config.dependencies().stream()
+                    .map(this::dependency)
+                    .filter(Objects::nonNull);
+        }
+    }
+
+    private Service.Dependency dependency(String dependency) {
+        return Service.Dependency.asLoadOrderGroup(dependency)
+                .map(Service.Dependency::new)
+                .or(() -> service(dependency).map(Service.Dependency::new))
+                .orElse(null);
+    }
+
     <T> Stream<T> dependencies(Service.Handle service, Service.Query<T> query) {
         Objects.requireNonNull(service);
         Objects.requireNonNull(query);
@@ -505,10 +528,14 @@ public final class ServiceManager implements AutoCloseable {
             QUERY_SERVICE_CONFIG config = queryServiceConfig(handle);
 
             return config.dependencies().stream()
-                    .map(d -> service(d, query))
-                    .filter(Optional::isPresent)
-                    .map(Optional::get);
+                    .flatMap(d -> dependencies(d, query));
         }
+    }
+
+    private <T> Stream<T> dependencies(String dependency, Service.Query<T> query) {
+        return Service.Dependency.asLoadOrderGroup(dependency)
+                .map(g -> services(query, new Service.Filter().allTypes().loadOrderGroup(g)))
+                .orElseGet(() -> service(dependency, query).stream());
     }
 
     <T> Stream<T> dependents(Service.Handle service, Service.Query<T> query) {
