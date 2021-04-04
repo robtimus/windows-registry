@@ -807,7 +807,6 @@ public final class ServiceManager implements AutoCloseable {
     }
 
     private static Win32Exception error(int code) {
-        System.err.printf("Code: %d%n", code);
         switch (code) {
         case WinError.ERROR_ACCESS_DENIED:
             return new AccessDeniedException();
