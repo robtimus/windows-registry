@@ -32,6 +32,7 @@ import com.sun.jna.ptr.IntByReference;
 import com.sun.jna.win32.W32APIOptions;
 import com.sun.jna.win32.W32APITypeMapper;
 
+@SuppressWarnings("exports")
 interface Advapi32Extended extends Advapi32 {
     Advapi32Extended INSTANCE = Native.load("Advapi32", Advapi32Extended.class, W32APIOptions.DEFAULT_OPTIONS); //$NON-NLS-1$
 
