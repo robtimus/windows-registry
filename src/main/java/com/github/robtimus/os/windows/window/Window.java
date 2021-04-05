@@ -72,7 +72,7 @@ public final class Window {
      * @return {@code true} if the window is visible, or {@code false} otherwise.
      *         {@code false} is also returned if the window no longer {@link #exists()}.
      */
-    public boolean visible() {
+    public boolean isVisible() {
         return api.IsWindowVisible(handle);
     }
 
@@ -286,7 +286,7 @@ public final class Window {
      * @throws NoSuchWindowException If the window no longer {@link #exists()}.
      * @throws WindowException If the window state could not be queried for another reason.
      */
-    public boolean maximized() {
+    public boolean isMaximized() {
         return hasWindowLong(WinUser.GWL_STYLE, WinUser.WS_MAXIMIZE);
     }
 
@@ -297,7 +297,7 @@ public final class Window {
      * @throws NoSuchWindowException If the window no longer {@link #exists()}.
      * @throws WindowException If the window state could not be queried for another reason.
      */
-    public boolean minimized() {
+    public boolean isMinimized() {
         return hasWindowLong(WinUser.GWL_STYLE, WinUser.WS_MINIMIZE);
     }
 
@@ -308,7 +308,7 @@ public final class Window {
      * @throws NoSuchWindowException If the window no longer {@link #exists()}.
      * @throws WindowException If the window state could not be queried for another reason.
      */
-    public boolean alwaysOnTop() {
+    public boolean isAlwaysOnTop() {
         return hasWindowLong(WinUser.GWL_EXSTYLE, WS_EX_TOPMOST);
     }
 
@@ -354,7 +354,7 @@ public final class Window {
      * @throws NoSuchWindowException If the window no longer {@link #exists()}.
      * @throws WindowException If it could not be determined whether or not the window is a root window for another reason.
      */
-    public boolean root() {
+    public boolean isRoot() {
         if (api.GetParent(handle) == null) {
             throwLastErrorUnless(WinError.ERROR_SUCCESS);
             return true;

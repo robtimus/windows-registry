@@ -508,7 +508,7 @@ public final class Service {
          *         or {@code false} if the service runs in its own process.
          * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public boolean sharedProcess() {
+        public boolean isSharedProcess() {
             if (type == Type.PROCESS) {
                 return sharedProcess;
             }
@@ -521,7 +521,7 @@ public final class Service {
          * @return {@code true} if the service runs in a process under the logged-on user account, or {@code false} otherwise.
          * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public boolean userProcess() {
+        public boolean isUserProcess() {
             if (type == Type.PROCESS) {
                 return userProcess;
             }
@@ -533,10 +533,10 @@ public final class Service {
          *
          * @return {@code true} if the service is a template for user process services, or {@code false} otherwise.
          * @throws IllegalStateException If the service does not run in a process under the logged-on user account.
-         * @see #userProcess()
+         * @see #isUserProcess()
          */
-        public boolean template() {
-            if (userProcess()) {
+        public boolean isUserProcessTemplate() {
+            if (isUserProcess()) {
                 return template;
             }
             throw new IllegalStateException(Messages.Service.TypeInfo.noUserProcessType.get());
@@ -548,7 +548,7 @@ public final class Service {
          * @return {@code true} if the service can interact with the desktop, or {@code false} otherwise.
          * @throws IllegalStateException If the {@link #type()} is not {@link Type#PROCESS}.
          */
-        public boolean interactiveProcess() {
+        public boolean isInteractiveProcess() {
             if (type == Type.PROCESS) {
                 return interactiveProcess;
             }
@@ -1303,8 +1303,8 @@ public final class Service {
      * <ul>
      * <li>The display name is equal to the service name.</li>
      * <li>There is no description.</li>
-     * <li>The type is {@link Type#PROCESS}, and calling {@link TypeInfo#sharedProcess()}, {@link TypeInfo#userProcess()} and
-     *     {@link TypeInfo#interactiveProcess()} would all return {@code false}.</li>
+     * <li>The type is {@link Type#PROCESS}, and calling {@link TypeInfo#isSharedProcess()}, {@link TypeInfo#isUserProcess()} and
+     *     {@link TypeInfo#isInteractiveProcess()} would all return {@code false}.</li>
      * <li>The start type is {@link StartType#MANUAL}.</li>
      * <li>The log-on account is the <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
      *     </li>
@@ -1451,19 +1451,19 @@ public final class Service {
             /**
              * Sets whether the service should share a process with one or more other services, or run in its own process.
              *
-             * @param shared {@code true} if the service should share a process with one or more other services,
+             * @param sharedProcess {@code true} if the service should share a process with one or more other services,
              *                   or {@code false} if the service should run in its own process.
              * @return This object.
              */
-            Process shared(boolean shared);
+            Process sharedProcess(boolean sharedProcess);
 
             /**
              * Sets whether or not the service should run in a process under the logged-on user account.
              *
-             * @param user {@code true} if the service should run in a process under the logged-on user account, or {@code false} otherwise.
+             * @param userProcess {@code true} if the service should run in a process under the logged-on user account, or {@code false} otherwise.
              * @return This object.
              */
-            Process user(boolean user);
+            Process userProcess(boolean userProcess);
 
             /**
              * Returns an object that can be used to specify the log-on account.
@@ -1494,10 +1494,10 @@ public final class Service {
                  * Specifies that the log-on account should be the
                  * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
                  *
-                 * @param interactive {@code true} if the service should be able to interact with the desktop, or {@code false} otherwise.
+                 * @param interactiveProcess {@code true} if the service should be able to interact with the desktop, or {@code false} otherwise.
                  * @return This object.
                  */
-                LogOnAccount localSystem(boolean interactive);
+                LogOnAccount localSystem(boolean interactiveProcess);
 
                 /**
                  * Specifies that the log-on account should be the
@@ -1706,15 +1706,15 @@ public final class Service {
         }
 
         @Override
-        public Creator.Process shared(boolean shared) {
-            serviceType = set(serviceType, WinNT.SERVICE_WIN32_OWN_PROCESS, !shared);
-            serviceType = set(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS, shared);
+        public Creator.Process sharedProcess(boolean sharedProcess) {
+            serviceType = set(serviceType, WinNT.SERVICE_WIN32_OWN_PROCESS, !sharedProcess);
+            serviceType = set(serviceType, WinNT.SERVICE_WIN32_SHARE_PROCESS, sharedProcess);
             return this;
         }
 
         @Override
-        public Creator.Process user(boolean user) {
-            serviceType = set(serviceType, TypeInfo.SERVICE_USER_SERVICE, user);
+        public Creator.Process userProcess(boolean userProcess) {
+            serviceType = set(serviceType, TypeInfo.SERVICE_USER_SERVICE, userProcess);
             return this;
         }
 
@@ -1727,8 +1727,8 @@ public final class Service {
         }
 
         @Override
-        public Creator.Process.LogOnAccount localSystem(boolean interactive) {
-            serviceType = set(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS, interactive);
+        public Creator.Process.LogOnAccount localSystem(boolean interactiveProcess) {
+            serviceType = set(serviceType, WinNT.SERVICE_INTERACTIVE_PROCESS, interactiveProcess);
             logOnAccount = null;
             logOnAccountPassword = null;
             return this;
@@ -1951,19 +1951,19 @@ public final class Service {
             /**
              * Sets whether the service should share a process with one or more other services, or run in its own process.
              *
-             * @param shared {@code true} if the service should share a process with one or more other services,
+             * @param sharedProcess {@code true} if the service should share a process with one or more other services,
              *                   or {@code false} if the service should run in its own process.
              * @return This object.
              */
-            Process shared(boolean shared);
+            Process sharedProcess(boolean sharedProcess);
 
             /**
              * Sets whether or not the service should run in a process under the logged-on user account.
              *
-             * @param user {@code true} if the service should run in a process under the logged-on user account, or {@code false} otherwise.
+             * @param userProcess {@code true} if the service should run in a process under the logged-on user account, or {@code false} otherwise.
              * @return This object.
              */
-            Process user(boolean user);
+            Process userProcess(boolean userProcess);
 
             /**
              * Returns an object that can be used to specify the log-on account.
@@ -1994,10 +1994,10 @@ public final class Service {
                  * Specifies that the log-on account should be the
                  * <a href="https://docs.microsoft.com/en-us/windows/desktop/Services/localsystem-account">LocalSystem</a> account.
                  *
-                 * @param interactive {@code true} if the service should be able to interact with the desktop, or {@code false} otherwise.
+                 * @param interactiveProcess {@code true} if the service should be able to interact with the desktop, or {@code false} otherwise.
                  * @return This object.
                  */
-                LogOnAccount localSystem(boolean interactive);
+                LogOnAccount localSystem(boolean interactiveProcess);
 
                 /**
                  * Specifies that the log-on account should be the
@@ -2217,15 +2217,15 @@ public final class Service {
         }
 
         @Override
-        public Updater.Process shared(boolean shared) {
-            changeServiceType(WinNT.SERVICE_WIN32_OWN_PROCESS, !shared);
-            changeServiceType(WinNT.SERVICE_WIN32_SHARE_PROCESS, shared);
+        public Updater.Process sharedProcess(boolean sharedProcess) {
+            changeServiceType(WinNT.SERVICE_WIN32_OWN_PROCESS, !sharedProcess);
+            changeServiceType(WinNT.SERVICE_WIN32_SHARE_PROCESS, sharedProcess);
             return this;
         }
 
         @Override
-        public Updater.Process user(boolean user) {
-            changeServiceType(TypeInfo.SERVICE_USER_SERVICE, user);
+        public Updater.Process userProcess(boolean userProcess) {
+            changeServiceType(TypeInfo.SERVICE_USER_SERVICE, userProcess);
             return this;
         }
 
@@ -2238,8 +2238,8 @@ public final class Service {
         }
 
         @Override
-        public Updater.Process.LogOnAccount localSystem(boolean interactive) {
-            changeServiceType(WinNT.SERVICE_INTERACTIVE_PROCESS, interactive);
+        public Updater.Process.LogOnAccount localSystem(boolean interactiveProcess) {
+            changeServiceType(WinNT.SERVICE_INTERACTIVE_PROCESS, interactiveProcess);
             logOnAccount = "LocalSystem"; //$NON-NLS-1$
             logOnAccountPassword = NO_VALUE;
             return this;
