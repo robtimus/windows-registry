@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.window;
 
-import com.sun.jna.platform.win32.Win32Exception;
+import com.github.robtimus.os.windows.WindowsException;
 
 /**
  * Thrown when an error occurred while trying to access native windows.
@@ -25,14 +25,14 @@ import com.sun.jna.platform.win32.Win32Exception;
  * @author Rob Spoor
  */
 @SuppressWarnings("serial")
-public class WindowException extends Win32Exception {
+public class WindowException extends WindowsException {
 
     /**
      * Creates a new exception.
      *
-     * @param code The error code that was returned from the Windows API.
+     * @param errorCode The error code that was returned from the Windows API.
      */
-    public WindowException(int code) {
-        super(code);
+    public WindowException(int errorCode) {
+        super(errorCode);
     }
 }

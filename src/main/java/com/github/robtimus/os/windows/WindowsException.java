@@ -1,5 +1,5 @@
 /*
- * ServiceException.java
+ * WindowsException.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,24 +15,36 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.service;
+package com.github.robtimus.os.windows;
 
-import com.github.robtimus.os.windows.WindowsException;
+import com.sun.jna.platform.win32.Kernel32Util;
 
 /**
- * Thrown when an error occurred while trying to access, control or modify Windows services.
+ * Thrown when an error occurred while trying to call the Windows API.
  *
  * @author Rob Spoor
  */
 @SuppressWarnings("serial")
-public class ServiceException extends WindowsException {
+public class WindowsException extends RuntimeException {
+
+    private final int errorCode;
 
     /**
      * Creates a new exception.
      *
      * @param errorCode The error code that was returned from the Windows API.
      */
-    public ServiceException(int errorCode) {
-        super(errorCode);
+    public WindowsException(int errorCode) {
+        super(Kernel32Util.formatMessage(errorCode));
+        this.errorCode = errorCode;
+    }
+
+    /**
+     * Returns the error code that was returned from the Windows API.
+     *
+     * @return The error code that was returned from the Windows API.
+     */
+    public int errorCode() {
+        return errorCode;
     }
 }

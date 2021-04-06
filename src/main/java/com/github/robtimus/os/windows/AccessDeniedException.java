@@ -17,7 +17,6 @@
 
 package com.github.robtimus.os.windows;
 
-import com.sun.jna.platform.win32.Win32Exception;
 import com.sun.jna.platform.win32.WinError;
 
 /**
@@ -26,7 +25,7 @@ import com.sun.jna.platform.win32.WinError;
  * @author Rob Spoor
  */
 @SuppressWarnings("serial")
-public class AccessDeniedException extends Win32Exception {
+public class AccessDeniedException extends WindowsException {
 
     /**
      * Creates a new exception.

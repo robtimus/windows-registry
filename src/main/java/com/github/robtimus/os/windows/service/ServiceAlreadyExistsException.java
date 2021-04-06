@@ -28,7 +28,7 @@ import com.sun.jna.platform.win32.WinError;
 public class ServiceAlreadyExistsException extends ServiceException {
 
     /**
-     * Creates a new existsException.
+     * Creates a new exception.
      */
     public ServiceAlreadyExistsException() {
         super(WinError.ERROR_SERVICE_EXISTS);

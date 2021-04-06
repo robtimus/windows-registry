@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.sun.jna.platform.win32.Win32Exception;
+import com.github.robtimus.os.windows.WindowsException;
 import com.sun.jna.platform.win32.WinError;
 
 /**
@@ -26,28 +26,28 @@ import com.sun.jna.platform.win32.WinError;
  * @author Rob Spoor
  */
 @SuppressWarnings("serial")
-public class RegistryException extends Win32Exception {
+public class RegistryException extends WindowsException {
 
     /**
      * Creates a new exception.
      *
-     * @param code The error code that was returned from the Windows API.
+     * @param errorCode The error code that was returned from the Windows API.
      */
-    public RegistryException(int code) {
-        super(code);
+    public RegistryException(int errorCode) {
+        super(errorCode);
     }
 
-    static RegistryException of(int code, String path) {
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+    static RegistryException of(int errorCode, String path) {
+        if (errorCode == WinError.ERROR_FILE_NOT_FOUND) {
             return new NoSuchRegistryKeyException(path);
         }
-        throw new RegistryException(code);
+        throw new RegistryException(errorCode);
     }
 
-    static RegistryException of(int code, String path, String name) {
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+    static RegistryException of(int errorCode, String path, String name) {
+        if (errorCode == WinError.ERROR_FILE_NOT_FOUND) {
             return new NoSuchRegistryValueException(path, name);
         }
-        throw new RegistryException(code);
+        throw new RegistryException(errorCode);
     }
 }

@@ -25,6 +25,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Stream;
 import com.github.robtimus.os.windows.AccessDeniedException;
+import com.github.robtimus.os.windows.WindowsException;
 import com.github.robtimus.os.windows.service.Advapi32Extended.QUERY_SERVICE_CONFIG;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DELAYED_AUTO_START_INFO;
 import com.github.robtimus.os.windows.service.Advapi32Extended.SERVICE_DESCRIPTION;
@@ -33,7 +34,6 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.Structure;
 import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.Win32Exception;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.Winsvc;
@@ -806,7 +806,7 @@ public final class ServiceManager implements AutoCloseable {
         }
     }
 
-    private static Win32Exception error(int code) {
+    private static WindowsException error(int code) {
         switch (code) {
         case WinError.ERROR_ACCESS_DENIED:
             return new AccessDeniedException();
