@@ -1466,9 +1466,9 @@ public final class Service {
             Process userProcess(boolean userProcess);
 
             /**
-             * Returns an object that can be used to specify the log-on account.
+             * Returns an object that can be used to configure the log-on account.
              *
-             * @return An object that can be used to specify the log-on account.
+             * @return An object that can be used to configure the log-on account.
              */
             LogOnAccount logOnAccount();
 
@@ -1545,12 +1545,17 @@ public final class Service {
             }
 
             /**
-             * Returns an object that can be used to specify the start type.
+             * Returns an object that can be used to configure the start type.
              *
-             * @return An object that can be used to specify the start type.
+             * @return An object that can be used to configure the start type.
              */
             StartType startType();
 
+            /**
+             * An object that can be used to configure the start type for a Windows service of type {@link Type#PROCESS}.
+             *
+             * @author Rob Spoor
+             */
             interface StartType {
 
                 /**
@@ -1821,7 +1826,7 @@ public final class Service {
     }
 
     /**
-     * An object that will help update new Windows services.
+     * An object that will help update Windows services.
      * <p>
      * By default, if no modifying methods are called, nothing will be updated.
      *
@@ -1966,9 +1971,9 @@ public final class Service {
             Process userProcess(boolean userProcess);
 
             /**
-             * Returns an object that can be used to specify the log-on account.
+             * Returns an object that can be used to configure the log-on account.
              *
-             * @return An object that can be used to specify the log-on account.
+             * @return An object that can be used to configure the log-on account.
              */
             LogOnAccount logOnAccount();
 
@@ -2045,12 +2050,17 @@ public final class Service {
             }
 
             /**
-             * Returns an object that can be used to specify the start type.
+             * Returns an object that can be used to configure the start type.
              *
-             * @return An object that can be used to specify the start type.
+             * @return An object that can be used to configure the start type.
              */
             StartType startType();
 
+            /**
+             * An object that can be used to configure the start type for a Windows service of type {@link Type#PROCESS}
+             *
+             * @author Rob Spoor
+             */
             interface StartType {
 
                 /**

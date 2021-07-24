@@ -141,7 +141,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     /**
      * Returns the parent registry key.
      *
-     * @return An {@link Optional} with the parent registry key, or {@link Optional#empty()} if this is a root key.
+     * @return An {@link Optional} with the parent registry key, or {@link Optional#empty()} if this registry key is a root key.
      */
     public Optional<RegistryKey> parent() {
         if (pathParts.length == 1) {
@@ -307,7 +307,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * Sets a registry value.
      *
      * @param value The registry value to set.
-     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NullPointerException If the given registry value is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the value cannot be set for another reason.
      */
@@ -421,7 +421,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     }
 
     /**
-     * Deletes all values of this registry keys whose names match a specific predicate.
+     * Deletes all values of this registry keys that match a specific predicate.
      *
      * @param valuePredicate The predicate to use.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
@@ -506,7 +506,8 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * Deletes this registry key and all of its values.
      *
      * @throws UnsupportedOperationException If trying to delete on of the root keys.
-     * @throws RegistryException If the registry key cannot be deleted.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public void delete() {
         if (this == root) {
@@ -524,7 +525,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      *
      * @return {@code true} if this registry key existed and has been removed, or {@code false} if it didn't {@link #exists() exist}.
      * @throws UnsupportedOperationException If trying to delete on of the root keys.
-     * @throws RegistryException If the registry key cannot be deleted.
+     * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public boolean deleteIfExists() {
         if (this == root) {
