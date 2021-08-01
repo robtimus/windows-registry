@@ -199,21 +199,6 @@
               <suppressWarnings>nls</suppressWarnings>
             </configuration>
           </execution>
-          <execution>
-            <id>generate-window-messages</id>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-            <configuration>
-              <bundleName>com.github.robtimus.os.windows.windows-window</bundleName>
-              <className>com.github.robtimus.os.windows.window.Messages</className>
-              <licenseText>Apache-2.0</licenseText>
-              <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
-              <licenseCopyrightYear>2021</licenseCopyrightYear>
-              <publicVisibility>false</publicVisibility>
-              <suppressWarnings>nls</suppressWarnings>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 
