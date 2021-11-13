@@ -72,31 +72,31 @@ public abstract class RegistryValue {
 
     static RegistryValue of(String name, int type, byte[] data, int dataLength) {
         switch (type) {
-        case WinNT.REG_NONE:
-            return new NoneRegistryValue(name, data, dataLength);
-        case WinNT.REG_SZ:
-            return new StringRegistryValue(name, data, dataLength);
-        case WinNT.REG_EXPAND_SZ:
-            return new ExpandableStringRegistryValue(name, data, dataLength);
-        case WinNT.REG_BINARY:
-            return new BinaryRegistryValue(name, data, dataLength);
-        case WinNT.REG_DWORD_LITTLE_ENDIAN:
-        case WinNT.REG_DWORD_BIG_ENDIAN:
-            return new DWordRegistryValue(name, type, data);
-        case WinNT.REG_LINK:
-            return new LinkRegistryValue(name, data, dataLength);
-        case WinNT.REG_MULTI_SZ:
-            return new MultiStringRegistryValue(name, data, dataLength);
-        case WinNT.REG_RESOURCE_LIST:
-            return new ResourceListRegistryValue(name, data, dataLength);
-        case WinNT.REG_FULL_RESOURCE_DESCRIPTOR:
-            return new FullResourceDescriptorRegistryValue(name, data, dataLength);
-        case WinNT.REG_RESOURCE_REQUIREMENTS_LIST:
-            return new ResourceRequirementsListRegistryValue(name, data, dataLength);
-        case WinNT.REG_QWORD_LITTLE_ENDIAN:
-            return new QWordRegistryValue(name, data);
-        default:
-            throw new IllegalStateException(Messages.RegistryValue.unsupportedType.get(type));
+            case WinNT.REG_NONE:
+                return new NoneRegistryValue(name, data, dataLength);
+            case WinNT.REG_SZ:
+                return new StringRegistryValue(name, data, dataLength);
+            case WinNT.REG_EXPAND_SZ:
+                return new ExpandableStringRegistryValue(name, data, dataLength);
+            case WinNT.REG_BINARY:
+                return new BinaryRegistryValue(name, data, dataLength);
+            case WinNT.REG_DWORD_LITTLE_ENDIAN:
+            case WinNT.REG_DWORD_BIG_ENDIAN:
+                return new DWordRegistryValue(name, type, data);
+            case WinNT.REG_LINK:
+                return new LinkRegistryValue(name, data, dataLength);
+            case WinNT.REG_MULTI_SZ:
+                return new MultiStringRegistryValue(name, data, dataLength);
+            case WinNT.REG_RESOURCE_LIST:
+                return new ResourceListRegistryValue(name, data, dataLength);
+            case WinNT.REG_FULL_RESOURCE_DESCRIPTOR:
+                return new FullResourceDescriptorRegistryValue(name, data, dataLength);
+            case WinNT.REG_RESOURCE_REQUIREMENTS_LIST:
+                return new ResourceRequirementsListRegistryValue(name, data, dataLength);
+            case WinNT.REG_QWORD_LITTLE_ENDIAN:
+                return new QWordRegistryValue(name, data);
+            default:
+                throw new IllegalStateException(Messages.RegistryValue.unsupportedType.get(type));
         }
     }
 }

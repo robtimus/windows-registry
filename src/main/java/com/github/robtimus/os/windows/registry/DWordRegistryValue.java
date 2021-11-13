@@ -78,12 +78,12 @@ public class DWordRegistryValue extends RegistryValue {
 
     private static ByteOrder getByteOrder(int type) {
         switch (type) {
-        case WinNT.REG_DWORD_BIG_ENDIAN:
-            return ByteOrder.BIG_ENDIAN;
-        case WinNT.REG_DWORD_LITTLE_ENDIAN:
-            return ByteOrder.LITTLE_ENDIAN;
-        default:
-            throw new IllegalArgumentException(Messages.RegistryValue.unsupportedType.get(type));
+            case WinNT.REG_DWORD_BIG_ENDIAN:
+                return ByteOrder.BIG_ENDIAN;
+            case WinNT.REG_DWORD_LITTLE_ENDIAN:
+                return ByteOrder.LITTLE_ENDIAN;
+            default:
+                throw new IllegalArgumentException(Messages.RegistryValue.unsupportedType.get(type));
         }
     }
 

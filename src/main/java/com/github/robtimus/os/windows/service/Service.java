@@ -611,16 +611,16 @@ public final class Service {
 
         static Type of(int value) {
             switch (value) {
-            case WinNT.SERVICE_KERNEL_DRIVER:
-                return KERNEL_DRIVER;
-            case WinNT.SERVICE_FILE_SYSTEM_DRIVER:
-                return FILE_SYSTEM_DRIVER;
-            case WinNT.SERVICE_ADAPTER:
-                return ADAPTER;
-            case WinNT.SERVICE_RECOGNIZER_DRIVER:
-                return RECOGNIZER_DRIVER;
-            default:
-                return ofProcess(value);
+                case WinNT.SERVICE_KERNEL_DRIVER:
+                    return KERNEL_DRIVER;
+                case WinNT.SERVICE_FILE_SYSTEM_DRIVER:
+                    return FILE_SYSTEM_DRIVER;
+                case WinNT.SERVICE_ADAPTER:
+                    return ADAPTER;
+                case WinNT.SERVICE_RECOGNIZER_DRIVER:
+                    return RECOGNIZER_DRIVER;
+                default:
+                    return ofProcess(value);
             }
         }
 
@@ -2057,7 +2057,7 @@ public final class Service {
             StartType startType();
 
             /**
-             * An object that can be used to configure the start type for a Windows service of type {@link Type#PROCESS}
+             * An object that can be used to configure the start type for a Windows service of type {@link Type#PROCESS}.
              *
              * @author Rob Spoor
              */

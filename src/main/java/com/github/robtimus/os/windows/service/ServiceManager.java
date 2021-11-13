@@ -292,13 +292,13 @@ public final class ServiceManager implements AutoCloseable {
         if (!api.GetServiceKeyName(scmHandle, displayName, null, lpcchBuffer)) {
             int lastError = kernel32.GetLastError();
             switch (lastError) {
-            case WinError.ERROR_SERVICE_DOES_NOT_EXIST:
-                return Optional.empty();
-            case WinError.ERROR_INSUFFICIENT_BUFFER:
-                // Continue
-                break;
-            default:
-                throw error(lastError);
+                case WinError.ERROR_SERVICE_DOES_NOT_EXIST:
+                    return Optional.empty();
+                case WinError.ERROR_INSUFFICIENT_BUFFER:
+                    // Continue
+                    break;
+                default:
+                    throw error(lastError);
             }
         }
 
@@ -808,15 +808,15 @@ public final class ServiceManager implements AutoCloseable {
 
     private static WindowsException error(int code) {
         switch (code) {
-        case WinError.ERROR_ACCESS_DENIED:
-            return new AccessDeniedException();
-        case WinError.ERROR_SERVICE_EXISTS:
-        case WinError.ERROR_DUPLICATE_SERVICE_NAME:
-            return new ServiceAlreadyExistsException(code);
-        case WinError.ERROR_SERVICE_NOT_FOUND:
-            return new NoSuchServiceException();
-        default:
-            return new ServiceException(code);
+            case WinError.ERROR_ACCESS_DENIED:
+                return new AccessDeniedException();
+            case WinError.ERROR_SERVICE_EXISTS:
+            case WinError.ERROR_DUPLICATE_SERVICE_NAME:
+                return new ServiceAlreadyExistsException(code);
+            case WinError.ERROR_SERVICE_NOT_FOUND:
+                return new NoSuchServiceException();
+            default:
+                return new ServiceException(code);
         }
     }
 
