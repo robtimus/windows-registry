@@ -16,15 +16,13 @@
  */
 
 /**
- * Provides classes and interfaces for working with Windows specific features.
+ * Provides classes and interfaces for working with the Windows registry.
  *
  * @author Rob Spoor
  */
-module com.github.robtimus.os.windows {
+module com.github.robtimus.os.windows.registry {
     requires com.sun.jna;
     requires com.sun.jna.platform;
 
-    exports com.github.robtimus.os.windows;
     exports com.github.robtimus.os.windows.registry;
-    exports com.github.robtimus.os.windows.service;
 }

@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.WindowsException;
+import com.sun.jna.platform.win32.Kernel32Util;
 import com.sun.jna.platform.win32.WinError;
 
 /**
@@ -26,7 +26,9 @@ import com.sun.jna.platform.win32.WinError;
  * @author Rob Spoor
  */
 @SuppressWarnings("serial")
-public class RegistryException extends WindowsException {
+public class RegistryException extends RuntimeException {
+
+    private final int errorCode;
 
     /**
      * Creates a new exception.
@@ -34,12 +36,25 @@ public class RegistryException extends WindowsException {
      * @param errorCode The error code that was returned from the Windows API.
      */
     public RegistryException(int errorCode) {
-        super(errorCode);
+        super(Kernel32Util.formatMessage(errorCode));
+        this.errorCode = errorCode;
+    }
+
+    /**
+     * Returns the error code that was returned from the Windows API.
+     *
+     * @return The error code that was returned from the Windows API.
+     */
+    public int errorCode() {
+        return errorCode;
     }
 
     static RegistryException of(int errorCode, String path) {
         if (errorCode == WinError.ERROR_FILE_NOT_FOUND) {
             return new NoSuchRegistryKeyException(path);
+        }
+        if (errorCode == WinError.ERROR_ACCESS_DENIED) {
+            return new RegistryAccessDeniedException();
         }
         throw new RegistryException(errorCode);
     }
@@ -47,6 +62,9 @@ public class RegistryException extends WindowsException {
     static RegistryException of(int errorCode, String path, String name) {
         if (errorCode == WinError.ERROR_FILE_NOT_FOUND) {
             return new NoSuchRegistryValueException(path, name);
+        }
+        if (errorCode == WinError.ERROR_ACCESS_DENIED) {
+            return new RegistryAccessDeniedException();
         }
         throw new RegistryException(errorCode);
     }

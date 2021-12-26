@@ -26,13 +26,13 @@
     <relativePath />
   </parent>
 
-  <artifactId>windows-utils</artifactId>
+  <artifactId>windows-registry</artifactId>
   <version>1.0-SNAPSHOT</version>
   <packaging>jar</packaging>
 
-  <name>windows-utils</name>
-  <description>Provides classes and interfaces for working with Windows specific features.</description>
-  <url>https://robtimus.github.io/windows-utils/</url>
+  <name>windows-registry</name>
+  <description>Provides classes and interfaces for working with the Windows registry</description>
+  <url>https://robtimus.github.io/windows-registry/</url>
   <inceptionYear>2020</inceptionYear>
 
   <licenses>
@@ -50,15 +50,15 @@
   </developers>
 
   <scm>
-    <connection>scm:git:git@github.com:robtimus/windows-utils.git</connection>
-    <developerConnection>scm:git:git@github.com:robtimus/windows-utils.git</developerConnection>
+    <connection>scm:git:git@github.com:robtimus/windows-registry.git</connection>
+    <developerConnection>scm:git:git@github.com:robtimus/windows-registry.git</developerConnection>
     <tag>HEAD</tag>
-    <url>https://github.com/robtimus/windows-utils</url>
+    <url>https://github.com/robtimus/windows-registry</url>
   </scm>
 
   <issueManagement>
     <system>GitHub</system>
-    <url>https://github.com/robtimus/windows-utils/issues</url>
+    <url>https://github.com/robtimus/windows-registry/issues</url>
   </issueManagement>
 
   <properties>
@@ -160,41 +160,11 @@
               <goal>generate</goal>
             </goals>
             <configuration>
-              <bundleName>com.github.robtimus.os.windows.windows-utils</bundleName>
-              <className>com.github.robtimus.os.windows.Messages</className>
-              <licenseText>Apache-2.0</licenseText>
-              <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
-              <licenseCopyrightYear>2020</licenseCopyrightYear>
-              <publicVisibility>false</publicVisibility>
-              <suppressWarnings>nls</suppressWarnings>
-            </configuration>
-          </execution>
-          <execution>
-            <id>generate-registry-messages</id>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-            <configuration>
-              <bundleName>com.github.robtimus.os.windows.windows-registry</bundleName>
+              <bundleName>com.github.robtimus.os.windows.registry.windows-registry</bundleName>
               <className>com.github.robtimus.os.windows.registry.Messages</className>
               <licenseText>Apache-2.0</licenseText>
               <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
               <licenseCopyrightYear>2020</licenseCopyrightYear>
-              <publicVisibility>false</publicVisibility>
-              <suppressWarnings>nls</suppressWarnings>
-            </configuration>
-          </execution>
-          <execution>
-            <id>generate-service-messages</id>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-            <configuration>
-              <bundleName>com.github.robtimus.os.windows.windows-service</bundleName>
-              <className>com.github.robtimus.os.windows.service.Messages</className>
-              <licenseText>Apache-2.0</licenseText>
-              <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
-              <licenseCopyrightYear>2021</licenseCopyrightYear>
               <publicVisibility>false</publicVisibility>
               <suppressWarnings>nls</suppressWarnings>
             </configuration>

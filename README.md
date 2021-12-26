@@ -1,5 +1,5 @@
-# windows-utils
+# windows-registry
 
-Provides classes and interfaces for working with Windows specific features.
+Provides classes and interfaces for working with the Windows registry.
 
 TODO
