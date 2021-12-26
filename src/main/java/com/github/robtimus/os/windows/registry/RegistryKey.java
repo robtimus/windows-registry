@@ -178,7 +178,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
                 if (result.size() > 1) {
                     result.removeLast();
                 }
-            } else if (!(relativePath.isEmpty() || ".".equals(relativePathPart))) { //$NON-NLS-1$
+            } else if (!(relativePathPart.isEmpty() || ".".equals(relativePathPart))) { //$NON-NLS-1$
                 result.addLast(relativePathPart);
             }
         }
@@ -355,11 +355,11 @@ public final class RegistryKey implements Comparable<RegistryKey> {
 
         try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
             int code = api.RegDeleteValue(key.hKey, name);
-            if (code == WinError.ERROR_FILE_NOT_FOUND) {
-                return false;
-            }
             if (code == WinError.ERROR_SUCCESS) {
                 return true;
+            }
+            if (code == WinError.ERROR_FILE_NOT_FOUND) {
+                return false;
             }
             throw RegistryException.of(code, path);
         }
@@ -377,7 +377,8 @@ public final class RegistryKey implements Comparable<RegistryKey> {
 
         Iterator<RegistryValue> iterator = values(hKey);
         Spliterator<RegistryValue> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
-        return StreamSupport.stream(spliterator, false).onClose(() -> closeKey(hKey));
+        return StreamSupport.stream(spliterator, false)
+                .onClose(() -> closeKey(hKey));
     }
 
     private Iterator<RegistryValue> values(HKEY hKey) {

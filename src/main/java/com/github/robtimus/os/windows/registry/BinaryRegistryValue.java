@@ -17,6 +17,8 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.util.Arrays;
 import com.sun.jna.platform.win32.WinNT;
 
@@ -52,6 +54,15 @@ public class BinaryRegistryValue extends RegistryValue {
      */
     public byte[] data() {
         return data.clone();
+    }
+
+    /**
+     * Returns an input stream over the registry value's binary data.
+     *
+     * @return An input stream over the registry value's binary data.
+     */
+    public InputStream inputStream() {
+        return new ByteArrayInputStream(data);
     }
 
     @Override

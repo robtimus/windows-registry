@@ -90,9 +90,8 @@ public class MultiStringRegistryValue extends RegistryValue {
             }
 
             if (value.length() == 0) {
-                // A sequence of null-terminated strings,
-                // terminated by an empty string (\0).
-                // => The first empty string terminates the
+                // A sequence of null-terminated strings, terminated by an empty string (\0).
+                // => The first empty string terminates the string list
                 break;
             }
 
