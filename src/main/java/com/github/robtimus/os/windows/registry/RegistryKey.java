@@ -259,10 +259,25 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the values cannot be queried for another reason.
      */
-    @SuppressWarnings("resource")
     public Stream<RegistryValue> values() {
+        return values(null);
+    }
+
+    /**
+     * Returns all values of this registry key. This stream should be closed afterwards.
+     * <p>
+     * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while consuming
+     * the stream.
+     *
+     * @param filter A filter that can be used to limit which registry values are returned.
+     * @return A stream with all values of this registry key.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the values cannot be queried for another reason.
+     */
+    @SuppressWarnings("resource")
+    public Stream<RegistryValue> values(RegistryValue.Filter filter) {
         Handle handle = new Handle(WinNT.KEY_READ);
-        return handle.values()
+        return handle.values(filter)
                 .onClose(handle::close);
     }
 
@@ -669,12 +684,28 @@ public final class RegistryKey implements Comparable<RegistryKey> {
          * @throws RegistryException If the values cannot be queried for another reason.
          */
         public Stream<RegistryValue> values() {
-            Iterator<RegistryValue> iterator = valueIterator();
+            return values(null);
+        }
+
+        /**
+         * Returns all values of the registry key from which this handle was retrieved. This stream should be closed afterwards.
+         * This stream is valid until this handle is closed.
+         * <p>
+         * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while
+         * consuming the stream.
+         *
+         * @param filter A filter that can be used to limit which registry values are returned.
+         * @return A stream with all values of the registry key from which this handle was retrieved.
+         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the values cannot be queried for another reason.
+         */
+        public Stream<RegistryValue> values(RegistryValue.Filter filter) {
+            Iterator<RegistryValue> iterator = valueIterator(filter);
             Spliterator<RegistryValue> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
             return StreamSupport.stream(spliterator, false);
         }
 
-        private Iterator<RegistryValue> valueIterator() {
+        private Iterator<RegistryValue> valueIterator(RegistryValue.Filter filter) {
             IntByReference lpcMaxValueNameLen = new IntByReference();
             IntByReference lpcMaxValueLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
@@ -696,20 +727,27 @@ public final class RegistryKey implements Comparable<RegistryKey> {
 
                 @Override
                 protected RegistryValue nextElement() {
-                    lpcchValueName.setValue(lpValueName.length);
-                    lpType.setValue(0);
-                    Arrays.fill(byteData, (byte) 0);
-                    lpcbData.setValue(lpcMaxValueLen.getValue());
+                    while (true) {
+                        lpcchValueName.setValue(lpValueName.length);
+                        lpType.setValue(0);
+                        Arrays.fill(byteData, (byte) 0);
+                        lpcbData.setValue(lpcMaxValueLen.getValue());
 
-                    int code = api.RegEnumValue(hKey, index, lpValueName, lpcchValueName, null, lpType, byteData, lpcbData);
-                    if (code == WinError.ERROR_SUCCESS) {
-                        index++;
-                        return RegistryValue.of(Native.toString(lpValueName), lpType.getValue(), byteData, lpcbData.getValue());
+                        int code = api.RegEnumValue(hKey, index, lpValueName, lpcchValueName, null, lpType, byteData, lpcbData);
+                        if (code == WinError.ERROR_SUCCESS) {
+                            index++;
+                            String valueName = Native.toString(lpValueName);
+                            int valueType = lpType.getValue();
+                            if (filter == null || filter.matches(valueName, valueType)) {
+                                return RegistryValue.of(valueName, valueType, byteData, lpcbData.getValue());
+                            }
+                            continue;
+                        }
+                        if (code == WinError.ERROR_NO_MORE_ITEMS) {
+                            return null;
+                        }
+                        throw RegistryException.of(code, path);
                     }
-                    if (code == WinError.ERROR_NO_MORE_ITEMS) {
-                        return null;
-                    }
-                    throw RegistryException.of(code, path);
                 }
             };
         }
@@ -813,7 +851,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
             Objects.requireNonNull(valuePredicate);
 
             List<String> values = new ArrayList<>();
-            for (Iterator<RegistryValue> i = valueIterator(); i.hasNext(); ) {
+            for (Iterator<RegistryValue> i = valueIterator(null); i.hasNext(); ) {
                 RegistryValue value = i.next();
                 if (valuePredicate.test(value)) {
                     values.add(value.name());
