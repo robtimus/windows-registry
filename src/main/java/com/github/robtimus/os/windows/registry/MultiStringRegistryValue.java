@@ -53,12 +53,12 @@ public class MultiStringRegistryValue extends RegistryValue {
      * @param values The registry value's string values.
      */
     public MultiStringRegistryValue(String name, List<String> values) {
-        super(name, WinNT.REG_SZ);
+        super(name, WinNT.REG_MULTI_SZ);
         this.values = copyOf(values);
     }
 
     MultiStringRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_SZ);
+        super(name, WinNT.REG_MULTI_SZ);
         values = toStringList(data, dataLength);
     }
 
