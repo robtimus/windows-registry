@@ -20,11 +20,14 @@ package com.github.robtimus.os.windows.registry;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Deque;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.function.Predicate;
@@ -130,9 +133,30 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     // traversal
 
     /**
+     * Returns whether or not this registry key is a root registry key.
+     *
+     * @return {@code true} if this registry key is a root registry key, or {@code false} otherwise.
+     * @see #root()
+     * @see #HKEY_CLASSES_ROOT
+     * @see #HKEY_CURRENT_USER
+     * @see #HKEY_LOCAL_MACHINE
+     * @see #HKEY_USERS
+     * @see #HKEY_CURRENT_CONFIG
+     */
+    public boolean isRoot() {
+        return this == root;
+    }
+
+    /**
      * Returns the root of the registry key.
      *
      * @return The root of the registry key.
+     * @see #isRoot()
+     * @see #HKEY_CLASSES_ROOT
+     * @see #HKEY_CURRENT_USER
+     * @see #HKEY_LOCAL_MACHINE
+     * @see #HKEY_USERS
+     * @see #HKEY_CURRENT_CONFIG
      */
     public RegistryKey root() {
         return root;
@@ -192,82 +216,55 @@ public final class RegistryKey implements Comparable<RegistryKey> {
 
     /**
      * Returns all direct sub keys of this registry key. This stream should be closed afterwards.
+     * <p>
+     * Note that nothing can be said about the order of sub keys in the stream. It's also unspecified what happens if sub keys are removed while
+     * consuming the stream.
      *
      * @return A stream with all direct sub keys of this registry key.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the sub keys cannot be queried for another reason.
      */
+    @SuppressWarnings("resource")
     public Stream<RegistryKey> subKeys() {
-        HKEY hKey = openKey(WinNT.KEY_READ);
-
-        Iterator<String> iterator = subKeys(hKey);
-        Spliterator<String> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
-        return StreamSupport.stream(spliterator, false)
-                .onClose(() -> closeKey(hKey))
-                .map(n -> new RegistryKey(this, n));
-    }
-
-    private Iterator<String> subKeys(HKEY hKey) {
-        IntByReference lpcMaxSubKeyLen = new IntByReference();
-        int code = api.RegQueryInfoKey(hKey, null, null, null, null, lpcMaxSubKeyLen, null, null, null, null, null, null);
-        if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path);
-        }
-
-        char[] lpName = new char[lpcMaxSubKeyLen.getValue() + 1];
-        IntByReference lpcName = new IntByReference(lpName.length);
-
-        return new LookaheadIterator<>() {
-
-            private int index = 0;
-
-            @Override
-            protected String nextElement() {
-                lpcName.setValue(lpName.length);
-
-                int code = api.RegEnumKeyEx(hKey, index, lpName, lpcName, null, null, null, null);
-                if (code == WinError.ERROR_SUCCESS) {
-                    index++;
-                    return Native.toString(lpName);
-                }
-                if (code == WinError.ERROR_NO_MORE_ITEMS) {
-                    return null;
-                }
-                throw RegistryException.of(code, path);
-            }
-        };
+        Handle handle = new Handle(WinNT.KEY_READ);
+        return handle.subKeys()
+                .onClose(handle::close);
     }
 
     /**
-     * Deletes all direct sub keys of this registry keys whose names match a specific predicate.
+     * Deletes all direct sub keys of this registry key whose names match a specific predicate.
      *
      * @param namePredicate The predicate to use.
+     * @throws NullPointerException If the given predicate is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the sub keys cannot be deleted for another reason.
      */
     public void deleteSubKeys(Predicate<? super String> namePredicate) {
-        try (Key key = new Key(openKey(WinNT.KEY_READ))) {
-            List<String> subKeys = new ArrayList<>();
-            for (Iterator<String> i = subKeys(key.hKey); i.hasNext(); ) {
-                String subKey = i.next();
-                if (namePredicate.test(subKey)) {
-                    subKeys.add(subKey);
-                }
-            }
-            for (String subKey : subKeys) {
-                deleteSubKey(key.hKey, subKey);
-            }
-        }
-    }
+        Objects.requireNonNull(namePredicate);
 
-    private void deleteSubKey(HKEY hKey, String subKey) {
-        int code = api.RegDeleteKey(hKey, subKey);
-        if (code != WinError.ERROR_SUCCESS && code != WinError.ERROR_FILE_NOT_FOUND) {
-            throw RegistryException.of(code, path);
+        try (Handle handle = new Handle(WinNT.KEY_READ)) {
+            handle.deleteSubKeys(namePredicate);
         }
     }
 
     // values
+
+    /**
+     * Returns all values of this registry key. This stream should be closed afterwards.
+     * <p>
+     * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while consuming
+     * the stream.
+     *
+     * @return A stream with all values of this registry key.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the values cannot be queried for another reason.
+     */
+    @SuppressWarnings("resource")
+    public Stream<RegistryValue> values() {
+        Handle handle = new Handle(WinNT.KEY_READ);
+        return handle.values()
+                .onClose(handle::close);
+    }
 
     /**
      * Returns a registry value.
@@ -281,25 +278,8 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public Optional<RegistryValue> getValue(String name) {
         Objects.requireNonNull(name);
 
-        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_QUERY_VALUE))) {
-            IntByReference lpType = new IntByReference();
-            IntByReference lpcbData = new IntByReference();
-            int code = api.RegQueryValueEx(key.hKey, name, 0, lpType, (byte[]) null, lpcbData);
-            if (code == WinError.ERROR_FILE_NOT_FOUND) {
-                return Optional.empty();
-            }
-            if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
-                byte[] byteData = new byte[lpcbData.getValue() + Native.WCHAR_SIZE];
-                Arrays.fill(byteData, (byte) 0);
-                lpcbData.setValue(0);
-
-                code = api.RegQueryValueEx(key.hKey, name, 0, null, byteData, lpcbData);
-                if (code == WinError.ERROR_SUCCESS) {
-                    RegistryValue value = RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue());
-                    return Optional.of(value);
-                }
-            }
-            throw RegistryException.of(code, path, name);
+        try (Handle handle = new Handle(WinNT.KEY_READ)) {
+            return handle.getValue(name);
         }
     }
 
@@ -314,12 +294,8 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public void setValue(RegistryValue value) {
         Objects.requireNonNull(value);
 
-        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
-            byte[] data = value.rawData();
-            int code = api.RegSetValueEx(key.hKey, value.name(), 0, value.type(), data, data.length);
-            if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path, name);
-            }
+        try (Handle handle = new Handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+            handle.setValue(value);
         }
     }
 
@@ -334,11 +310,8 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public void deleteValue(String name) {
         Objects.requireNonNull(name);
 
-        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
-            int code = api.RegDeleteValue(key.hKey, name);
-            if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path);
-            }
+        try (Handle handle = new Handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+            handle.deleteValue(name);
         }
     }
 
@@ -353,100 +326,23 @@ public final class RegistryKey implements Comparable<RegistryKey> {
     public boolean deleteValueIfExists(String name) {
         Objects.requireNonNull(name);
 
-        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
-            int code = api.RegDeleteValue(key.hKey, name);
-            if (code == WinError.ERROR_SUCCESS) {
-                return true;
-            }
-            if (code == WinError.ERROR_FILE_NOT_FOUND) {
-                return false;
-            }
-            throw RegistryException.of(code, path);
+        try (Handle handle = new Handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+            return handle.deleteValueIfExists(name);
         }
     }
 
     /**
-     * Returns all values of this registry key. This stream should be closed afterwards.
-     *
-     * @return A stream with all values of this registry key.
-     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
-     * @throws RegistryException If the values cannot be queried for another reason.
-     */
-    public Stream<RegistryValue> values() {
-        HKEY hKey = openKey(WinNT.KEY_READ);
-
-        Iterator<RegistryValue> iterator = values(hKey);
-        Spliterator<RegistryValue> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
-        return StreamSupport.stream(spliterator, false)
-                .onClose(() -> closeKey(hKey));
-    }
-
-    private Iterator<RegistryValue> values(HKEY hKey) {
-        IntByReference lpcMaxValueNameLen = new IntByReference();
-        IntByReference lpcMaxValueLen = new IntByReference();
-        int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
-        if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path);
-        }
-
-        char[] lpValueName = new char[lpcMaxValueNameLen.getValue() + 1];
-        IntByReference lpcchValueName = new IntByReference(lpValueName.length);
-
-        IntByReference lpType = new IntByReference();
-
-        byte[] byteData = new byte[lpcMaxValueLen.getValue() + 2 * Native.WCHAR_SIZE];
-        IntByReference lpcbData = new IntByReference(byteData.length);
-
-        return new LookaheadIterator<>() {
-
-            private int index = 0;
-
-            @Override
-            protected RegistryValue nextElement() {
-                lpcchValueName.setValue(lpValueName.length);
-                lpType.setValue(0);
-                Arrays.fill(byteData, (byte) 0);
-                lpcbData.setValue(lpcMaxValueLen.getValue());
-
-                int code = api.RegEnumValue(hKey, index, lpValueName, lpcchValueName, null, lpType, byteData, lpcbData);
-                if (code == WinError.ERROR_SUCCESS) {
-                    index++;
-                    return RegistryValue.of(Native.toString(lpValueName), lpType.getValue(), byteData, lpcbData.getValue());
-                }
-                if (code == WinError.ERROR_NO_MORE_ITEMS) {
-                    return null;
-                }
-                throw RegistryException.of(code, path);
-            }
-        };
-    }
-
-    /**
-     * Deletes all values of this registry keys that match a specific predicate.
+     * Deletes all values of this registry key that match a specific predicate.
      *
      * @param valuePredicate The predicate to use.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the values cannot be deleted for another reason.
      */
     public void deleteValues(Predicate<? super RegistryValue> valuePredicate) {
-        try (Key key = new Key(openKey(WinNT.KEY_READ | WinNT.KEY_SET_VALUE))) {
-            List<String> values = new ArrayList<>();
-            for (Iterator<RegistryValue> i = values(key.hKey); i.hasNext(); ) {
-                RegistryValue value = i.next();
-                if (valuePredicate.test(value)) {
-                    values.add(value.name());
-                }
-            }
-            for (String value : values) {
-                deleteValue(key.hKey, value);
-            }
-        }
-    }
+        Objects.requireNonNull(valuePredicate);
 
-    private void deleteValue(HKEY hKey, String name) {
-        int code = api.RegDeleteValue(hKey, name);
-        if (code != WinError.ERROR_SUCCESS && code != WinError.ERROR_FILE_NOT_FOUND) {
-            throw RegistryException.of(code, path);
+        try (Handle handle = new Handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+            handle.deleteValues(valuePredicate);
         }
     }
 
@@ -456,14 +352,23 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * Tests whether or not this registry key exists.
      *
      * @return {@code true} if this registry key exists, or {@code false} otherwise.
+     * @throws RegistryException If the existence of this registry cannot be determined.
      */
     public boolean exists() {
+        if (isRoot()) {
+            return true;
+        }
+
         HKEYByReference phkResult = new HKEYByReference();
-        if (openKey(WinNT.KEY_READ, phkResult)) {
+        int code = api.RegOpenKeyEx(rootHKEY, pathFromRoot, 0, WinNT.KEY_READ, phkResult);
+        if (code == WinError.ERROR_SUCCESS) {
             closeKey(phkResult.getValue());
             return true;
         }
-        return false;
+        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+            return false;
+        }
+        throw RegistryException.of(code, path);
     }
 
     /**
@@ -495,7 +400,7 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         int code = api.RegCreateKeyEx(rootHKEY, pathFromRoot, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult,
                 lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
-            if (this != root) {
+            if (!isRoot()) {
                 closeKey(phkResult.getValue());
             }
             return lpdwDisposition.getValue();
@@ -511,13 +416,14 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public void delete() {
-        if (this == root) {
-            throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path));
-        }
+        RegistryKey parent = parent()
+                .orElseThrow(() -> new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path)));
 
-        int code = api.RegDeleteKey(rootHKEY, pathFromRoot);
-        if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path);
+        try (Handle handle = parent.new Handle(WinNT.KEY_READ)) {
+            int code = api.RegDeleteKey(handle.hKey, name);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path);
+            }
         }
     }
 
@@ -529,18 +435,64 @@ public final class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public boolean deleteIfExists() {
-        if (this == root) {
-            throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path));
-        }
+        RegistryKey parent = parent()
+                .orElseThrow(() -> new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path)));
 
-        int code = api.RegDeleteKey(rootHKEY, pathFromRoot);
-        if (code == WinError.ERROR_SUCCESS) {
-            return true;
+        try (Handle handle = parent.new Handle(WinNT.KEY_READ)) {
+            int code = api.RegDeleteKey(handle.hKey, name);
+            if (code == WinError.ERROR_SUCCESS) {
+                return true;
+            }
+            if (code == WinError.ERROR_FILE_NOT_FOUND) {
+                return false;
+            }
+            throw RegistryException.of(code, path);
         }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
-            return false;
+    }
+
+    // handle
+
+    /**
+     * Creates a handle to this registry key. This allows multiple operations on this registry key to be performed without creating a new link to the
+     * Windows registry for each operation. The returned handle should be closed when it is no longer needed.
+     * <p>
+     * This method will be like calling {@link #handle(HandleOption...)} without any options. As a result, it will not be possible to set or delete
+     * registry values using the returned handle.
+     *
+     * @return The created handle.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the handle could not be created for another reason.
+     */
+    public Handle handle() {
+        return new Handle(WinNT.KEY_READ);
+    }
+
+    /**
+     * Creates a handle to this registry key. This allows multiple operations on this registry key to be performed without creating a new link to the
+     * Windows registry for each operation. The returned handle should be closed when it is no longer needed.
+     *
+     * @param options The options that define how the handle is created.
+     * @return The created handle.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist},
+     *                                        and {@link HandleOption#CREATE} is not one of the given options.
+     * @throws RegistryException If the handle could not be created for another reason.
+     */
+    public Handle handle(HandleOption... options) {
+        Set<HandleOption> optionSet = EnumSet.noneOf(HandleOption.class);
+        Collections.addAll(optionSet, options);
+
+        int samDesired = samDesired(optionSet);
+        boolean create = optionSet.contains(HandleOption.CREATE);
+
+        return new Handle(samDesired, create);
+    }
+
+    private int samDesired(Set<HandleOption> options) {
+        int samDesired = WinNT.KEY_READ;
+        for (HandleOption option : options) {
+            samDesired |= option.samDesired;
         }
-        throw RegistryException.of(code, path);
+        return samDesired;
     }
 
     // Comparable / Object
@@ -574,26 +526,6 @@ public final class RegistryKey implements Comparable<RegistryKey> {
 
     // util
 
-    private boolean openKey(int samDesired, HKEYByReference phkResult) {
-        int code = api.RegOpenKeyEx(rootHKEY, pathFromRoot, 0, samDesired, phkResult);
-        if (code == WinError.ERROR_SUCCESS) {
-            return true;
-        }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
-            return false;
-        }
-        throw RegistryException.of(code, path);
-    }
-
-    private HKEY openKey(int samDesired) {
-        HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(rootHKEY, pathFromRoot, 0, samDesired, phkResult);
-        if (code == WinError.ERROR_SUCCESS) {
-            return phkResult.getValue();
-        }
-        throw RegistryException.of(code, path);
-    }
-
     private void closeKey(HKEY hKey) {
         int code = api.RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
@@ -601,17 +533,323 @@ public final class RegistryKey implements Comparable<RegistryKey> {
         }
     }
 
-    final class Key implements AutoCloseable {
+    /**
+     * A handle to a registry key. This offers mostly the same functionality as {@link RegistryKey} itself. However, it reuses the same link to the
+     * Windows registry instead of creating a new one every time. That makes it more efficient if multiple operations on the same registry key are
+     * needed. Handle instances should be closed when they are no longer needed to release the link to the Windows registry.
+     * <p>
+     * Note that the way the handle is created may limit the available operations. For instance, if {@link HandleOption#MANAGE_VALUES} isn't given,
+     * trying to set or delete registry values will lead to {@link RegistryAccessDeniedException}s.
+     *
+     * @author Rob Spoor
+     */
+    public final class Handle implements AutoCloseable {
 
         private final HKEY hKey;
 
-        private Key(HKEY hKey) {
-            this.hKey = hKey;
+        private Handle(int samDesired) {
+            hKey = openKey(samDesired);
         }
+
+        private Handle(int samDesired, boolean create) {
+            hKey = create ? createOrOpenKey(samDesired) : openKey(samDesired);
+        }
+
+        private HKEY openKey(int samDesired) {
+            HKEYByReference phkResult = new HKEYByReference();
+            int code = api.RegOpenKeyEx(rootHKEY, pathFromRoot, 0, samDesired, phkResult);
+            if (code == WinError.ERROR_SUCCESS) {
+                return phkResult.getValue();
+            }
+            throw RegistryException.of(code, path);
+        }
+
+        private HKEY createOrOpenKey(int samDesired) {
+            HKEYByReference phkResult = new HKEYByReference();
+
+            int code = api.RegCreateKeyEx(rootHKEY, pathFromRoot, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
+            if (code == WinError.ERROR_SUCCESS) {
+                return phkResult.getValue();
+            }
+            throw RegistryException.of(code, path);
+        }
+
+        // traversal
+
+        /**
+         * Returns all direct sub keys of the registry key from which this handle was retrieved.
+         * This stream is valid until this handle is closed.
+         * <p>
+         * Note that nothing can be said about the order of sub keys in the stream. It's also unspecified what happens if sub keys are removed while
+         * consuming the stream.
+         *
+         * @return A stream with all direct sub keys of the registry key from which this handle was retrieved.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the sub keys cannot be queried for another reason.
+         */
+        public Stream<RegistryKey> subKeys() {
+            Iterator<String> iterator = subKeyIterator();
+            Spliterator<String> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
+            return StreamSupport.stream(spliterator, false)
+                    .map(n -> new RegistryKey(RegistryKey.this, n));
+        }
+
+        private Iterator<String> subKeyIterator() {
+            IntByReference lpcMaxSubKeyLen = new IntByReference();
+            int code = api.RegQueryInfoKey(hKey, null, null, null, null, lpcMaxSubKeyLen, null, null, null, null, null, null);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path);
+            }
+
+            char[] lpName = new char[lpcMaxSubKeyLen.getValue() + 1];
+            IntByReference lpcName = new IntByReference(lpName.length);
+
+            return new LookaheadIterator<>() {
+
+                private int index = 0;
+
+                @Override
+                protected String nextElement() {
+                    lpcName.setValue(lpName.length);
+
+                    int code = api.RegEnumKeyEx(hKey, index, lpName, lpcName, null, null, null, null);
+                    if (code == WinError.ERROR_SUCCESS) {
+                        index++;
+                        return Native.toString(lpName);
+                    }
+                    if (code == WinError.ERROR_NO_MORE_ITEMS) {
+                        return null;
+                    }
+                    throw RegistryException.of(code, path);
+                }
+            };
+        }
+
+        /**
+         * Deletes all direct sub keys of the registry key from which this handle was retrieved whose names match a specific predicate.
+         *
+         * @param namePredicate The predicate to use.
+         * @throws NullPointerException If the given predicate is {@code null}.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the sub keys cannot be deleted for another reason.
+         */
+        public void deleteSubKeys(Predicate<? super String> namePredicate) {
+            Objects.requireNonNull(namePredicate);
+
+            List<String> subKeys = new ArrayList<>();
+            for (Iterator<String> i = subKeyIterator(); i.hasNext(); ) {
+                String subKey = i.next();
+                if (namePredicate.test(subKey)) {
+                    subKeys.add(subKey);
+                }
+            }
+            for (String subKey : subKeys) {
+                deleteSubKey(subKey);
+            }
+        }
+
+        private void deleteSubKey(String subKey) {
+            int code = api.RegDeleteKey(hKey, subKey);
+            if (code != WinError.ERROR_SUCCESS && code != WinError.ERROR_FILE_NOT_FOUND) {
+                throw RegistryException.of(code, path);
+            }
+        }
+
+        // values
+
+        /**
+         * Returns all values of the registry key from which this handle was retrieved. This stream should be closed afterwards.
+         * This stream is valid until this handle is closed.
+         * <p>
+         * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while
+         * consuming the stream.
+         *
+         * @return A stream with all values of the registry key from which this handle was retrieved.
+         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the values cannot be queried for another reason.
+         */
+        public Stream<RegistryValue> values() {
+            Iterator<RegistryValue> iterator = valueIterator();
+            Spliterator<RegistryValue> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
+            return StreamSupport.stream(spliterator, false);
+        }
+
+        private Iterator<RegistryValue> valueIterator() {
+            IntByReference lpcMaxValueNameLen = new IntByReference();
+            IntByReference lpcMaxValueLen = new IntByReference();
+            int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path);
+            }
+
+            char[] lpValueName = new char[lpcMaxValueNameLen.getValue() + 1];
+            IntByReference lpcchValueName = new IntByReference(lpValueName.length);
+
+            IntByReference lpType = new IntByReference();
+
+            byte[] byteData = new byte[lpcMaxValueLen.getValue() + 2 * Native.WCHAR_SIZE];
+            IntByReference lpcbData = new IntByReference(byteData.length);
+
+            return new LookaheadIterator<>() {
+
+                private int index = 0;
+
+                @Override
+                protected RegistryValue nextElement() {
+                    lpcchValueName.setValue(lpValueName.length);
+                    lpType.setValue(0);
+                    Arrays.fill(byteData, (byte) 0);
+                    lpcbData.setValue(lpcMaxValueLen.getValue());
+
+                    int code = api.RegEnumValue(hKey, index, lpValueName, lpcchValueName, null, lpType, byteData, lpcbData);
+                    if (code == WinError.ERROR_SUCCESS) {
+                        index++;
+                        return RegistryValue.of(Native.toString(lpValueName), lpType.getValue(), byteData, lpcbData.getValue());
+                    }
+                    if (code == WinError.ERROR_NO_MORE_ITEMS) {
+                        return null;
+                    }
+                    throw RegistryException.of(code, path);
+                }
+            };
+        }
+
+        /**
+         * Returns a registry value.
+         *
+         * @param name The name of the registry value to return.
+         * @return An {@link Optional} with the registry value with the given name, or {@link Optional#empty()} if there is no such registry value.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         */
+        public Optional<RegistryValue> getValue(String name) {
+            Objects.requireNonNull(name);
+
+            IntByReference lpType = new IntByReference();
+            IntByReference lpcbData = new IntByReference();
+            int code = api.RegQueryValueEx(hKey, name, 0, lpType, (byte[]) null, lpcbData);
+            if (code == WinError.ERROR_FILE_NOT_FOUND) {
+                return Optional.empty();
+            }
+            if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
+                byte[] byteData = new byte[lpcbData.getValue() + Native.WCHAR_SIZE];
+                Arrays.fill(byteData, (byte) 0);
+                lpcbData.setValue(byteData.length);
+
+                code = api.RegQueryValueEx(hKey, name, 0, null, byteData, lpcbData);
+                if (code == WinError.ERROR_SUCCESS) {
+                    RegistryValue value = RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue());
+                    return Optional.of(value);
+                }
+            }
+            throw RegistryException.of(code, path, name);
+        }
+
+        /**
+         * Sets a registry value.
+         *
+         * @param value The registry value to set.
+         * @throws NullPointerException If the given registry value is {@code null}.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the value cannot be set for another reason.
+         */
+        public void setValue(RegistryValue value) {
+            Objects.requireNonNull(value);
+
+            byte[] data = value.rawData();
+            int code = api.RegSetValueEx(hKey, value.name(), 0, value.type(), data, data.length);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path, name);
+            }
+        }
+
+        /**
+         * Deletes a registry value.
+         *
+         * @param name The name of the registry value to exist.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
+         * @throws NoSuchRegistryValueException If the registry value does not exist.
+         * @throws RegistryException If the value cannot be deleted for another reason.
+         */
+        public void deleteValue(String name) {
+            Objects.requireNonNull(name);
+
+            int code = api.RegDeleteValue(hKey, name);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path);
+            }
+        }
+
+        /**
+         * Deletes a registry value if it exists.
+         *
+         * @param name The name of the registry value to exist.
+         * @return {@code true} if the registry value existed and was deleted, or {@code false} if it didn't exist.
+         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the value cannot be deleted for another reason.
+         */
+        public boolean deleteValueIfExists(String name) {
+            Objects.requireNonNull(name);
+
+            int code = api.RegDeleteValue(hKey, name);
+            if (code == WinError.ERROR_SUCCESS) {
+                return true;
+            }
+            if (code == WinError.ERROR_FILE_NOT_FOUND) {
+                return false;
+            }
+            throw RegistryException.of(code, path);
+        }
+
+        /**
+         * Deletes all values of the registry key from which this handle was retrieved that match a specific predicate.
+         *
+         * @param valuePredicate The predicate to use.
+         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws RegistryException If the values cannot be deleted for another reason.
+         */
+        public void deleteValues(Predicate<? super RegistryValue> valuePredicate) {
+            Objects.requireNonNull(valuePredicate);
+
+            List<String> values = new ArrayList<>();
+            for (Iterator<RegistryValue> i = valueIterator(); i.hasNext(); ) {
+                RegistryValue value = i.next();
+                if (valuePredicate.test(value)) {
+                    values.add(value.name());
+                }
+            }
+            for (String value : values) {
+                // Don't fail if the value no longer exists
+                deleteValueIfExists(value);
+            }
+        }
+
+        // other
 
         @Override
         public void close() {
             closeKey(hKey);
+        }
+    }
+
+    /**
+     * An enumeration over the possible options for opening Windows registry handles.
+     *
+     * @author Rob Spoor
+     */
+    public enum HandleOption {
+        /** Indicates that the registry should be created if it does not exist yet. */
+        CREATE(0),
+
+        /** Indicates that setting and deleting registry values should be allowed. */
+        MANAGE_VALUES(WinNT.KEY_SET_VALUE),
+        ;
+
+        private final int samDesired;
+
+        HandleOption(int samDesired) {
+            this.samDesired = samDesired;
         }
     }
 }
