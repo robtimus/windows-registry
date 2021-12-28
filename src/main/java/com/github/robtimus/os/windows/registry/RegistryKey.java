@@ -313,6 +313,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * Deletes a registry value.
      *
      * @param name The name of the registry value to exist.
+     * @throws NullPointerException If the given name is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws NoSuchRegistryValueException If the registry value does not exist.
      * @throws RegistryException If the value cannot be deleted for another reason.
@@ -330,6 +331,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      *
      * @param name The name of the registry value to exist.
      * @return {@code true} if the registry value existed and was deleted, or {@code false} if it didn't exist.
+     * @throws NullPointerException If the given name is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the value cannot be deleted for another reason.
      */
@@ -345,6 +347,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * Deletes all values of this registry key that match a specific predicate.
      *
      * @param valuePredicate The predicate to use.
+     * @throws NullPointerException If the given predicate is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the values cannot be deleted for another reason.
      */
@@ -609,6 +612,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
          * consuming the stream.
          *
          * @return A stream with all direct sub keys of the registry key from which this handle was retrieved.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the sub keys cannot be queried for another reason.
          */
@@ -655,6 +659,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
          *
          * @param namePredicate The predicate to use.
          * @throws NullPointerException If the given predicate is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the sub keys cannot be deleted for another reason.
          */
@@ -690,7 +695,8 @@ public class RegistryKey implements Comparable<RegistryKey> {
          * consuming the stream.
          *
          * @return A stream with all values of the registry key from which this handle was retrieved.
-         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the values cannot be queried for another reason.
          */
         public Stream<RegistryValue> values() {
@@ -706,7 +712,8 @@ public class RegistryKey implements Comparable<RegistryKey> {
          *
          * @param filter A filter that can be used to limit which registry values are returned.
          * @return A stream with all values of the registry key from which this handle was retrieved.
-         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the values cannot be queried for another reason.
          */
         public Stream<RegistryValue> values(RegistryValue.Filter filter) {
@@ -768,6 +775,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
          * @param name The name of the registry value to return.
          * @return An {@link Optional} with the registry value with the given name, or {@link Optional#empty()} if there is no such registry value.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the value cannot be returned for another reason.
          */
@@ -799,6 +807,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
          *
          * @param value The registry value to set.
          * @throws NullPointerException If the given registry value is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the value cannot be set for another reason.
          */
@@ -816,6 +825,8 @@ public class RegistryKey implements Comparable<RegistryKey> {
          * Deletes a registry value.
          *
          * @param name The name of the registry value to exist.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws NoSuchRegistryValueException If the registry value does not exist.
          * @throws RegistryException If the value cannot be deleted for another reason.
@@ -834,7 +845,9 @@ public class RegistryKey implements Comparable<RegistryKey> {
          *
          * @param name The name of the registry value to exist.
          * @return {@code true} if the registry value existed and was deleted, or {@code false} if it didn't exist.
-         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the value cannot be deleted for another reason.
          */
         public boolean deleteValueIfExists(String name) {
@@ -854,7 +867,9 @@ public class RegistryKey implements Comparable<RegistryKey> {
          * Deletes all values of the registry key from which this handle was retrieved that match a specific predicate.
          *
          * @param valuePredicate The predicate to use.
-         * @throws NoSuchRegistryKeyException If the registry key no longer {@link RegistryKey#exists() exists}.
+         * @throws NullPointerException If the given predicate is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the values cannot be deleted for another reason.
          */
         public void deleteValues(Predicate<? super RegistryValue> valuePredicate) {

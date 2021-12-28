@@ -50,22 +50,31 @@ public class RegistryException extends RuntimeException {
     }
 
     static RegistryException of(int errorCode, String path) {
-        if (errorCode == WinError.ERROR_FILE_NOT_FOUND) {
-            return new NoSuchRegistryKeyException(path);
+        switch (errorCode) {
+            case WinError.ERROR_KEY_DELETED:
+            case WinError.ERROR_FILE_NOT_FOUND:
+                return new NoSuchRegistryKeyException(errorCode, path);
+            case WinError.ERROR_ACCESS_DENIED:
+                return new RegistryAccessDeniedException();
+            case WinError.ERROR_INVALID_HANDLE:
+                return new InvalidRegistryHandleException();
+            default:
+                return new RegistryException(errorCode);
         }
-        if (errorCode == WinError.ERROR_ACCESS_DENIED) {
-            return new RegistryAccessDeniedException();
-        }
-        throw new RegistryException(errorCode);
     }
 
     static RegistryException of(int errorCode, String path, String name) {
-        if (errorCode == WinError.ERROR_FILE_NOT_FOUND) {
-            return new NoSuchRegistryValueException(path, name);
+        switch (errorCode) {
+            case WinError.ERROR_KEY_DELETED:
+                return new NoSuchRegistryKeyException(errorCode, path);
+            case WinError.ERROR_FILE_NOT_FOUND:
+                return new NoSuchRegistryValueException(path, name);
+            case WinError.ERROR_ACCESS_DENIED:
+                return new RegistryAccessDeniedException();
+            case WinError.ERROR_INVALID_HANDLE:
+                return new InvalidRegistryHandleException();
+            default:
+                return new RegistryException(errorCode);
         }
-        if (errorCode == WinError.ERROR_ACCESS_DENIED) {
-            return new RegistryAccessDeniedException();
-        }
-        throw new RegistryException(errorCode);
     }
 }

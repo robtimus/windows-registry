@@ -20,35 +20,17 @@ package com.github.robtimus.os.windows.registry;
 import com.sun.jna.platform.win32.WinError;
 
 /**
- * Thrown when an attempt is made to access a registry key that does not exist.
+ * Thrown when an attempt is made to access a registry key using a handle that is no longer valid.
  *
  * @author Rob Spoor
  */
 @SuppressWarnings("serial")
-public class NoSuchRegistryKeyException extends RegistryException {
-
-    private final String path;
+public class InvalidRegistryHandleException extends RegistryException {
 
     /**
      * Creates a new exception.
-     *
-     * @param path The path that was used to access the non-existing registry key.
      */
-    public NoSuchRegistryKeyException(String path) {
-        this(WinError.ERROR_FILE_NOT_FOUND, path);
-    }
-
-    NoSuchRegistryKeyException(int errorCode, String path) {
-        super(errorCode);
-        this.path = path;
-    }
-
-    /**
-     * Returns the path that was used to access the non-existing registry key.
-     *
-     * @return The path that was used to access the non-existing registry key.
-     */
-    public String path() {
-        return path;
+    public InvalidRegistryHandleException() {
+        super(WinError.ERROR_INVALID_HANDLE);
     }
 }
