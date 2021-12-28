@@ -74,7 +74,8 @@ public class RegistryKey implements Comparable<RegistryKey> {
     private static final Comparator<RegistryKey> COMPARATOR = Comparator.comparing((RegistryKey k) -> k.root.name())
             .thenComparing(k -> k.path, Comparator.nullsFirst(Comparator.naturalOrder()));
 
-    private static Advapi32 api = Advapi32.INSTANCE;
+    // Non-private non-final to allow replacing for testing
+    static Advapi32 api = Advapi32.INSTANCE;
 
     private final RootKey root;
 
