@@ -46,7 +46,7 @@ public class QWordRegistryValue extends RegistryValue {
 
         ByteBuffer buffer = ByteBuffer.wrap(data);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
-        this.value = buffer.getInt();
+        this.value = buffer.getLong();
     }
 
     /**

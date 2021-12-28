@@ -44,7 +44,7 @@ public class BinaryRegistryValue extends RegistryValue {
 
     BinaryRegistryValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_BINARY);
-        this.data = Arrays.copyOfRange(data, 0, dataLength);
+        this.data = Arrays.copyOf(data, dataLength);
     }
 
     /**
