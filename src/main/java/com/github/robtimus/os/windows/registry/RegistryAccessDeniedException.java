@@ -29,8 +29,10 @@ public class RegistryAccessDeniedException extends RegistryException {
 
     /**
      * Creates a new exception.
+     *
+     * @param path The path of the registry key for which access was denied.
      */
-    public RegistryAccessDeniedException() {
-        super(WinError.ERROR_ACCESS_DENIED);
+    public RegistryAccessDeniedException(String path) {
+        super(WinError.ERROR_ACCESS_DENIED, path);
     }
 }

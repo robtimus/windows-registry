@@ -27,8 +27,6 @@ import com.sun.jna.platform.win32.WinError;
 @SuppressWarnings("serial")
 public class NoSuchRegistryKeyException extends RegistryException {
 
-    private final String path;
-
     /**
      * Creates a new exception.
      *
@@ -39,16 +37,6 @@ public class NoSuchRegistryKeyException extends RegistryException {
     }
 
     NoSuchRegistryKeyException(int errorCode, String path) {
-        super(errorCode);
-        this.path = path;
-    }
-
-    /**
-     * Returns the path that was used to access the non-existing registry key.
-     *
-     * @return The path that was used to access the non-existing registry key.
-     */
-    public String path() {
-        return path;
+        super(errorCode, path);
     }
 }

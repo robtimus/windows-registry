@@ -27,24 +27,12 @@ import com.sun.jna.platform.win32.WinError;
 @SuppressWarnings("serial")
 public class RegistryKeyAlreadyExistsException extends RegistryException {
 
-    private final String path;
-
     /**
      * Creates a new exception.
      *
      * @param path The path that was used to create the existing registry key.
      */
     public RegistryKeyAlreadyExistsException(String path) {
-        super(WinError.ERROR_ALREADY_EXISTS);
-        this.path = path;
-    }
-
-    /**
-     * Returns the path that was used to create the existing registry key.
-     *
-     * @return The path that was used to create the existing registry key.
-     */
-    public String path() {
-        return path;
+        super(WinError.ERROR_ALREADY_EXISTS, path);
     }
 }

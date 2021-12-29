@@ -300,7 +300,8 @@ class RootKeyTest {
             mockValue(new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
         }
     }
 
@@ -334,7 +335,8 @@ class RootKeyTest {
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
         }
     }
 
@@ -402,7 +404,9 @@ class RootKeyTest {
             when(RegistryKey.api.RegDeleteValue(any(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            assertThrows(InvalidRegistryHandleException.class, () -> registryKey.deleteValueIfExists("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.deleteValueIfExists("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
         }
     }
 
@@ -415,7 +419,8 @@ class RootKeyTest {
     @Test
     @DisplayName("create")
     void testCreate() {
-        assertThrows(RegistryKeyAlreadyExistsException.class, RegistryKey.HKEY_CURRENT_USER::create);
+        RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, RegistryKey.HKEY_CURRENT_USER::create);
+        assertEquals("HKEY_CURRENT_USER", exception.path());
     }
 
     @Test

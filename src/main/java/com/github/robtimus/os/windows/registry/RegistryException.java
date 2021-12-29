@@ -29,15 +29,18 @@ import com.sun.jna.platform.win32.WinError;
 public class RegistryException extends RuntimeException {
 
     private final int errorCode;
+    private final String path;
 
     /**
      * Creates a new exception.
      *
      * @param errorCode The error code that was returned from the Windows API.
+     * @param path The path of the registry key for which this exception was thrown.
      */
-    public RegistryException(int errorCode) {
+    public RegistryException(int errorCode, String path) {
         super(Kernel32Util.formatMessage(errorCode));
         this.errorCode = errorCode;
+        this.path = path;
     }
 
     /**
@@ -49,17 +52,26 @@ public class RegistryException extends RuntimeException {
         return errorCode;
     }
 
+    /**
+     * Returns the path of the registry key for which this exception was thrown.
+     *
+     * @return The path of the registry key for which this exception was thrown.
+     */
+    public String path() {
+        return path;
+    }
+
     static RegistryException of(int errorCode, String path) {
         switch (errorCode) {
             case WinError.ERROR_KEY_DELETED:
             case WinError.ERROR_FILE_NOT_FOUND:
                 return new NoSuchRegistryKeyException(errorCode, path);
             case WinError.ERROR_ACCESS_DENIED:
-                return new RegistryAccessDeniedException();
+                return new RegistryAccessDeniedException(path);
             case WinError.ERROR_INVALID_HANDLE:
-                return new InvalidRegistryHandleException();
+                return new InvalidRegistryHandleException(path);
             default:
-                return new RegistryException(errorCode);
+                return new RegistryException(errorCode, path);
         }
     }
 
@@ -70,11 +82,11 @@ public class RegistryException extends RuntimeException {
             case WinError.ERROR_FILE_NOT_FOUND:
                 return new NoSuchRegistryValueException(path, name);
             case WinError.ERROR_ACCESS_DENIED:
-                return new RegistryAccessDeniedException();
+                return new RegistryAccessDeniedException(path);
             case WinError.ERROR_INVALID_HANDLE:
-                return new InvalidRegistryHandleException();
+                return new InvalidRegistryHandleException(path);
             default:
-                return new RegistryException(errorCode);
+                return new RegistryException(errorCode, path);
         }
     }
 }

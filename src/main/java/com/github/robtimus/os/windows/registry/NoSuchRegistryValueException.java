@@ -27,7 +27,6 @@ import com.sun.jna.platform.win32.WinError;
 @SuppressWarnings("serial")
 public class NoSuchRegistryValueException extends RegistryException {
 
-    private final String path;
     private final String name;
 
     /**
@@ -37,18 +36,8 @@ public class NoSuchRegistryValueException extends RegistryException {
      * @param name The name of the non-existing registry value.
      */
     public NoSuchRegistryValueException(String path, String name) {
-        super(WinError.ERROR_FILE_NOT_FOUND);
-        this.path = path;
+        super(WinError.ERROR_FILE_NOT_FOUND, path);
         this.name = name;
-    }
-
-    /**
-     * Returns the path to the registry key for which the non-existing registry value was attempted to be accessed.
-     *
-     * @return The path to the registry key for which the non-existing registry value was attempted to be accessed.
-     */
-    public String path() {
-        return path;
     }
 
     /**

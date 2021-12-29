@@ -478,7 +478,8 @@ class RegistryKeyTest {
             mockValue(new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(any());
@@ -539,7 +540,8 @@ class RegistryKeyTest {
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(any());
@@ -662,7 +664,9 @@ class RegistryKeyTest {
             when(RegistryKey.api.RegDeleteValue(any(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, () -> registryKey.deleteValueIfExists("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.deleteValueIfExists("string"));
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(any());
@@ -703,7 +707,8 @@ class RegistryKeyTest {
             when(RegistryKey.api.RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, registryKey::exists);
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::exists);
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -756,7 +761,8 @@ class RegistryKeyTest {
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, registryKey::create);
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::create);
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
@@ -809,7 +815,8 @@ class RegistryKeyTest {
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
@@ -853,7 +860,8 @@ class RegistryKeyTest {
             when(RegistryKey.api.RegDeleteKey(WinReg.HKEY_CURRENT_USER, "path\\failure")).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -896,7 +904,8 @@ class RegistryKeyTest {
             when(RegistryKey.api.RegDeleteKey(any(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());

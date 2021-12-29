@@ -29,8 +29,10 @@ public class InvalidRegistryHandleException extends RegistryException {
 
     /**
      * Creates a new exception.
+     *
+     * @param path The path of the registry key the invalid handle is for.
      */
-    public InvalidRegistryHandleException() {
-        super(WinError.ERROR_INVALID_HANDLE);
+    public InvalidRegistryHandleException(String path) {
+        super(WinError.ERROR_INVALID_HANDLE, path);
     }
 }
