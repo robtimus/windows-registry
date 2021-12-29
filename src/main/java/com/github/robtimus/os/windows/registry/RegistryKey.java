@@ -18,20 +18,17 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.function.Predicate;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
@@ -227,22 +224,6 @@ public class RegistryKey implements Comparable<RegistryKey> {
                 .onClose(handle::close);
     }
 
-    /**
-     * Deletes all direct sub keys of this registry key whose names match a specific predicate.
-     *
-     * @param namePredicate The predicate to use.
-     * @throws NullPointerException If the given predicate is {@code null}.
-     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
-     * @throws RegistryException If the sub keys cannot be deleted for another reason.
-     */
-    public void deleteSubKeys(Predicate<? super String> namePredicate) {
-        Objects.requireNonNull(namePredicate);
-
-        try (Handle handle = handle(WinNT.KEY_READ)) {
-            handle.deleteSubKeys(namePredicate);
-        }
-    }
-
     // values
 
     /**
@@ -344,22 +325,6 @@ public class RegistryKey implements Comparable<RegistryKey> {
         }
     }
 
-    /**
-     * Deletes all values of this registry key that match a specific predicate.
-     *
-     * @param valuePredicate The predicate to use.
-     * @throws NullPointerException If the given predicate is {@code null}.
-     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
-     * @throws RegistryException If the values cannot be deleted for another reason.
-     */
-    public void deleteValues(Predicate<? super RegistryValue> valuePredicate) {
-        Objects.requireNonNull(valuePredicate);
-
-        try (Handle handle = handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
-            handle.deleteValues(valuePredicate);
-        }
-    }
-
     // other
 
     /**
@@ -427,14 +392,11 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public void delete() {
-        // There will always be a parent, as RootKey overrides this method
-        RegistryKey parent = parent().orElseThrow();
+        assert path != null;
 
-        try (Handle handle = parent.handle(WinNT.KEY_READ)) {
-            int code = api.RegDeleteKey(handle.hKey, name());
-            if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
-            }
+        int code = api.RegDeleteKey(root.hKey, path);
+        if (code != WinError.ERROR_SUCCESS) {
+            throw RegistryException.of(code, path());
         }
     }
 
@@ -446,19 +408,16 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public boolean deleteIfExists() {
-        // There will always be a parent, as RootKey overrides this method
-        RegistryKey parent = parent().orElseThrow();
+        assert path != null;
 
-        try (Handle handle = parent.handle(WinNT.KEY_READ)) {
-            int code = api.RegDeleteKey(handle.hKey, name());
-            if (code == WinError.ERROR_SUCCESS) {
-                return true;
-            }
-            if (code == WinError.ERROR_FILE_NOT_FOUND) {
-                return false;
-            }
-            throw RegistryException.of(code, path());
+        int code = api.RegDeleteKey(root.hKey, path);
+        if (code == WinError.ERROR_SUCCESS) {
+            return true;
         }
+        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+            return false;
+        }
+        throw RegistryException.of(code, path());
     }
 
     // handles
@@ -655,37 +614,6 @@ public class RegistryKey implements Comparable<RegistryKey> {
             };
         }
 
-        /**
-         * Deletes all direct sub keys of the registry key from which this handle was retrieved whose names match a specific predicate.
-         *
-         * @param namePredicate The predicate to use.
-         * @throws NullPointerException If the given predicate is {@code null}.
-         * @throws InvalidRegistryHandleException If this handle is no longer valid.
-         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
-         * @throws RegistryException If the sub keys cannot be deleted for another reason.
-         */
-        public void deleteSubKeys(Predicate<? super String> namePredicate) {
-            Objects.requireNonNull(namePredicate);
-
-            List<String> subKeys = new ArrayList<>();
-            for (Iterator<String> i = subKeyIterator(); i.hasNext(); ) {
-                String subKey = i.next();
-                if (namePredicate.test(subKey)) {
-                    subKeys.add(subKey);
-                }
-            }
-            for (String subKey : subKeys) {
-                deleteSubKey(subKey);
-            }
-        }
-
-        private void deleteSubKey(String subKey) {
-            int code = api.RegDeleteKey(hKey, subKey);
-            if (code != WinError.ERROR_SUCCESS && code != WinError.ERROR_FILE_NOT_FOUND) {
-                throw RegistryException.of(code, path());
-            }
-        }
-
         // values
 
         /**
@@ -862,31 +790,6 @@ public class RegistryKey implements Comparable<RegistryKey> {
                 return false;
             }
             throw RegistryException.of(code, path(), name);
-        }
-
-        /**
-         * Deletes all values of the registry key from which this handle was retrieved that match a specific predicate.
-         *
-         * @param valuePredicate The predicate to use.
-         * @throws NullPointerException If the given predicate is {@code null}.
-         * @throws InvalidRegistryHandleException If this handle is no longer valid.
-         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
-         * @throws RegistryException If the values cannot be deleted for another reason.
-         */
-        public void deleteValues(Predicate<? super RegistryValue> valuePredicate) {
-            Objects.requireNonNull(valuePredicate);
-
-            List<String> values = new ArrayList<>();
-            for (Iterator<RegistryValue> i = valueIterator(null); i.hasNext(); ) {
-                RegistryValue value = i.next();
-                if (valuePredicate.test(value)) {
-                    values.add(value.name());
-                }
-            }
-            for (String value : values) {
-                // Don't fail if the value no longer exists
-                deleteValueIfExists(value);
-            }
         }
 
         // other
