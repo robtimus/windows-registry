@@ -22,6 +22,7 @@ import static com.github.robtimus.os.windows.registry.RegistryKeyTest.mockValue;
 import static com.github.robtimus.os.windows.registry.RegistryKeyTest.mockValues;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -439,6 +440,55 @@ class RootKeyTest {
     @DisplayName("deleteIfExists")
     void testDeleteIfExists() {
         assertThrows(UnsupportedOperationException.class, RegistryKey.HKEY_CURRENT_USER::deleteIfExists);
+    }
+
+    @Nested
+    @DisplayName("handle")
+    class Handle {
+
+        @Test
+        @DisplayName("with no arguments")
+        void testNoArguments() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertDoesNotThrow(() -> {
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    // Do nothing
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("with CREATE")
+        void testWithCreate() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertDoesNotThrow(() -> {
+                try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
+                    // Do nothing
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("with MANAGE_VALUES")
+        void testWithManageValues() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertDoesNotThrow(() -> {
+                try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
+                    // Do nothing
+                }
+            });
+        }
+
+        @Test
+        @DisplayName("with CREATE and MANAGE_VALUES")
+        void testWithCreateAndManageValues() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertDoesNotThrow(() -> {
+                try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
+                    // Do nothing
+                }
+            });
+        }
     }
 
     @ParameterizedTest(name = "{1}")
