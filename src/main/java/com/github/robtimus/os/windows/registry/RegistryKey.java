@@ -236,8 +236,11 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the values cannot be queried for another reason.
      */
+    @SuppressWarnings("resource")
     public Stream<RegistryValue> values() {
-        return values(null);
+        Handle handle = handle(WinNT.KEY_READ);
+        return handle.values()
+                .onClose(handle::close);
     }
 
     /**
@@ -587,7 +590,9 @@ public class RegistryKey implements Comparable<RegistryKey> {
             IntByReference lpcMaxSubKeyLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, lpcMaxSubKeyLen, null, null, null, null, null, null);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
+                RegistryException exception = RegistryException.of(code, path());
+                closeKey(exception);
+                throw exception;
             }
 
             char[] lpName = new char[lpcMaxSubKeyLen.getValue() + 1];
@@ -656,7 +661,9 @@ public class RegistryKey implements Comparable<RegistryKey> {
             IntByReference lpcMaxValueLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
+                RegistryException exception = RegistryException.of(code, path());
+                closeKey(exception);
+                throw exception;
             }
 
             char[] lpValueName = new char[lpcMaxValueNameLen.getValue() + 1];
@@ -796,7 +803,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
 
         @Override
         public void close() {
-            closeKey(hKey);
+            RegistryKey.this.closeKey(hKey);
+        }
+
+        void closeKey(RegistryException exception) {
+            int code = api.RegCloseKey(hKey);
+            if (code != WinError.ERROR_SUCCESS) {
+                exception.addSuppressed(RegistryException.of(code, path()));
+            }
         }
     }
 

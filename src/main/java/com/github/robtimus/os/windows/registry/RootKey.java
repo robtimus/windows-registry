@@ -117,5 +117,10 @@ final class RootKey extends RegistryKey {
         public void close() {
             // Don't close hKey
         }
+
+        @Override
+        void closeKey(RegistryException exception) {
+            // Don't close hKey
+        }
     }
 }
