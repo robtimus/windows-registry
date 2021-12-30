@@ -17,6 +17,9 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Deque;
 import java.util.Optional;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 
@@ -47,8 +50,28 @@ final class RootKey extends RegistryKey {
     // traversal
 
     @Override
+    public boolean isRoot() {
+        return true;
+    }
+
+    @Override
+    public RegistryKey root() {
+        return this;
+    }
+
+    @Override
     public Optional<RegistryKey> parent() {
         return Optional.empty();
+    }
+
+    @Override
+    Collection<String> pathParts() {
+        return Collections.emptyList();
+    }
+
+    @Override
+    RegistryKey fromPathParts(Deque<String> pathParts) {
+        return new SubKey(this, pathParts);
     }
 
     // other
@@ -81,17 +104,7 @@ final class RootKey extends RegistryKey {
     // handles
 
     @Override
-    public Handle handle() {
-        return handle;
-    }
-
-    @Override
-    public Handle handle(HandleOption... options) {
-        return handle;
-    }
-
-    @Override
-    Handle handle(int samDesired) {
+    Handle handle(int samDesired, boolean create) {
         return handle;
     }
 
@@ -110,7 +123,7 @@ final class RootKey extends RegistryKey {
     private final class Handle extends RegistryKey.Handle {
 
         private Handle() {
-            super(hKey);
+            super(RootKey.this.hKey);
         }
 
         @Override
@@ -119,7 +132,7 @@ final class RootKey extends RegistryKey {
         }
 
         @Override
-        void closeKey(RegistryException exception) {
+        void close(RuntimeException exception) {
             // Don't close hKey
         }
     }

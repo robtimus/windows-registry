@@ -19,8 +19,8 @@ package com.github.robtimus.os.windows.registry;
 
 import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.Deque;
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -38,7 +38,6 @@ import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.WinReg.HKEY;
-import com.sun.jna.platform.win32.WinReg.HKEYByReference;
 import com.sun.jna.ptr.IntByReference;
 
 /**
@@ -46,7 +45,7 @@ import com.sun.jna.ptr.IntByReference;
  *
  * @author Rob Spoor
  */
-public class RegistryKey implements Comparable<RegistryKey> {
+public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     /** The HKEY_CLASSES_ROOT root key. */
     public static final RegistryKey HKEY_CLASSES_ROOT = new RootKey(WinReg.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
@@ -63,43 +62,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
     /** The HKEY_CURRENT_CONFIG root key. */
     public static final RegistryKey HKEY_CURRENT_CONFIG = new RootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
 
-    private static final char SEPARATOR_CHAR = '\\';
-    private static final String SEPARATOR = Character.toString(SEPARATOR_CHAR);
+    static final String SEPARATOR = "\\"; //$NON-NLS-1$
 
     private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
-
-    private static final Comparator<RegistryKey> COMPARATOR = Comparator.comparing((RegistryKey k) -> k.root.name())
-            .thenComparing(k -> k.path, Comparator.nullsFirst(Comparator.naturalOrder()));
 
     // Non-private non-final to allow replacing for testing
     static Advapi32 api = Advapi32.INSTANCE;
 
-    private final RootKey root;
-
-    private final String path;
-    private final Deque<String> pathParts;
-
     RegistryKey() {
-        this.root = (RootKey) this;
-
-        this.path = null;
-        this.pathParts = new ArrayDeque<>(0);
-    }
-
-    private RegistryKey(RootKey root, Deque<String> pathParts) {
-        this.root = root;
-
-        this.path = String.join(SEPARATOR, pathParts);
-        this.pathParts = pathParts;
-    }
-
-    private RegistryKey(RegistryKey parent, String name) {
-        this.root = parent.root;
-
-        this.pathParts = new ArrayDeque<>(parent.pathParts.size());
-        this.pathParts.addAll(parent.pathParts);
-        this.pathParts.add(name);
-        this.path = String.join(SEPARATOR, this.pathParts);
     }
 
     // structural
@@ -109,20 +79,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
      *
      * @return The name of the registry key.
      */
-    public String name() {
-        return pathParts.getLast();
-    }
+    public abstract String name();
 
     /**
      * Returns the full path to the registry key.
      *
      * @return The full path to the registry key.
      */
-    public String path() {
-        assert path != null;
-
-        return root.name() + SEPARATOR + path;
-    }
+    public abstract String path();
 
     // traversal
 
@@ -137,9 +101,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @see #HKEY_USERS
      * @see #HKEY_CURRENT_CONFIG
      */
-    public boolean isRoot() {
-        return this == root;
-    }
+    public abstract boolean isRoot();
 
     /**
      * Returns the root of the registry key.
@@ -152,26 +114,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @see #HKEY_USERS
      * @see #HKEY_CURRENT_CONFIG
      */
-    public RegistryKey root() {
-        return root;
-    }
+    public abstract RegistryKey root();
 
     /**
      * Returns the parent registry key.
      *
      * @return An {@link Optional} with the parent registry key, or {@link Optional#empty()} if this registry key is a root key.
      */
-    public Optional<RegistryKey> parent() {
-        if (pathParts.size() == 1) {
-            // Only one part, so the parent is the root
-            return Optional.of(root);
-        }
-
-        Deque<String> parentPathParts = new ArrayDeque<>(pathParts);
-        parentPathParts.removeLast();
-        RegistryKey parent = new RegistryKey(root, parentPathParts);
-        return Optional.of(parent);
-    }
+    public abstract Optional<RegistryKey> parent();
 
     /**
      * Returns a registry key relative to this registry key.
@@ -188,7 +138,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
             return this;
         }
 
-        Deque<String> result = new ArrayDeque<>(pathParts);
+        Deque<String> result = new ArrayDeque<>(pathParts());
         String[] relativePathParts = PATH_SPLIT_PATTERN.split(relativePath);
         for (String relativePathPart : relativePathParts) {
             if ("..".equals(relativePathPart)) { //$NON-NLS-1$
@@ -201,11 +151,15 @@ public class RegistryKey implements Comparable<RegistryKey> {
         }
 
         if (result.isEmpty()) {
-            return root;
+            return root();
         }
 
-        return new RegistryKey(root, result);
+        return fromPathParts(result);
     }
+
+    abstract Collection<String> pathParts();
+
+    abstract RegistryKey fromPathParts(Deque<String> pathParts);
 
     /**
      * Returns all direct sub keys of this registry key. This stream should be closed afterwards.
@@ -220,8 +174,13 @@ public class RegistryKey implements Comparable<RegistryKey> {
     @SuppressWarnings("resource")
     public Stream<RegistryKey> subKeys() {
         Handle handle = handle(WinNT.KEY_READ);
-        return handle.subKeys()
-                .onClose(handle::close);
+        try {
+            return handle.subKeys()
+                    .onClose(handle::close);
+        } catch (RuntimeException e) {
+            handle.close(e);
+            throw e;
+        }
     }
 
     // values
@@ -239,8 +198,13 @@ public class RegistryKey implements Comparable<RegistryKey> {
     @SuppressWarnings("resource")
     public Stream<RegistryValue> values() {
         Handle handle = handle(WinNT.KEY_READ);
-        return handle.values()
-                .onClose(handle::close);
+        try {
+            return handle.values()
+                    .onClose(handle::close);
+        } catch (RuntimeException e) {
+            handle.close(e);
+            throw e;
+        }
     }
 
     /**
@@ -336,20 +300,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @return {@code true} if this registry key exists, or {@code false} otherwise.
      * @throws RegistryException If the existence of this registry cannot be determined.
      */
-    public boolean exists() {
-        assert path != null;
-
-        HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(root.hKey, path, 0, WinNT.KEY_READ, phkResult);
-        if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue());
-            return true;
-        }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
-            return false;
-        }
-        throw RegistryException.of(code, path());
-    }
+    public abstract boolean exists();
 
     /**
      * Creates this registry key if it does not exist already.
@@ -357,11 +308,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryKeyAlreadyExistsException If this registry key already {@link #exists() exists}.
      * @throws RegistryException If this registry key cannot be created for another reason.
      */
-    public void create() {
-        if (createOrOpen() == WinNT.REG_OPENED_EXISTING_KEY) {
-            throw new RegistryKeyAlreadyExistsException(path());
-        }
-    }
+    public abstract void create();
 
     /**
      * Creates this registry key if it does not exist already.
@@ -369,23 +316,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @return {@code true} if the registry key was created, or {@code false} if it already {@link #exists() existed}.
      * @throws RegistryException If this registry key cannot be created.
      */
-    public boolean createIfNotExists() {
-        return createOrOpen() == WinNT.REG_CREATED_NEW_KEY;
-    }
-
-    private int createOrOpen() {
-        assert path != null;
-
-        HKEYByReference phkResult = new HKEYByReference();
-        IntByReference lpdwDisposition = new IntByReference();
-
-        int code = api.RegCreateKeyEx(root.hKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
-        if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue());
-            return lpdwDisposition.getValue();
-        }
-        throw RegistryException.of(code, path());
-    }
+    public abstract boolean createIfNotExists();
 
     /**
      * Deletes this registry key and all of its values.
@@ -394,14 +325,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
-    public void delete() {
-        assert path != null;
-
-        int code = api.RegDeleteKey(root.hKey, path);
-        if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path());
-        }
-    }
+    public abstract void delete();
 
     /**
      * Deletes this registry key and all of its values if it exists.
@@ -410,18 +334,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
      * @throws UnsupportedOperationException If trying to delete on of the root keys.
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
-    public boolean deleteIfExists() {
-        assert path != null;
-
-        int code = api.RegDeleteKey(root.hKey, path);
-        if (code == WinError.ERROR_SUCCESS) {
-            return true;
-        }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
-            return false;
-        }
-        throw RegistryException.of(code, path());
-    }
+    public abstract boolean deleteIfExists();
 
     // handles
 
@@ -457,12 +370,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
         int samDesired = samDesired(optionSet);
         boolean create = optionSet.contains(HandleOption.CREATE);
 
-        return new Handle(samDesired, create);
+        return handle(samDesired, create);
     }
 
-    Handle handle(int samDesired) {
-        return new Handle(samDesired);
+    private Handle handle(int samDesired) {
+        return handle(samDesired, false);
     }
+
+    abstract Handle handle(int samDesired, boolean create);
 
     private int samDesired(Set<HandleOption> options) {
         int samDesired = WinNT.KEY_READ;
@@ -476,44 +391,18 @@ public class RegistryKey implements Comparable<RegistryKey> {
 
     @Override
     public int compareTo(RegistryKey key) {
-        return COMPARATOR.compare(this, key);
+        return path().compareTo(key.path());
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || o.getClass() != getClass()) {
-            return false;
-        }
-        RegistryKey other = (RegistryKey) o;
-        assert path != null && other.path != null;
-        return root.equals(other.root) && path.equals(other.path);
-    }
+    public abstract boolean equals(Object o);
 
     @Override
-    public int hashCode() {
-        assert path != null;
-
-        int result = 1;
-        result = 31 * result + root.hashCode();
-        result = 31 * result + path.hashCode();
-        return result;
-    }
+    public abstract int hashCode();
 
     @Override
     public String toString() {
         return path();
-    }
-
-    // util
-
-    private void closeKey(HKEY hKey) {
-        int code = api.RegCloseKey(hKey);
-        if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path());
-        }
     }
 
     /**
@@ -526,43 +415,12 @@ public class RegistryKey implements Comparable<RegistryKey> {
      *
      * @author Rob Spoor
      */
-    public class Handle implements AutoCloseable {
+    public abstract class Handle implements AutoCloseable {
 
-        private final HKEY hKey;
+        final HKEY hKey;
 
         Handle(HKEY hKey) {
             this.hKey = hKey;
-        }
-
-        private Handle(int samDesired) {
-            hKey = openKey(samDesired);
-        }
-
-        private Handle(int samDesired, boolean create) {
-            hKey = create ? createOrOpenKey(samDesired) : openKey(samDesired);
-        }
-
-        private HKEY openKey(int samDesired) {
-            assert path != null;
-
-            HKEYByReference phkResult = new HKEYByReference();
-            int code = api.RegOpenKeyEx(root.hKey, path, 0, samDesired, phkResult);
-            if (code == WinError.ERROR_SUCCESS) {
-                return phkResult.getValue();
-            }
-            throw RegistryException.of(code, path());
-        }
-
-        private HKEY createOrOpenKey(int samDesired) {
-            assert path != null;
-
-            HKEYByReference phkResult = new HKEYByReference();
-
-            int code = api.RegCreateKeyEx(root.hKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
-            if (code == WinError.ERROR_SUCCESS) {
-                return phkResult.getValue();
-            }
-            throw RegistryException.of(code, path());
         }
 
         // traversal
@@ -583,16 +441,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
             Iterator<String> iterator = subKeyIterator();
             Spliterator<String> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
             return StreamSupport.stream(spliterator, false)
-                    .map(n -> new RegistryKey(RegistryKey.this, n));
+                    .map(this::subKey);
         }
 
         private Iterator<String> subKeyIterator() {
             IntByReference lpcMaxSubKeyLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, lpcMaxSubKeyLen, null, null, null, null, null, null);
             if (code != WinError.ERROR_SUCCESS) {
-                RegistryException exception = RegistryException.of(code, path());
-                closeKey(exception);
-                throw exception;
+                throw RegistryException.of(code, path());
             }
 
             char[] lpName = new char[lpcMaxSubKeyLen.getValue() + 1];
@@ -617,6 +473,14 @@ public class RegistryKey implements Comparable<RegistryKey> {
                     throw RegistryException.of(code, path());
                 }
             };
+        }
+
+        private RegistryKey subKey(String name) {
+            Collection<String> pathParts = pathParts();
+            Deque<String> newPathParts = new ArrayDeque<>(pathParts.size() + 1);
+            newPathParts.addAll(pathParts);
+            newPathParts.add(name);
+            return fromPathParts(newPathParts);
         }
 
         // values
@@ -661,9 +525,7 @@ public class RegistryKey implements Comparable<RegistryKey> {
             IntByReference lpcMaxValueLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
             if (code != WinError.ERROR_SUCCESS) {
-                RegistryException exception = RegistryException.of(code, path());
-                closeKey(exception);
-                throw exception;
+                throw RegistryException.of(code, path());
             }
 
             char[] lpValueName = new char[lpcMaxValueNameLen.getValue() + 1];
@@ -802,16 +664,9 @@ public class RegistryKey implements Comparable<RegistryKey> {
         // other
 
         @Override
-        public void close() {
-            RegistryKey.this.closeKey(hKey);
-        }
+        public abstract void close();
 
-        void closeKey(RegistryException exception) {
-            int code = api.RegCloseKey(hKey);
-            if (code != WinError.ERROR_SUCCESS) {
-                exception.addSuppressed(RegistryException.of(code, path()));
-            }
-        }
+        abstract void close(RuntimeException exception);
     }
 
     /**
