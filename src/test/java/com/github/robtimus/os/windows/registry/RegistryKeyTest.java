@@ -57,6 +57,8 @@ import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg;
+import com.sun.jna.platform.win32.WinReg.HKEY;
+import com.sun.jna.platform.win32.WinReg.HKEYByReference;
 import com.sun.jna.ptr.IntByReference;
 
 @SuppressWarnings("nls")
@@ -204,8 +206,9 @@ class RegistryKeyTest {
         }
 
         private RegistryKey testKey() {
-            mockOpenAndClose();
-            mockSubKeys("Prefs");
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft");
+
+            mockSubKeys(hKey, "Prefs");
 
             try (Stream<RegistryKey> stream = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft").subKeys()) {
                 return stream.findFirst()
@@ -221,8 +224,9 @@ class RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            mockOpenAndClose();
-            mockSubKeys("child1", "child2", "child3");
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+
+            mockSubKeys(hKey, "child1", "child2", "child3");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
@@ -238,7 +242,7 @@ class RegistryKeyTest {
             }
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
@@ -262,9 +266,9 @@ class RegistryKeyTest {
             @Test
             @DisplayName("with successful close")
             void testSuccessfulClose() {
-                mockOpenAndClose();
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -272,16 +276,17 @@ class RegistryKeyTest {
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
 
             @Test
             @DisplayName("with close failure")
             void testCloseFailure() {
-                mockOpenAndClose();
-                when(RegistryKey.api.RegCloseKey(any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
+                HKEY hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+
+                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -290,18 +295,19 @@ class RegistryKeyTest {
                 assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
         }
 
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_SUCCESS);
-            when(RegistryKey.api.RegEnumKeyEx(any(), eq(0), any(), any(), any(), any(), any(), any()))
+
+            when(RegistryKey.api.RegEnumKeyEx(eq(hKey), eq(0), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -312,7 +318,7 @@ class RegistryKeyTest {
             }
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
 
@@ -331,8 +337,9 @@ class RegistryKeyTest {
                 BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
                 DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
 
-                mockOpenAndClose();
-                mockValues(stringValue, binaryValue, wordValue);
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+
+                mockValues(hKey, stringValue, binaryValue, wordValue);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 try (Stream<RegistryValue> stream = registryKey.values()) {
@@ -344,7 +351,7 @@ class RegistryKeyTest {
                 }
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
 
             @Test
@@ -354,8 +361,9 @@ class RegistryKeyTest {
                 BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
                 DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
 
-                mockOpenAndClose();
-                mockValues(stringValue, binaryValue, wordValue);
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+
+                mockValues(hKey, stringValue, binaryValue, wordValue);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.contains("i"));
@@ -368,7 +376,7 @@ class RegistryKeyTest {
                 }
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
 
             @Test
@@ -378,8 +386,9 @@ class RegistryKeyTest {
                 BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
                 DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
 
-                mockOpenAndClose();
-                mockValues(stringValue, binaryValue, wordValue);
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+
+                mockValues(hKey, stringValue, binaryValue, wordValue);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 RegistryValue.Filter filter = RegistryValue.filter().strings().words();
@@ -392,7 +401,7 @@ class RegistryKeyTest {
                 }
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
         }
 
@@ -417,9 +426,9 @@ class RegistryKeyTest {
             @Test
             @DisplayName("with successful close")
             void testSuccessfulClose() {
-                mockOpenAndClose();
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -427,16 +436,17 @@ class RegistryKeyTest {
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
 
             @Test
             @DisplayName("with close failure")
             void testCloseFailure() {
-                mockOpenAndClose();
-                when(RegistryKey.api.RegCloseKey(any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
+                HKEY hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+
+                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -445,18 +455,19 @@ class RegistryKeyTest {
                 assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
         }
 
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_SUCCESS);
-            when(RegistryKey.api.RegEnumValue(any(), eq(0), any(), any(), any(), any(), any(byte[].class), any()))
+
+            when(RegistryKey.api.RegEnumValue(eq(hKey), eq(0), any(), any(), any(), any(), any(byte[].class), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -467,7 +478,7 @@ class RegistryKeyTest {
             }
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
 
@@ -480,15 +491,16 @@ class RegistryKeyTest {
         void testSuccess() {
             StringRegistryValue stringValue = new StringRegistryValue("string", "value");
 
-            mockOpenAndClose();
-            mockValue(stringValue);
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+
+            mockValue(hKey, stringValue);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             Optional<RegistryValue> value = registryKey.getValue("string");
             assertEquals(Optional.of(stringValue), value);
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
@@ -508,30 +520,32 @@ class RegistryKeyTest {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\non-existing");
 
-            when(RegistryKey.api.RegQueryValueEx(any(), any(), anyInt(), any(), (byte[]) isNull(), any())).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            when(RegistryKey.api.RegQueryValueEx(eq(hKey), eq("string"), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
             Optional<RegistryValue> value = registryKey.getValue("string");
             assertEquals(Optional.empty(), value);
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenAndClose();
-            mockValue(new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+
+            mockValue(hKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
 
@@ -545,20 +559,21 @@ class RegistryKeyTest {
             StringRegistryValue stringValue = new StringRegistryValue("string", "value");
             byte[] data = stringValue.rawData();
 
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            when(RegistryKey.api.RegSetValueEx(any(), eq("string"), anyInt(), eq(WinNT.REG_SZ), (byte[]) isNull(), anyInt()))
+            when(RegistryKey.api.RegSetValueEx(eq(WinReg.HKEY_CURRENT_USER), eq("string"), anyInt(), eq(WinNT.REG_SZ),
+                    any(byte[].class), eq(data.length)))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             registryKey.setValue(stringValue);
 
             ArgumentCaptor<byte[]> dataCaptor = ArgumentCaptor.forClass(byte[].class);
-            verify(RegistryKey.api).RegSetValueEx(any(), eq("string"), anyInt(), eq(WinNT.REG_SZ), dataCaptor.capture(), eq(data.length));
+            verify(RegistryKey.api).RegSetValueEx(eq(hKey), eq("string"), anyInt(), eq(WinNT.REG_SZ), dataCaptor.capture(), eq(data.length));
             assertArrayEquals(data, dataCaptor.getValue());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
@@ -583,9 +598,9 @@ class RegistryKeyTest {
         void testFailure() {
             StringRegistryValue stringValue = new StringRegistryValue("string", "value");
 
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            when(RegistryKey.api.RegSetValueEx(any(), any(), anyInt(), anyInt(), any(byte[].class), anyInt()))
+            when(RegistryKey.api.RegSetValueEx(eq(hKey), eq("string"), anyInt(), eq(WinNT.REG_SZ), any(byte[].class), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -593,7 +608,7 @@ class RegistryKeyTest {
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
 
@@ -604,17 +619,17 @@ class RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            when(RegistryKey.api.RegDeleteValue(any(), eq("string"))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegDeleteValue(hKey, "string")).thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             registryKey.deleteValue("string");
 
-            verify(RegistryKey.api).RegDeleteValue(any(), eq("string"));
+            verify(RegistryKey.api).RegDeleteValue(hKey, "string");
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
@@ -635,9 +650,9 @@ class RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            when(RegistryKey.api.RegDeleteValue(any(), any())).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            when(RegistryKey.api.RegDeleteValue(hKey, "string")).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -645,7 +660,7 @@ class RegistryKeyTest {
             assertEquals("string", exception.name());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
 
@@ -660,33 +675,33 @@ class RegistryKeyTest {
             @Test
             @DisplayName("value existed")
             void testExisted() {
-                mockOpenAndClose();
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-                when(RegistryKey.api.RegDeleteValue(any(), eq("string"))).thenReturn(WinError.ERROR_SUCCESS);
+                when(RegistryKey.api.RegDeleteValue(hKey, "string")).thenReturn(WinError.ERROR_SUCCESS);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(any(), eq("string"));
+                verify(RegistryKey.api).RegDeleteValue(hKey, "string");
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
 
             @Test
             @DisplayName("value didn't exist")
             void testValueDidntExist() {
-                mockOpenAndClose();
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-                when(RegistryKey.api.RegDeleteValue(any(), eq("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                when(RegistryKey.api.RegDeleteValue(hKey, "string")).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(any(), eq("string"));
+                verify(RegistryKey.api).RegDeleteValue(hKey, "string");
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
         }
 
@@ -708,9 +723,9 @@ class RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            when(RegistryKey.api.RegDeleteValue(any(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
+            when(RegistryKey.api.RegDeleteValue(hKey, "string")).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -718,7 +733,7 @@ class RegistryKeyTest {
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
 
@@ -729,19 +744,20 @@ class RegistryKeyTest {
         @Test
         @DisplayName("existing")
         void testExisting() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.exists());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            when(RegistryKey.api.RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any())).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.exists());
@@ -753,7 +769,8 @@ class RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
+            when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::exists);
@@ -771,28 +788,38 @@ class RegistryKeyTest {
         @Test
         @DisplayName("non-existing")
         void testCreateNonExisting() {
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any())).thenAnswer(i -> {
-                i.getArgument(8, IntByReference.class).setValue(WinNT.REG_CREATED_NEW_KEY);
+            HKEY hKey = newHKEY();
 
-                return WinError.ERROR_SUCCESS;
-            });
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\new"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(hKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\new");
             registryKey.create();
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\new"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("existing")
         void testCreateExisting() {
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any())).thenAnswer(i -> {
-                i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+            HKEY hKey = newHKEY();
 
-                return WinError.ERROR_SUCCESS;
-            });
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(hKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, registryKey::create);
@@ -800,13 +827,14 @@ class RegistryKeyTest {
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -826,41 +854,52 @@ class RegistryKeyTest {
         @Test
         @DisplayName("non-existing")
         void testCreateNonExisting() {
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any())).thenAnswer(i -> {
-                i.getArgument(8, IntByReference.class).setValue(WinNT.REG_CREATED_NEW_KEY);
+            HKEY hKey = newHKEY();
 
-                return WinError.ERROR_SUCCESS;
-            });
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\new"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(hKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\new");
             assertTrue(registryKey.createIfNotExists());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\new"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("existing")
         void testCreateExisting() {
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any())).thenAnswer(i -> {
-                i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+            HKEY hKey = newHKEY();
 
-                return WinError.ERROR_SUCCESS;
-            });
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(hKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
             assertFalse(registryKey.createIfNotExists());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -924,7 +963,7 @@ class RegistryKeyTest {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            when(RegistryKey.api.RegDeleteKey(any(), any())).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegDeleteKey(WinReg.HKEY_CURRENT_USER, "path\\existing")).thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.deleteIfExists());
@@ -937,7 +976,7 @@ class RegistryKeyTest {
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            when(RegistryKey.api.RegDeleteKey(any(), any())).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            when(RegistryKey.api.RegDeleteKey(WinReg.HKEY_CURRENT_USER, "path\\non-existing")).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.deleteIfExists());
@@ -950,7 +989,7 @@ class RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegDeleteKey(any(), any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
+            when(RegistryKey.api.RegDeleteKey(WinReg.HKEY_CURRENT_USER, "path\\failure")).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
@@ -968,7 +1007,7 @@ class RegistryKeyTest {
         @Test
         @DisplayName("with no arguments")
         void testNoArguments() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -977,15 +1016,22 @@ class RegistryKeyTest {
 
             verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("with CREATE")
         void testWithCreate() {
-            mockOpenAndClose();
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            HKEY hKey = newHKEY();
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(hKey);
+                        // disposition doesn't matter
+
+                        return WinError.ERROR_SUCCESS;
+                    });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
@@ -993,15 +1039,15 @@ class RegistryKeyTest {
             }
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), any(), anyInt(),
-                    eq(WinNT.KEY_READ), any(), any(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"),
+                    anyInt(), any(), anyInt(), eq(WinNT.KEY_READ), any(), any(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("with MANAGE_VALUES")
         void testWithManageValues() {
-            mockOpenAndClose();
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
@@ -1011,15 +1057,22 @@ class RegistryKeyTest {
             verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(),
                     eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("with CREATE and MANAGE_VALUES")
         void testWithCreateAndManageValues() {
-            mockOpenAndClose();
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            HKEY hKey = newHKEY();
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(hKey);
+                        // disposition doesn't matter
+
+                        return WinError.ERROR_SUCCESS;
+                    });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
@@ -1027,16 +1080,16 @@ class RegistryKeyTest {
             }
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
-            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), any(), anyInt(),
-                    eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), any(), any(), any());
-            verify(RegistryKey.api).RegCloseKey(any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"),
+                    anyInt(), any(), anyInt(), eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), any(), any(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         @Test
         @DisplayName("open failure")
         void testOpenFailure() {
-            mockOpenAndClose();
-            when(RegistryKey.api.RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any())).thenReturn(WinError.ERROR_ACCESS_DENIED);
+            when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any()))
+                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::handle);
@@ -1050,8 +1103,8 @@ class RegistryKeyTest {
         @Test
         @DisplayName("create failure")
         void testCreateFailure() {
-            mockOpenAndClose();
-            when(RegistryKey.api.RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
@@ -1068,14 +1121,19 @@ class RegistryKeyTest {
         @Test
         @DisplayName("close failure")
         void testCloseFailure() {
-            mockOpenAndClose();
-            when(RegistryKey.api.RegCloseKey(any())).thenReturn(WinError.ERROR_INVALID_HANDLE);
-            mockValue(new StringRegistryValue("test", "test"), WinError.ERROR_ACCESS_DENIED);
+            HKEY hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+
+            mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+
+            mockValue(hKey, new StringRegistryValue("test", "test"), WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
         }
 
         private void triggerCloseFailure(RegistryKey registryKey) {
@@ -1143,23 +1201,48 @@ class RegistryKeyTest {
         assertEquals(registryKey.hashCode(), RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs").hashCode());
     }
 
-    private void mockOpenAndClose() {
-        when(RegistryKey.api.RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any())).thenReturn(WinError.ERROR_SUCCESS);
-        when(RegistryKey.api.RegCloseKey(any())).thenReturn(WinError.ERROR_SUCCESS);
+    private HKEY newHKEY() {
+        return new HKEY(1);
     }
 
-    static void mockSubKeys(String... names) {
+    private HKEY mockOpenAndClose(HKEY hKey, String path) {
+        HKEY result = mockOpen(hKey, path);
+        mockClose(hKey);
+        return result;
+    }
+
+    private HKEY mockOpen(HKEY hKey, String path) {
+        HKEY result = newHKEY();
+
+        when(RegistryKey.api.RegOpenKeyEx(eq(hKey), eq(path), anyInt(), anyInt(), any())).thenAnswer(i -> {
+            i.getArgument(4, HKEYByReference.class).setValue(result);
+
+            return WinError.ERROR_SUCCESS;
+        });
+
+        return result;
+    }
+
+    private void mockClose(HKEY hKey) {
+        mockClose(hKey, WinError.ERROR_SUCCESS);
+    }
+
+    private void mockClose(HKEY hKey, int result) {
+        when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(result);
+    }
+
+    static void mockSubKeys(HKEY hKey, String... names) {
         int maxLength = Arrays.stream(names)
                 .mapToInt(String::length)
                 .max()
                 .orElseThrow();
 
-        when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), notNull(), any(), any(), any(), any(), any(), any()))
+        when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), notNull(), any(), any(), any(), any(), any(), any()))
                 .thenAnswer(i -> {
                     i.getArgument(5, IntByReference.class).setValue(maxLength);
                     return WinError.ERROR_SUCCESS;
                 });
-        when(RegistryKey.api.RegEnumKeyEx(any(), anyInt(), any(), any(), any(), any(), any(), any())).thenAnswer(i -> {
+        when(RegistryKey.api.RegEnumKeyEx(eq(hKey), anyInt(), any(), any(), any(), any(), any(), any())).thenAnswer(i -> {
             int index = i.getArgument(1, Integer.class);
             if (index >= names.length) {
                 return WinError.ERROR_NO_MORE_ITEMS;
@@ -1174,7 +1257,7 @@ class RegistryKeyTest {
         });
     }
 
-    static void mockValues(RegistryValue... values) {
+    static void mockValues(HKEY hKey, RegistryValue... values) {
         int maxNameLength = Arrays.stream(values)
                 .map(RegistryValue::name)
                 .mapToInt(String::length)
@@ -1188,13 +1271,13 @@ class RegistryKeyTest {
                 .max()
                 .orElseThrow();
 
-        when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), notNull(), notNull(), any(), any()))
+        when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), notNull(), notNull(), any(), any()))
                 .thenAnswer(i -> {
                     i.getArgument(8, IntByReference.class).setValue(maxNameLength);
                     i.getArgument(9, IntByReference.class).setValue(maxValueLength);
                     return WinError.ERROR_SUCCESS;
                 });
-        when(RegistryKey.api.RegEnumValue(any(), anyInt(), any(), any(), any(), any(), any(byte[].class), any())).thenAnswer(i -> {
+        when(RegistryKey.api.RegEnumValue(eq(hKey), anyInt(), any(), any(), any(), any(), any(byte[].class), any())).thenAnswer(i -> {
             int index = i.getArgument(1, Integer.class);
             if (index >= values.length) {
                 return WinError.ERROR_NO_MORE_ITEMS;
@@ -1214,20 +1297,20 @@ class RegistryKeyTest {
         });
     }
 
-    static void mockValue(RegistryValue value) {
-        mockValue(value, WinError.ERROR_SUCCESS);
+    static void mockValue(HKEY hKey, RegistryValue value) {
+        mockValue(hKey, value, WinError.ERROR_SUCCESS);
     }
 
-    static void mockValue(RegistryValue value, int returnCode) {
+    static void mockValue(HKEY hKey, RegistryValue value, int returnCode) {
         byte[] data = value.rawData();
 
-        when(RegistryKey.api.RegQueryValueEx(any(), eq(value.name()), anyInt(), any(), (byte[]) isNull(), any())).thenAnswer(i -> {
+        when(RegistryKey.api.RegQueryValueEx(eq(hKey), eq(value.name()), anyInt(), any(), (byte[]) isNull(), any())).thenAnswer(i -> {
             i.getArgument(3, IntByReference.class).setValue(value.type());
             i.getArgument(5, IntByReference.class).setValue(data.length);
 
             return WinError.ERROR_MORE_DATA;
         });
-        when(RegistryKey.api.RegQueryValueEx(any(), eq(value.name()), anyInt(), isNull(), any(byte[].class), any())).thenAnswer(i -> {
+        when(RegistryKey.api.RegQueryValueEx(eq(hKey), eq(value.name()), anyInt(), isNull(), any(byte[].class), any())).thenAnswer(i -> {
             System.arraycopy(data, 0, i.getArgument(4, byte[].class), 0, data.length);
             i.getArgument(5, IntByReference.class).setValue(data.length);
 

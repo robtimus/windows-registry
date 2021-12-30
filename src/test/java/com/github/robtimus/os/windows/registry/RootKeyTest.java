@@ -129,7 +129,7 @@ class RootKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            mockSubKeys("child1", "child2", "child3");
+            mockSubKeys(WinReg.HKEY_CURRENT_USER, "child1", "child2", "child3");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
@@ -148,7 +148,8 @@ class RootKeyTest {
         @Test
         @DisplayName("query failure")
         void testQueryFailure() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER),
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -159,9 +160,11 @@ class RootKeyTest {
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER),
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_SUCCESS);
-            when(RegistryKey.api.RegEnumKeyEx(any(), eq(0), any(), any(), any(), any(), any(), any()))
+
+            when(RegistryKey.api.RegEnumKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq(0), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -188,7 +191,7 @@ class RootKeyTest {
                 BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
                 DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
 
-                mockValues(stringValue, binaryValue, wordValue);
+                mockValues(WinReg.HKEY_CURRENT_USER, stringValue, binaryValue, wordValue);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (Stream<RegistryValue> stream = registryKey.values()) {
@@ -207,7 +210,7 @@ class RootKeyTest {
                 BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
                 DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
 
-                mockValues(stringValue, binaryValue, wordValue);
+                mockValues(WinReg.HKEY_CURRENT_USER, stringValue, binaryValue, wordValue);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.contains("i"));
@@ -227,7 +230,7 @@ class RootKeyTest {
                 BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
                 DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
 
-                mockValues(stringValue, binaryValue, wordValue);
+                mockValues(WinReg.HKEY_CURRENT_USER, stringValue, binaryValue, wordValue);
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 RegistryValue.Filter filter = RegistryValue.filter().strings().words();
@@ -244,7 +247,8 @@ class RootKeyTest {
         @Test
         @DisplayName("query failure")
         void testQueryFailure() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER),
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -255,9 +259,11 @@ class RootKeyTest {
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER),
+                    any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenReturn(WinError.ERROR_SUCCESS);
-            when(RegistryKey.api.RegEnumValue(any(), eq(0), any(), any(), any(), any(), any(byte[].class), any()))
+
+            when(RegistryKey.api.RegEnumValue(eq(WinReg.HKEY_CURRENT_USER), eq(0), any(), any(), any(), any(), any(byte[].class), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -278,7 +284,7 @@ class RootKeyTest {
         void testSuccess() {
             StringRegistryValue stringValue = new StringRegistryValue("string", "value");
 
-            mockValue(stringValue);
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             Optional<RegistryValue> value = registryKey.getValue("string");
@@ -288,7 +294,8 @@ class RootKeyTest {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(any(), any(), anyInt(), any(), (byte[]) isNull(), any())).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             Optional<RegistryValue> value = registryKey.getValue("string");
@@ -298,7 +305,7 @@ class RootKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(WinReg.HKEY_CURRENT_USER, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
