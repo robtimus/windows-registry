@@ -19,11 +19,14 @@ package com.github.robtimus.os.windows.registry;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -211,6 +214,895 @@ final class RegistryValueTest {
             byte[] data = randomData();
 
             assertThrows(IllegalStateException.class, () -> RegistryValue.of("test", -1, data, data.length));
+        }
+    }
+
+    @Nested
+    @DisplayName("Filter")
+    class Filter {
+
+        @Test
+        @DisplayName("unfiltered")
+        void testUnfiltered() {
+            RegistryValue.Filter filter = RegistryValue.filter();
+
+            String name = UUID.randomUUID().toString();
+            for (int type = WinNT.REG_NONE; type <= WinNT.REG_QWORD_LITTLE_ENDIAN; type++) {
+                assertTrue(filter.matches(name, type));
+            }
+        }
+
+        @Nested
+        @DisplayName("name")
+        class Name {
+
+            @Test
+            @DisplayName("matching filter")
+            void testMatchingFilter() {
+                RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.startsWith("v"));
+
+                String name = "value";
+                for (int type = WinNT.REG_NONE; type <= WinNT.REG_QWORD_LITTLE_ENDIAN; type++) {
+                    assertTrue(filter.matches(name, type));
+                }
+            }
+
+            @Test
+            @DisplayName("not matching filter")
+            void testNotMatchingFilter() {
+                RegistryValue.Filter filter = RegistryValue.filter().name(s -> !s.startsWith("v"));
+
+                String name = "value";
+                for (int type = WinNT.REG_NONE; type <= WinNT.REG_QWORD_LITTLE_ENDIAN; type++) {
+                    assertFalse(filter.matches(name, type));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("strings")
+        class Strings {
+
+            @Nested
+            @DisplayName("matching filter")
+            class MatchingFilter {
+
+                @Test
+                @DisplayName("REG_SZ")
+                void testRegSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_EXPAND_SZ")
+                void testRegExpandSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_MULTI_SZ")
+                void testRegMultiSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                }
+            }
+
+            @Nested
+            @DisplayName("not matching filter")
+            class NotMatchingFilter {
+
+                @Test
+                @DisplayName("REG_NONE")
+                void testRegNone() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                }
+
+                @Test
+                @DisplayName("REG_BINARY")
+                void testRegBinary() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_BINARY));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD")
+                void testRegDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_DWORD));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_BIG_ENDIAN")
+                void testRegBigEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_LINK")
+                void testRegLink() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_LIST")
+                void testRegResourceList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                }
+
+                @Test
+                @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
+                void testRegFullResourceDescriptor() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
+                void testRegResourceRequirementsList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD")
+                void testRegQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_QWORD));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("binaries")
+        class Binaries {
+
+            @Nested
+            @DisplayName("matching filter")
+            class MatchingFilter {
+
+                @Test
+                @DisplayName("REG_BINARY")
+                void testRegBinary() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                }
+            }
+
+            @Nested
+            @DisplayName("not matching filter")
+            class NotMatchingFilter {
+
+                @Test
+                @DisplayName("REG_NONE")
+                void testRegNone() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                }
+
+                @Test
+                @DisplayName("REG_SZ")
+                void testRegSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_EXPAND_SZ")
+                void testRegExpandSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD")
+                void testRegDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_DWORD));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_BIG_ENDIAN")
+                void testRegBigEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_LINK")
+                void testRegLink() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                }
+
+                @Test
+                @DisplayName("REG_MULTI_SZ")
+                void testRegMultiSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_MULTI_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_LIST")
+                void testRegResourceList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                }
+
+                @Test
+                @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
+                void testRegFullResourceDescriptor() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
+                void testRegResourceRequirementsList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD")
+                void testRegQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_QWORD));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().binaries();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("words")
+        class Words {
+
+            @Nested
+            @DisplayName("matching filter")
+            class MatchingFilter {
+
+                @Test
+                @DisplayName("REG_DWORD")
+                void testRegDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_BIG_ENDIAN")
+                void testRegBigEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD")
+                void testRegQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                }
+            }
+
+            @Nested
+            @DisplayName("not matching filter")
+            class NotMatchingFilter {
+
+                @Test
+                @DisplayName("REG_NONE")
+                void testRegNone() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                }
+
+                @Test
+                @DisplayName("REG_SZ")
+                void testRegSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_EXPAND_SZ")
+                void testRegExpandSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_BINARY")
+                void testRegBinary() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_BINARY));
+                }
+
+                @Test
+                @DisplayName("REG_LINK")
+                void testRegLink() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                }
+
+                @Test
+                @DisplayName("REG_MULTI_SZ")
+                void testRegMultiSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_MULTI_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_LIST")
+                void testRegResourceList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                }
+
+                @Test
+                @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
+                void testRegFullResourceDescriptor() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
+                void testRegResourceRequirementsList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().words();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("settable")
+        class Settable {
+
+            @Nested
+            @DisplayName("matching filter")
+            class MatchingFilter {
+
+                @Test
+                @DisplayName("REG_SZ")
+                void testRegSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_EXPAND_SZ")
+                void testRegExpandSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_BINARY")
+                void testRegBinary() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD")
+                void testRegDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_DWORD_BIG_ENDIAN")
+                void testRegBigEndianDWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                }
+
+                @Test
+                @DisplayName("REG_MULTI_SZ")
+                void testRegMultiSZ() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD")
+                void testRegQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                }
+
+                @Test
+                @DisplayName("REG_QWORD_LITTLE_ENDIAN")
+                void testRegLittleEndianQWord() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                }
+            }
+
+            @Nested
+            @DisplayName("not matching filter")
+            class NotMatchingFilter {
+
+                @Test
+                @DisplayName("REG_NONE")
+                void testRegNone() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                }
+
+                @Test
+                @DisplayName("REG_LINK")
+                void testRegLink() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_LIST")
+                void testRegResourceList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                }
+
+                @Test
+                @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
+                void testRegFullResourceDescriptor() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                }
+
+                @Test
+                @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
+                void testRegResourceRequirementsList() {
+                    RegistryValue.Filter filter = RegistryValue.filter().settable();
+
+                    String name = UUID.randomUUID().toString();
+                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("classes")
+        class Classes {
+
+            @Nested
+            @DisplayName("RegistryValue")
+            class RegistryValueClass {
+
+                @Nested
+                @DisplayName("matching filter")
+                class MatchingFilter {
+
+                    @Test
+                    @DisplayName("REG_NONE")
+                    void testRegNone() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_NONE));
+                    }
+
+                    @Test
+                    @DisplayName("REG_SZ")
+                    void testRegSZ() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_SZ));
+                    }
+
+                    @Test
+                    @DisplayName("REG_EXPAND_SZ")
+                    void testRegExpandSZ() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                    }
+
+                    @Test
+                    @DisplayName("REG_BINARY")
+                    void testRegBinary() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                    }
+
+                    @Test
+                    @DisplayName("REG_DWORD")
+                    void testRegDWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                    }
+
+                    @Test
+                    @DisplayName("REG_DWORD_LITTLE_ENDIAN")
+                    void testRegLittleEndianDWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                    }
+
+                    @Test
+                    @DisplayName("REG_DWORD_BIG_ENDIAN")
+                    void testRegBigEndianDWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                    }
+
+                    @Test
+                    @DisplayName("REG_LINK")
+                    void testRegLink() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_LINK));
+                    }
+
+                    @Test
+                    @DisplayName("REG_MULTI_SZ")
+                    void testRegMultiSZ() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                    }
+
+                    @Test
+                    @DisplayName("REG_RESOURCE_LIST")
+                    void testRegResourceList() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                    }
+
+                    @Test
+                    @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
+                    void testRegFullResourceDescriptor() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                    }
+
+                    @Test
+                    @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
+                    void testRegResourceRequirementsList() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                    }
+
+                    @Test
+                    @DisplayName("REG_QWORD")
+                    void testRegQWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                    }
+
+                    @Test
+                    @DisplayName("REG_QWORD_LITTLE_ENDIAN")
+                    void testRegLittleEndianQWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                    }
+                }
+            }
+
+            @Nested
+            @DisplayName("SettableRegistryValue")
+            class SettableRegistryValueClass {
+
+                @Nested
+                @DisplayName("matching filter")
+                class MatchingFilter {
+
+                    @Test
+                    @DisplayName("REG_SZ")
+                    void testRegSZ() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_SZ));
+                    }
+
+                    @Test
+                    @DisplayName("REG_EXPAND_SZ")
+                    void testRegExpandSZ() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                    }
+
+                    @Test
+                    @DisplayName("REG_BINARY")
+                    void testRegBinary() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                    }
+
+                    @Test
+                    @DisplayName("REG_DWORD")
+                    void testRegDWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                    }
+
+                    @Test
+                    @DisplayName("REG_DWORD_LITTLE_ENDIAN")
+                    void testRegLittleEndianDWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                    }
+
+                    @Test
+                    @DisplayName("REG_DWORD_BIG_ENDIAN")
+                    void testRegBigEndianDWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                    }
+
+                    @Test
+                    @DisplayName("REG_MULTI_SZ")
+                    void testRegMultiSZ() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                    }
+
+                    @Test
+                    @DisplayName("REG_QWORD")
+                    void testRegQWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                    }
+
+                    @Test
+                    @DisplayName("REG_QWORD_LITTLE_ENDIAN")
+                    void testRegLittleEndianQWord() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                    }
+                }
+
+                @Nested
+                @DisplayName("not matching filter")
+                class NotMatchingFilter {
+
+                    @Test
+                    @DisplayName("REG_NONE")
+                    void testRegNone() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertFalse(filter.matches(name, WinNT.REG_NONE));
+                    }
+
+                    @Test
+                    @DisplayName("REG_LINK")
+                    void testRegLink() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertFalse(filter.matches(name, WinNT.REG_LINK));
+                    }
+
+                    @Test
+                    @DisplayName("REG_RESOURCE_LIST")
+                    void testRegResourceList() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                    }
+
+                    @Test
+                    @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
+                    void testRegFullResourceDescriptor() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                    }
+
+                    @Test
+                    @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
+                    void testRegResourceRequirementsList() {
+                        RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
+
+                        String name = UUID.randomUUID().toString();
+                        assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                    }
+                }
+            }
         }
     }
 

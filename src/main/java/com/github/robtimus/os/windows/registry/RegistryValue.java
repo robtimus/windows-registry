@@ -221,7 +221,13 @@ public abstract class RegistryValue {
         }
 
         private boolean matches(int type) {
-            return valueClasses == null || valueClasses.contains(REGISTRY_CLASSES[type]) || valueClasses.contains(RegistryValue.class);
+            return valueClasses == null || hasMatchingClass(type) || valueClasses.contains(RegistryValue.class);
+        }
+
+        private boolean hasMatchingClass(int type) {
+            Class<? extends RegistryValue> valueClass = REGISTRY_CLASSES[type];
+            return valueClasses.contains(valueClass)
+                    || SettableRegistryValue.class.isAssignableFrom(valueClass) && valueClasses.contains(SettableRegistryValue.class);
         }
     }
 }
