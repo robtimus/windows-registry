@@ -32,7 +32,7 @@ import com.sun.jna.win32.W32APITypeMapper;
  *
  * @author Rob Spoor
  */
-public class MultiStringRegistryValue extends RegistryValue {
+public class MultiStringRegistryValue extends SettableRegistryValue {
 
     private final List<String> values;
 

@@ -26,7 +26,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class ExpandableStringRegistryValue extends RegistryValue {
+public class ExpandableStringRegistryValue extends SettableRegistryValue {
 
     private final String value;
 

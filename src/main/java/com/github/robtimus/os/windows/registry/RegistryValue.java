@@ -52,8 +52,6 @@ public abstract class RegistryValue {
         return type;
     }
 
-    abstract byte[] rawData();
-
     @Override
     public boolean equals(Object o) {
         if (o == null || o.getClass() != getClass()) {
@@ -202,6 +200,16 @@ public abstract class RegistryValue {
          */
         public Filter words() {
             return classes(DWordRegistryValue.class, QWordRegistryValue.class);
+        }
+
+        /**
+         * Specifies that all settable registry values should be included.
+         * This method is shorthand for calling {@link #classes(Class...)} with class literals for all the {@link SettableRegistryValue} sub classes.
+         *
+         * @return This filter.
+         */
+        public Filter settable() {
+            return strings().binaries().words();
         }
 
         boolean matches(String name, int type) {

@@ -18,7 +18,6 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.util.Arrays;
@@ -30,15 +29,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
 class ResourceRequirementsListRegistryValueTest {
-
-    @Test
-    @DisplayName("rawData")
-    void testRawData() {
-        byte[] data = randomData();
-        ResourceRequirementsListRegistryValue value = new ResourceRequirementsListRegistryValue("test", data, data.length - 10);
-
-        assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.rawData());
-    }
 
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")

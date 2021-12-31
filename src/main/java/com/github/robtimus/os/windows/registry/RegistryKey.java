@@ -250,7 +250,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the value cannot be set for another reason.
      */
-    public void setValue(RegistryValue value) {
+    public void setValue(SettableRegistryValue value) {
         Objects.requireNonNull(value);
 
         try (Handle handle = handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
@@ -609,7 +609,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the value cannot be set for another reason.
          */
-        public void setValue(RegistryValue value) {
+        public void setValue(SettableRegistryValue value) {
             Objects.requireNonNull(value);
 
             byte[] data = value.rawData();

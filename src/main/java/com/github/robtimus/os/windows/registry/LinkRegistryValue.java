@@ -35,11 +35,6 @@ public class LinkRegistryValue extends RegistryValue {
     }
 
     @Override
-    byte[] rawData() {
-        return data;
-    }
-
-    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

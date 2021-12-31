@@ -17,9 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryKeyTest.mockSubKeys;
-import static com.github.robtimus.os.windows.registry.RegistryKeyTest.mockValue;
-import static com.github.robtimus.os.windows.registry.RegistryKeyTest.mockValues;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
@@ -33,7 +30,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -44,7 +40,6 @@ import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -53,26 +48,21 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
-import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg;
 
 @SuppressWarnings("nls")
-class RootKeyTest {
+class RootKeyTest extends RegistryKeyTest {
 
-    @BeforeEach
-    void mockApi() {
-        RegistryKey.api = mock(Advapi32.class);
-    }
-
+    @Override
     @AfterEach
     void restoreApi() {
         verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
         verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
         verify(RegistryKey.api, never()).RegCloseKey(any());
 
-        RegistryKey.api = Advapi32.INSTANCE;
+        super.restoreApi();
     }
 
     @Test

@@ -51,7 +51,6 @@ final class RegistryValueTest {
             assertInstanceOf(NoneRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_NONE, value.type());
-            assertArrayEquals(data, value.rawData());
         }
 
         @Test
@@ -60,10 +59,10 @@ final class RegistryValueTest {
             byte[] data = textAsBytes();
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_SZ, data, data.length);
-            assertInstanceOf(StringRegistryValue.class, value);
+            StringRegistryValue stringValue = assertInstanceOf(StringRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_SZ, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, stringValue.rawData());
         }
 
         @Test
@@ -72,10 +71,10 @@ final class RegistryValueTest {
             byte[] data = textAsBytes();
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.length);
-            assertInstanceOf(ExpandableStringRegistryValue.class, value);
+            ExpandableStringRegistryValue expandableStringValue = assertInstanceOf(ExpandableStringRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_EXPAND_SZ, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, expandableStringValue.rawData());
         }
 
         @Test
@@ -84,10 +83,10 @@ final class RegistryValueTest {
             byte[] data = randomData();
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_BINARY, data, data.length);
-            assertInstanceOf(BinaryRegistryValue.class, value);
+            BinaryRegistryValue binaryValue = assertInstanceOf(BinaryRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_BINARY, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, binaryValue.rawData());
         }
 
         @Test
@@ -96,10 +95,10 @@ final class RegistryValueTest {
             byte[] data = { 1, 2, 3, 4, };
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD, data, data.length);
-            assertInstanceOf(DWordRegistryValue.class, value);
+            DWordRegistryValue dWordValue = assertInstanceOf(DWordRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_DWORD, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, dWordValue.rawData());
         }
 
         @Test
@@ -108,10 +107,10 @@ final class RegistryValueTest {
             byte[] data = { 1, 2, 3, 4, };
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data, data.length);
-            assertInstanceOf(DWordRegistryValue.class, value);
+            DWordRegistryValue dWordValue = assertInstanceOf(DWordRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_DWORD_LITTLE_ENDIAN, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, dWordValue.rawData());
         }
 
         @Test
@@ -120,10 +119,10 @@ final class RegistryValueTest {
             byte[] data = { 1, 2, 3, 4, };
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_BIG_ENDIAN, data, data.length);
-            assertInstanceOf(DWordRegistryValue.class, value);
+            DWordRegistryValue dWordValue = assertInstanceOf(DWordRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_DWORD_BIG_ENDIAN, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, dWordValue.rawData());
         }
 
         @Test
@@ -135,7 +134,6 @@ final class RegistryValueTest {
             assertInstanceOf(LinkRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_LINK, value.type());
-            assertArrayEquals(data, value.rawData());
         }
 
         @Test
@@ -144,10 +142,10 @@ final class RegistryValueTest {
             byte[] data = textAsBytes("value1", "value2", "value3");
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_MULTI_SZ, data, data.length);
-            assertInstanceOf(MultiStringRegistryValue.class, value);
+            MultiStringRegistryValue multiStringValue = assertInstanceOf(MultiStringRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_MULTI_SZ, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, multiStringValue.rawData());
         }
 
         @Test
@@ -159,7 +157,6 @@ final class RegistryValueTest {
             assertInstanceOf(ResourceListRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_RESOURCE_LIST, value.type());
-            assertArrayEquals(data, value.rawData());
         }
 
         @Test
@@ -171,7 +168,6 @@ final class RegistryValueTest {
             assertInstanceOf(FullResourceDescriptorRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_FULL_RESOURCE_DESCRIPTOR, value.type());
-            assertArrayEquals(data, value.rawData());
         }
 
         @Test
@@ -183,7 +179,6 @@ final class RegistryValueTest {
             assertInstanceOf(ResourceRequirementsListRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_RESOURCE_REQUIREMENTS_LIST, value.type());
-            assertArrayEquals(data, value.rawData());
         }
 
         @Test
@@ -192,10 +187,10 @@ final class RegistryValueTest {
             byte[] data = { 1, 2, 3, 4, 5, 6, 7, 8, };
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD, data, data.length);
-            assertInstanceOf(QWordRegistryValue.class, value);
+            QWordRegistryValue qWordValue = assertInstanceOf(QWordRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_QWORD, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, qWordValue.rawData());
         }
 
         @Test
@@ -204,10 +199,10 @@ final class RegistryValueTest {
             byte[] data = { 1, 2, 3, 4, 5, 6, 7, 8, };
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD_LITTLE_ENDIAN, data, data.length);
-            assertInstanceOf(QWordRegistryValue.class, value);
+            QWordRegistryValue qWordValue = assertInstanceOf(QWordRegistryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_QWORD_LITTLE_ENDIAN, value.type());
-            assertArrayEquals(data, value.rawData());
+            assertArrayEquals(data, qWordValue.rawData());
         }
 
         @Test
