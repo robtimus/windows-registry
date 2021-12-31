@@ -17,11 +17,8 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import java.util.ArrayDeque;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.Deque;
 import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Objects;
@@ -29,7 +26,6 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
-import java.util.regex.Pattern;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.sun.jna.Native;
@@ -62,8 +58,6 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     public static final RegistryKey HKEY_CURRENT_CONFIG = RootKey.HKEY_CURRENT_CONFIG;
 
     static final String SEPARATOR = "\\"; //$NON-NLS-1$
-
-    private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 
     // Non-private non-final to allow replacing for testing
     static Advapi32 api = Advapi32.INSTANCE;
@@ -132,41 +126,9 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * @return The resulting registry key.
      * @throws NullPointerException If the given relative path is {@code null}.
      */
-    public RegistryKey resolve(String relativePath) {
-        if (relativePath.isEmpty() || ".".equals(relativePath)) { //$NON-NLS-1$
-            return this;
-        }
+    public abstract RegistryKey resolve(String relativePath);
 
-        Deque<String> result = new ArrayDeque<>(pathParts());
-        String[] relativePathParts = PATH_SPLIT_PATTERN.split(relativePath);
-        for (String relativePathPart : relativePathParts) {
-            if ("..".equals(relativePathPart)) { //$NON-NLS-1$
-                if (!result.isEmpty()) {
-                    result.removeLast();
-                }
-            } else if (!(relativePathPart.isEmpty() || ".".equals(relativePathPart))) { //$NON-NLS-1$
-                result.addLast(relativePathPart);
-            }
-        }
-
-        if (result.isEmpty()) {
-            return root();
-        }
-
-        return fromPathParts(result);
-    }
-
-    RegistryKey resolveChild(String name) {
-        Collection<String> pathParts = pathParts();
-        Deque<String> newPathParts = new ArrayDeque<>(pathParts.size() + 1);
-        newPathParts.addAll(pathParts);
-        newPathParts.add(name);
-        return fromPathParts(newPathParts);
-    }
-
-    abstract Collection<String> pathParts();
-
-    abstract RegistryKey fromPathParts(Deque<String> pathParts);
+    abstract RegistryKey resolveChild(String name);
 
     /**
      * Returns all direct sub keys of this registry key. This stream should be closed afterwards.

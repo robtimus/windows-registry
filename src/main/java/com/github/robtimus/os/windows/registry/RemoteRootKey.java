@@ -17,8 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import java.util.Collection;
-import java.util.Deque;
 import java.util.Optional;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -76,18 +74,6 @@ final class RemoteRootKey extends RemoteRegistryKey {
     RegistryKey resolveChild(String name) {
         RegistryKey resolved = rootKey.resolveChild(name);
         return new RemoteSubKey(this, (SubKey) resolved);
-    }
-
-    @Override
-    Collection<String> pathParts() {
-        // resolve is implemented differently so this method will not be called
-        throw new UnsupportedOperationException();
-    }
-
-    @Override
-    RegistryKey fromPathParts(Deque<String> pathParts) {
-        // resolve is implemented differently so this method will not be called
-        throw new UnsupportedOperationException();
     }
 
     // other

@@ -18,7 +18,6 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.util.ArrayDeque;
-import java.util.Collection;
 import java.util.Deque;
 import java.util.Optional;
 import com.sun.jna.platform.win32.WinError;
@@ -79,13 +78,16 @@ final class SubKey extends RegistryKey {
     }
 
     @Override
-    Collection<String> pathParts() {
-        return pathParts;
+    public RegistryKey resolve(String relativePath) {
+        if (relativePath.isEmpty() || ".".equals(relativePath)) { //$NON-NLS-1$
+            return this;
+        }
+        return root.resolve(relativePath, pathParts);
     }
 
     @Override
-    RegistryKey fromPathParts(Deque<String> pathParts) {
-        return new SubKey(root, pathParts);
+    RegistryKey resolveChild(String name) {
+        return root.resolveChild(name, pathParts);
     }
 
     // other

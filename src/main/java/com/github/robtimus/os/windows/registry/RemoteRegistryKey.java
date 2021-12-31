@@ -66,6 +66,9 @@ public abstract class RemoteRegistryKey extends RegistryKey implements Closeable
         }
     }
 
+    RemoteRegistryKey() {
+    }
+
     @Override
     public abstract void close();
 }

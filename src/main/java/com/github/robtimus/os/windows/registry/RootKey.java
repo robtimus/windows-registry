@@ -17,10 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 
@@ -35,6 +37,8 @@ final class RootKey extends RegistryKey {
     static final RootKey HKEY_USERS = new RootKey(WinReg.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
 
     static final RootKey HKEY_CURRENT_CONFIG = new RootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
+
+    private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 
     final HKEY hKey;
     private final String name;
@@ -76,13 +80,39 @@ final class RootKey extends RegistryKey {
     }
 
     @Override
-    Collection<String> pathParts() {
-        return Collections.emptyList();
+    public RegistryKey resolve(String relativePath) {
+        if (relativePath.isEmpty() || ".".equals(relativePath)) { //$NON-NLS-1$
+            return this;
+        }
+        return resolve(relativePath, Collections.emptyList());
+    }
+
+    RegistryKey resolve(String relativePath, Collection<String> pathParts) {
+        Deque<String> result = new ArrayDeque<>(pathParts);
+        String[] relativePathParts = PATH_SPLIT_PATTERN.split(relativePath);
+        for (String relativePathPart : relativePathParts) {
+            if ("..".equals(relativePathPart)) { //$NON-NLS-1$
+                if (!result.isEmpty()) {
+                    result.removeLast();
+                }
+            } else if (!(relativePathPart.isEmpty() || ".".equals(relativePathPart))) { //$NON-NLS-1$
+                result.addLast(relativePathPart);
+            }
+        }
+
+        return result.isEmpty() ? this : new SubKey(this, result);
     }
 
     @Override
-    RegistryKey fromPathParts(Deque<String> pathParts) {
-        return new SubKey(this, pathParts);
+    RegistryKey resolveChild(String name) {
+        return resolveChild(name, Collections.emptyList());
+    }
+
+    RegistryKey resolveChild(String name, Collection<String> pathParts) {
+        Deque<String> newPathParts = new ArrayDeque<>(pathParts.size() + 1);
+        newPathParts.addAll(pathParts);
+        newPathParts.add(name);
+        return new SubKey(this, newPathParts);
     }
 
     // other
