@@ -1,5 +1,5 @@
 /*
- * RootKey.java
+ * RemoteRootKey.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,31 +18,22 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.util.Collection;
-import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
-import com.sun.jna.platform.win32.WinReg;
+import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 
-final class RootKey extends RegistryKey {
+final class RemoteRootKey extends RemoteRegistryKey {
 
-    static final RootKey HKEY_CLASSES_ROOT = new RootKey(WinReg.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
-
-    static final RootKey HKEY_CURRENT_USER = new RootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"); //$NON-NLS-1$
-
-    static final RootKey HKEY_LOCAL_MACHINE = new RootKey(WinReg.HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"); //$NON-NLS-1$
-
-    static final RootKey HKEY_USERS = new RootKey(WinReg.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
-
-    static final RootKey HKEY_CURRENT_CONFIG = new RootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
-
+    final String machineName;
     final HKEY hKey;
-    private final String name;
+    private final RootKey rootKey;
     private final Handle handle;
 
-    RootKey(HKEY hKey, String name) {
+    RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey) {
+        this.machineName = machineName;
+        this.rootKey = rootKey;
         this.hKey = hKey;
-        this.name = name;
         this.handle = new Handle();
     }
 
@@ -50,12 +41,12 @@ final class RootKey extends RegistryKey {
 
     @Override
     public String name() {
-        return name;
+        return rootKey.name();
     }
 
     @Override
     public String path() {
-        return name();
+        return rootKey.path();
     }
 
     // traversal
@@ -76,20 +67,35 @@ final class RootKey extends RegistryKey {
     }
 
     @Override
+    public RegistryKey resolve(String relativePath) {
+        RegistryKey resolved = rootKey.resolve(relativePath);
+        return resolved.isRoot() ? this : new RemoteSubKey(this, (SubKey) resolved);
+    }
+
+    @Override
+    RegistryKey resolveChild(String name) {
+        RegistryKey resolved = rootKey.resolveChild(name);
+        return new RemoteSubKey(this, (SubKey) resolved);
+    }
+
+    @Override
     Collection<String> pathParts() {
-        return Collections.emptyList();
+        // resolve is implemented differently so this method will not be called
+        throw new UnsupportedOperationException();
     }
 
     @Override
     RegistryKey fromPathParts(Deque<String> pathParts) {
-        return new SubKey(this, pathParts);
+        // resolve is implemented differently so this method will not be called
+        throw new UnsupportedOperationException();
     }
 
     // other
 
     @Override
     public boolean exists() {
-        return true;
+        int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, null);
+        return code == WinError.ERROR_SUCCESS;
     }
 
     @Override
@@ -123,18 +129,39 @@ final class RootKey extends RegistryKey {
 
     @Override
     public boolean equals(Object o) {
-        return this == o;
+        if (this == o) {
+            return true;
+        }
+        if (o == null || o.getClass() != getClass()) {
+            return false;
+        }
+        RemoteRootKey other = (RemoteRootKey) o;
+        return rootKey.equals(other.rootKey) && machineName.equals(other.machineName);
     }
 
     @Override
     public int hashCode() {
-        return System.identityHashCode(this);
+        int result = 1;
+        result = 31 * result + rootKey.hashCode();
+        result = 31 * result + machineName.hashCode();
+        return result;
+    }
+
+    @Override
+    @SuppressWarnings("nls")
+    public String toString() {
+        return rootKey.toString() + "@" + machineName;
+    }
+
+    @Override
+    public void close() {
+        closeKey(hKey);
     }
 
     private final class Handle extends RegistryKey.Handle {
 
         private Handle() {
-            super(RootKey.this.hKey);
+            super(RemoteRootKey.this.hKey);
         }
 
         @Override

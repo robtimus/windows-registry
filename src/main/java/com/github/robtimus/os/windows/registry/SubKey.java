@@ -43,21 +43,11 @@ final class SubKey extends RegistryKey {
 
     // structural
 
-    /**
-     * Returns the name of the registry key.
-     *
-     * @return The name of the registry key.
-     */
     @Override
     public String name() {
         return pathParts.getLast();
     }
 
-    /**
-     * Returns the full path to the registry key.
-     *
-     * @return The full path to the registry key.
-     */
     @Override
     public String path() {
         return root.name() + SEPARATOR + path;
@@ -65,43 +55,16 @@ final class SubKey extends RegistryKey {
 
     // traversal
 
-    /**
-     * Returns whether or not this registry key is a root registry key.
-     *
-     * @return {@code true} if this registry key is a root registry key, or {@code false} otherwise.
-     * @see #root()
-     * @see #HKEY_CLASSES_ROOT
-     * @see #HKEY_CURRENT_USER
-     * @see #HKEY_LOCAL_MACHINE
-     * @see #HKEY_USERS
-     * @see #HKEY_CURRENT_CONFIG
-     */
     @Override
     public boolean isRoot() {
         return false;
     }
 
-    /**
-     * Returns the root of the registry key.
-     *
-     * @return The root of the registry key.
-     * @see #isRoot()
-     * @see #HKEY_CLASSES_ROOT
-     * @see #HKEY_CURRENT_USER
-     * @see #HKEY_LOCAL_MACHINE
-     * @see #HKEY_USERS
-     * @see #HKEY_CURRENT_CONFIG
-     */
     @Override
     public RegistryKey root() {
         return root;
     }
 
-    /**
-     * Returns the parent registry key.
-     *
-     * @return An {@link Optional} with the parent registry key, or {@link Optional#empty()} if this registry key is a root key.
-     */
     @Override
     public Optional<RegistryKey> parent() {
         if (pathParts.size() == 1) {
@@ -127,16 +90,14 @@ final class SubKey extends RegistryKey {
 
     // other
 
-    /**
-     * Tests whether or not this registry key exists.
-     *
-     * @return {@code true} if this registry key exists, or {@code false} otherwise.
-     * @throws RegistryException If the existence of this registry cannot be determined.
-     */
     @Override
     public boolean exists() {
+        return exists(root.hKey);
+    }
+
+    boolean exists(HKEY rootHKey) {
         HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(root.hKey, path, 0, WinNT.KEY_READ, phkResult);
+        int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             closeKey(phkResult.getValue());
             return true;
@@ -147,35 +108,31 @@ final class SubKey extends RegistryKey {
         throw RegistryException.of(code, path());
     }
 
-    /**
-     * Creates this registry key if it does not exist already.
-     *
-     * @throws RegistryKeyAlreadyExistsException If this registry key already {@link #exists() exists}.
-     * @throws RegistryException If this registry key cannot be created for another reason.
-     */
     @Override
     public void create() {
-        if (createOrOpen() == WinNT.REG_OPENED_EXISTING_KEY) {
+        create(root.hKey);
+    }
+
+    void create(HKEY rootHKey) {
+        if (createOrOpen(rootHKey) == WinNT.REG_OPENED_EXISTING_KEY) {
             throw new RegistryKeyAlreadyExistsException(path());
         }
     }
 
-    /**
-     * Creates this registry key if it does not exist already.
-     *
-     * @return {@code true} if the registry key was created, or {@code false} if it already {@link #exists() existed}.
-     * @throws RegistryException If this registry key cannot be created.
-     */
     @Override
     public boolean createIfNotExists() {
-        return createOrOpen() == WinNT.REG_CREATED_NEW_KEY;
+        return createIfNotExists(root.hKey);
     }
 
-    private int createOrOpen() {
+    boolean createIfNotExists(HKEY rootHKey) {
+        return createOrOpen(rootHKey) == WinNT.REG_CREATED_NEW_KEY;
+    }
+
+    private int createOrOpen(HKEY rootHKey) {
         HKEYByReference phkResult = new HKEYByReference();
         IntByReference lpdwDisposition = new IntByReference();
 
-        int code = api.RegCreateKeyEx(root.hKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
+        int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
             closeKey(phkResult.getValue());
             return lpdwDisposition.getValue();
@@ -183,31 +140,25 @@ final class SubKey extends RegistryKey {
         throw RegistryException.of(code, path());
     }
 
-    /**
-     * Deletes this registry key and all of its values.
-     *
-     * @throws UnsupportedOperationException If trying to delete on of the root keys.
-     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
-     * @throws RegistryException If the registry key cannot be deleted for another reason.
-     */
     @Override
     public void delete() {
-        int code = api.RegDeleteKey(root.hKey, path);
+        delete(root.hKey);
+    }
+
+    void delete(HKEY rootHKey) {
+        int code = api.RegDeleteKey(rootHKey, path);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.of(code, path());
         }
     }
 
-    /**
-     * Deletes this registry key and all of its values if it exists.
-     *
-     * @return {@code true} if this registry key existed and has been removed, or {@code false} if it didn't {@link #exists() exist}.
-     * @throws UnsupportedOperationException If trying to delete on of the root keys.
-     * @throws RegistryException If the registry key cannot be deleted for another reason.
-     */
     @Override
     public boolean deleteIfExists() {
-        int code = api.RegDeleteKey(root.hKey, path);
+        return deleteIfExists(root.hKey);
+    }
+
+    boolean deleteIfExists(HKEY rootHKey) {
+        int code = api.RegDeleteKey(rootHKey, path);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
         }
@@ -251,41 +202,34 @@ final class SubKey extends RegistryKey {
         return path();
     }
 
-    private HKEY openKey(int samDesired) {
+    HKEY openKey(HKEY rootHKey, int samDesired) {
         HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(root.hKey, path, 0, samDesired, phkResult);
+        int code = api.RegOpenKeyEx(rootHKey, path, 0, samDesired, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.getValue();
         }
         throw RegistryException.of(code, path());
     }
 
-    private HKEY createOrOpenKey(int samDesired) {
+    HKEY createOrOpenKey(HKEY rootHKey, int samDesired) {
         HKEYByReference phkResult = new HKEYByReference();
 
-        int code = api.RegCreateKeyEx(root.hKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
+        int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.getValue();
         }
         throw RegistryException.of(code, path());
-    }
-
-    private void closeKey(HKEY hKey) {
-        int code = api.RegCloseKey(hKey);
-        if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path());
-        }
     }
 
     final class Handle extends RegistryKey.Handle {
 
         private Handle(int samDesired, boolean create) {
-            super(create ? createOrOpenKey(samDesired) : openKey(samDesired));
+            super(create ? createOrOpenKey(root.hKey, samDesired) : openKey(root.hKey, samDesired));
         }
 
         @Override
         public void close() {
-            SubKey.this.closeKey(hKey);
+            closeKey(hKey);
         }
 
         @Override

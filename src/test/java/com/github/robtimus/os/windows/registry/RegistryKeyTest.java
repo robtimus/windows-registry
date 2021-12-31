@@ -36,17 +36,21 @@ import com.sun.jna.ptr.IntByReference;
 abstract class RegistryKeyTest {
 
     @BeforeEach
-    void mockApi() {
+    void setup() {
         RegistryKey.api = mock(Advapi32.class);
     }
 
     @AfterEach
-    void restoreApi() {
+    void teardown() {
         RegistryKey.api = Advapi32.INSTANCE;
     }
 
     static HKEY newHKEY() {
         return new HKEY(1);
+    }
+
+    static HKEY newRemoteHKEY() {
+        return new HKEY(2);
     }
 
     static HKEY mockOpenAndClose(HKEY hKey, String path) {
@@ -60,6 +64,24 @@ abstract class RegistryKeyTest {
 
         when(RegistryKey.api.RegOpenKeyEx(eq(hKey), eq(path), anyInt(), anyInt(), any())).thenAnswer(i -> {
             i.getArgument(4, HKEYByReference.class).setValue(result);
+
+            return WinError.ERROR_SUCCESS;
+        });
+
+        return result;
+    }
+
+    static HKEY mockConnectAndClose(HKEY hKey, String machineName) {
+        HKEY result = mockConnect(hKey, machineName);
+        mockClose(hKey);
+        return result;
+    }
+
+    static HKEY mockConnect(HKEY hKey, String machineName) {
+        HKEY result = newRemoteHKEY();
+
+        when(RegistryKey.api.RegConnectRegistry(eq(machineName), eq(hKey), any())).thenAnswer(i -> {
+            i.getArgument(2, HKEYByReference.class).setValue(result);
 
             return WinError.ERROR_SUCCESS;
         });

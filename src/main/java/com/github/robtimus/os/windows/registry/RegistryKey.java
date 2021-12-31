@@ -36,7 +36,6 @@ import com.sun.jna.Native;
 import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
-import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 import com.sun.jna.ptr.IntByReference;
 
@@ -48,19 +47,19 @@ import com.sun.jna.ptr.IntByReference;
 public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     /** The HKEY_CLASSES_ROOT root key. */
-    public static final RegistryKey HKEY_CLASSES_ROOT = new RootKey(WinReg.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
+    public static final RegistryKey HKEY_CLASSES_ROOT = RootKey.HKEY_CLASSES_ROOT;
 
     /** The HKEY_CURRENT_USER root key. */
-    public static final RegistryKey HKEY_CURRENT_USER = new RootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"); //$NON-NLS-1$
+    public static final RegistryKey HKEY_CURRENT_USER = RootKey.HKEY_CURRENT_USER;
 
     /** The HKEY_LOCAL_MACHINE root key. */
-    public static final RegistryKey HKEY_LOCAL_MACHINE = new RootKey(WinReg.HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"); //$NON-NLS-1$
+    public static final RegistryKey HKEY_LOCAL_MACHINE = RootKey.HKEY_LOCAL_MACHINE;
 
     /** The HKEY_USERS root key. */
-    public static final RegistryKey HKEY_USERS = new RootKey(WinReg.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
+    public static final RegistryKey HKEY_USERS = RootKey.HKEY_USERS;
 
     /** The HKEY_CURRENT_CONFIG root key. */
-    public static final RegistryKey HKEY_CURRENT_CONFIG = new RootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
+    public static final RegistryKey HKEY_CURRENT_CONFIG = RootKey.HKEY_CURRENT_CONFIG;
 
     static final String SEPARATOR = "\\"; //$NON-NLS-1$
 
@@ -155,6 +154,14 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         }
 
         return fromPathParts(result);
+    }
+
+    RegistryKey resolveChild(String name) {
+        Collection<String> pathParts = pathParts();
+        Deque<String> newPathParts = new ArrayDeque<>(pathParts.size() + 1);
+        newPathParts.addAll(pathParts);
+        newPathParts.add(name);
+        return fromPathParts(newPathParts);
     }
 
     abstract Collection<String> pathParts();
@@ -405,6 +412,15 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         return path();
     }
 
+    // utility
+
+    void closeKey(HKEY hKey) {
+        int code = api.RegCloseKey(hKey);
+        if (code != WinError.ERROR_SUCCESS) {
+            throw RegistryException.of(code, path());
+        }
+    }
+
     /**
      * A handle to a registry key. This offers mostly the same functionality as {@link RegistryKey} itself. However, it reuses the same link to the
      * Windows registry instead of creating a new one every time. That makes it more efficient if multiple operations on the same registry key are
@@ -441,7 +457,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             Iterator<String> iterator = subKeyIterator();
             Spliterator<String> spliterator = Spliterators.spliteratorUnknownSize(iterator, Spliterator.NONNULL);
             return StreamSupport.stream(spliterator, false)
-                    .map(this::subKey);
+                    .map(RegistryKey.this::resolveChild);
         }
 
         private Iterator<String> subKeyIterator() {
@@ -473,14 +489,6 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                     throw RegistryException.of(code, path());
                 }
             };
-        }
-
-        private RegistryKey subKey(String name) {
-            Collection<String> pathParts = pathParts();
-            Deque<String> newPathParts = new ArrayDeque<>(pathParts.size() + 1);
-            newPathParts.addAll(pathParts);
-            newPathParts.add(name);
-            return fromPathParts(newPathParts);
         }
 
         // values
