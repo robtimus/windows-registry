@@ -22,10 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import com.sun.jna.Memory;
-import com.sun.jna.Native;
 import com.sun.jna.platform.win32.WinNT;
-import com.sun.jna.win32.W32APITypeMapper;
 
 /**
  * A representation of multi-string registry values.
@@ -59,43 +56,13 @@ public class MultiStringRegistryValue extends SettableRegistryValue {
 
     MultiStringRegistryValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_MULTI_SZ);
-        values = toStringList(data, dataLength);
+        values = StringUtils.toStringList(data, dataLength);
     }
 
     private static List<String> copyOf(List<String> values) {
         List<String> result = new ArrayList<>(values.size());
         for (String value : values) {
             result.add(Objects.requireNonNull(value));
-        }
-        return Collections.unmodifiableList(result);
-    }
-
-    private static List<String> toStringList(byte[] data, int dataLength) {
-        Memory memory = new Memory(dataLength + 2L * Native.WCHAR_SIZE);
-        memory.clear();
-        memory.write(0, data, 0, dataLength);
-
-        List<String> result = new ArrayList<>();
-        int offset = 0;
-        while (offset < memory.size()) {
-            String value;
-            if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-                value = memory.getWideString(offset);
-                offset += value.length() * Native.WCHAR_SIZE;
-                offset += Native.WCHAR_SIZE;
-            } else {
-                value = memory.getString(offset);
-                offset += value.length();
-                offset += 1;
-            }
-
-            if (value.length() == 0) {
-                // A sequence of null-terminated strings, terminated by an empty string (\0).
-                // => The first empty string terminates the string list
-                break;
-            }
-
-            result.add(value);
         }
         return Collections.unmodifiableList(result);
     }
@@ -111,28 +78,7 @@ public class MultiStringRegistryValue extends SettableRegistryValue {
 
     @Override
     byte[] rawData() {
-        int charwidth = W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE ? Native.WCHAR_SIZE : 1;
-
-        int size = 0;
-        for (String s : values) {
-            size += s.length() * charwidth;
-            size += charwidth;
-        }
-        size += charwidth;
-
-        int offset = 0;
-        Memory memory = new Memory(size);
-        memory.clear();
-        for (String s : values) {
-            if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-                memory.setWideString(offset, s);
-            } else {
-                memory.setString(offset, s);
-            }
-            offset += s.length() * charwidth;
-            offset += charwidth;
-        }
-        return memory.getByteArray(0, size);
+        return StringUtils.fromStringList(values);
     }
 
     @Override

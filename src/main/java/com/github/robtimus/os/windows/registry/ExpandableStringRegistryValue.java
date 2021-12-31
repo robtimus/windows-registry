@@ -43,7 +43,7 @@ public class ExpandableStringRegistryValue extends SettableRegistryValue {
 
     ExpandableStringRegistryValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_EXPAND_SZ);
-        value = StringRegistryValue.toString(data, dataLength);
+        value = StringUtils.toString(data, dataLength);
     }
 
     /**
@@ -66,7 +66,7 @@ public class ExpandableStringRegistryValue extends SettableRegistryValue {
 
     @Override
     byte[] rawData() {
-        return StringRegistryValue.fromString(value);
+        return StringUtils.fromString(value);
     }
 
     @Override

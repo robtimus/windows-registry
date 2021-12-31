@@ -18,10 +18,7 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.util.Objects;
-import com.sun.jna.Memory;
-import com.sun.jna.Native;
 import com.sun.jna.platform.win32.WinNT;
-import com.sun.jna.win32.W32APITypeMapper;
 
 /**
  * A representation of string registry values.
@@ -45,16 +42,7 @@ public class StringRegistryValue extends SettableRegistryValue {
 
     StringRegistryValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_SZ);
-        value = toString(data, dataLength);
-    }
-
-    static String toString(byte[] data, int dataLength) {
-        Memory memory = new Memory((long) dataLength + Native.WCHAR_SIZE);
-        memory.clear();
-        memory.write(0, data, 0, dataLength);
-        return W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
-                ? memory.getWideString(0)
-                : memory.getString(0);
+        value = StringUtils.toString(data, dataLength);
     }
 
     /**
@@ -68,19 +56,7 @@ public class StringRegistryValue extends SettableRegistryValue {
 
     @Override
     byte[] rawData() {
-        return fromString(value);
-    }
-
-    static byte[] fromString(String value) {
-        Memory memory;
-        if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-            memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
-            memory.setWideString(0, value);
-        } else {
-            memory = new Memory(value.length() + 1L);
-            memory.setString(0, value);
-        }
-        return memory.getByteArray(0, (int) memory.size());
+        return StringUtils.fromString(value);
     }
 
     @Override
