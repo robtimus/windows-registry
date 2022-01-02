@@ -199,11 +199,6 @@ final class SubKey extends RegistryKey {
         return result;
     }
 
-    @Override
-    public String toString() {
-        return path();
-    }
-
     HKEY openKey(HKEY rootHKey, int samDesired) {
         HKEYByReference phkResult = new HKEYByReference();
         int code = api.RegOpenKeyEx(rootHKey, path, 0, samDesired, phkResult);

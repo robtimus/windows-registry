@@ -360,7 +360,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     @Override
     public int compareTo(RegistryKey key) {
-        return path().compareTo(key.path());
+        return toString().compareTo(key.toString());
     }
 
     @Override
