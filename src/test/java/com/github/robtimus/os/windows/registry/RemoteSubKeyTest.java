@@ -256,6 +256,266 @@ class RemoteSubKeyTest extends RegistryKeyTest {
     }
 
     @Nested
+    @DisplayName("traverse")
+    class Traverse {
+
+        @Test
+        @DisplayName("maxDepth == 0")
+        void testMaxDepthIsZero() {
+            RegistryKey registryKey = remoteRoot.resolve("path");
+            try (Stream<RegistryKey> stream = registryKey.traverse(0)) {
+                List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                List<RegistryKey> expected = Arrays.asList(registryKey);
+
+                assertEquals(expected, registryKeys);
+            }
+
+            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Nested
+        @DisplayName("maxDepth == 1")
+        class MaxDepthIsOne {
+
+            @Test
+            @DisplayName("subKeys first")
+            void testSubKeysFirst() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path");
+
+                mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
+
+                RegistryKey registryKey = remoteRoot.resolve("path");
+                try (Stream<RegistryKey> stream = registryKey.traverse(1, RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
+                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                    List<RegistryKey> expected = Arrays.asList(
+                            registryKey.resolve("subKey1"),
+                            registryKey.resolve("subKey2"),
+                            registryKey.resolve("subKey3"),
+                            registryKey
+                    );
+
+                    assertEquals(expected, registryKeys);
+                }
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+                verify(RegistryKey.api).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("subKeys not first")
+            void testSubKeysNotFirst() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path");
+
+                mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
+
+                RegistryKey registryKey = remoteRoot.resolve("path");
+                try (Stream<RegistryKey> stream = registryKey.traverse(1)) {
+                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                    List<RegistryKey> expected = Arrays.asList(
+                            registryKey,
+                            registryKey.resolve("subKey1"),
+                            registryKey.resolve("subKey2"),
+                            registryKey.resolve("subKey3")
+                    );
+
+                    assertEquals(expected, registryKeys);
+                }
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+                verify(RegistryKey.api).RegCloseKey(any());
+            }
+        }
+
+        @Nested
+        @DisplayName("no maxDepth")
+        class NoMaxDepth {
+
+            @Test
+            @DisplayName("subKeys first")
+            void testSubKeysFirst() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path");
+                HKEY subKey1 = mockOpenAndClose(rootHKey, "path\\subKey1");
+                HKEY subKey2 = mockOpenAndClose(rootHKey, "path\\subKey2");
+                HKEY subKey3 = mockOpenAndClose(rootHKey, "path\\subKey3");
+                HKEY subKey11 = mockOpenAndClose(rootHKey, "path\\subKey1\\subKey11");
+                HKEY subKey12 = mockOpenAndClose(rootHKey, "path\\subKey1\\subKey12");
+                HKEY subKey13 = mockOpenAndClose(rootHKey, "path\\subKey1\\subKey13");
+                HKEY subKey21 = mockOpenAndClose(rootHKey, "path\\subKey2\\subKey21");
+                HKEY subKey22 = mockOpenAndClose(rootHKey, "path\\subKey2\\subKey22");
+                HKEY subKey23 = mockOpenAndClose(rootHKey, "path\\subKey2\\subKey23");
+                HKEY subKey31 = mockOpenAndClose(rootHKey, "path\\subKey3\\subKey31");
+                HKEY subKey32 = mockOpenAndClose(rootHKey, "path\\subKey3\\subKey32");
+                HKEY subKey33 = mockOpenAndClose(rootHKey, "path\\subKey3\\subKey33");
+
+                mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
+                mockSubKeys(subKey1, "subKey11", "subKey12", "subKey13");
+                mockSubKeys(subKey2, "subKey21", "subKey22", "subKey23");
+                mockSubKeys(subKey3, "subKey31", "subKey32", "subKey33");
+                mockSubKeys(subKey11);
+                mockSubKeys(subKey12);
+                mockSubKeys(subKey13);
+                mockSubKeys(subKey21);
+                mockSubKeys(subKey22);
+                mockSubKeys(subKey23);
+                mockSubKeys(subKey31);
+                mockSubKeys(subKey32);
+                mockSubKeys(subKey33);
+
+                RegistryKey registryKey = remoteRoot.resolve("path");
+                try (Stream<RegistryKey> stream = registryKey.traverse(RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
+                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                    List<RegistryKey> expected = Arrays.asList(
+                            registryKey.resolve("subKey1\\subKey11"),
+                            registryKey.resolve("subKey1\\subKey12"),
+                            registryKey.resolve("subKey1\\subKey13"),
+                            registryKey.resolve("subKey1"),
+                            registryKey.resolve("subKey2\\subKey21"),
+                            registryKey.resolve("subKey2\\subKey22"),
+                            registryKey.resolve("subKey2\\subKey23"),
+                            registryKey.resolve("subKey2"),
+                            registryKey.resolve("subKey3\\subKey31"),
+                            registryKey.resolve("subKey3\\subKey32"),
+                            registryKey.resolve("subKey3\\subKey33"),
+                            registryKey.resolve("subKey3"),
+                            registryKey
+                    );
+
+                    assertEquals(expected, registryKeys);
+                }
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1\\subKey11"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1\\subKey12"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1\\subKey13"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2\\subKey21"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2\\subKey22"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2\\subKey23"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3\\subKey31"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3\\subKey32"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3\\subKey33"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, times(13)).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+                verify(RegistryKey.api).RegCloseKey(subKey1);
+                verify(RegistryKey.api).RegCloseKey(subKey2);
+                verify(RegistryKey.api).RegCloseKey(subKey3);
+                verify(RegistryKey.api).RegCloseKey(subKey11);
+                verify(RegistryKey.api).RegCloseKey(subKey12);
+                verify(RegistryKey.api).RegCloseKey(subKey13);
+                verify(RegistryKey.api).RegCloseKey(subKey21);
+                verify(RegistryKey.api).RegCloseKey(subKey22);
+                verify(RegistryKey.api).RegCloseKey(subKey23);
+                verify(RegistryKey.api).RegCloseKey(subKey31);
+                verify(RegistryKey.api).RegCloseKey(subKey32);
+                verify(RegistryKey.api).RegCloseKey(subKey33);
+                verify(RegistryKey.api, times(13)).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("subKeys not first")
+            void testSubKeysNotFirst() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path");
+                HKEY subKey1 = mockOpenAndClose(rootHKey, "path\\subKey1");
+                HKEY subKey2 = mockOpenAndClose(rootHKey, "path\\subKey2");
+                HKEY subKey3 = mockOpenAndClose(rootHKey, "path\\subKey3");
+                HKEY subKey11 = mockOpenAndClose(rootHKey, "path\\subKey1\\subKey11");
+                HKEY subKey12 = mockOpenAndClose(rootHKey, "path\\subKey1\\subKey12");
+                HKEY subKey13 = mockOpenAndClose(rootHKey, "path\\subKey1\\subKey13");
+                HKEY subKey21 = mockOpenAndClose(rootHKey, "path\\subKey2\\subKey21");
+                HKEY subKey22 = mockOpenAndClose(rootHKey, "path\\subKey2\\subKey22");
+                HKEY subKey23 = mockOpenAndClose(rootHKey, "path\\subKey2\\subKey23");
+                HKEY subKey31 = mockOpenAndClose(rootHKey, "path\\subKey3\\subKey31");
+                HKEY subKey32 = mockOpenAndClose(rootHKey, "path\\subKey3\\subKey32");
+                HKEY subKey33 = mockOpenAndClose(rootHKey, "path\\subKey3\\subKey33");
+
+                mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
+                mockSubKeys(subKey1, "subKey11", "subKey12", "subKey13");
+                mockSubKeys(subKey2, "subKey21", "subKey22", "subKey23");
+                mockSubKeys(subKey3, "subKey31", "subKey32", "subKey33");
+                mockSubKeys(subKey11);
+                mockSubKeys(subKey12);
+                mockSubKeys(subKey13);
+                mockSubKeys(subKey21);
+                mockSubKeys(subKey22);
+                mockSubKeys(subKey23);
+                mockSubKeys(subKey31);
+                mockSubKeys(subKey32);
+                mockSubKeys(subKey33);
+
+                RegistryKey registryKey = remoteRoot.resolve("path");
+                try (Stream<RegistryKey> stream = registryKey.traverse(Integer.MAX_VALUE)) {
+                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                    List<RegistryKey> expected = Arrays.asList(
+                            registryKey,
+                            registryKey.resolve("subKey1"),
+                            registryKey.resolve("subKey1\\subKey11"),
+                            registryKey.resolve("subKey1\\subKey12"),
+                            registryKey.resolve("subKey1\\subKey13"),
+                            registryKey.resolve("subKey2"),
+                            registryKey.resolve("subKey2\\subKey21"),
+                            registryKey.resolve("subKey2\\subKey22"),
+                            registryKey.resolve("subKey2\\subKey23"),
+                            registryKey.resolve("subKey3"),
+                            registryKey.resolve("subKey3\\subKey31"),
+                            registryKey.resolve("subKey3\\subKey32"),
+                            registryKey.resolve("subKey3\\subKey33")
+                    );
+
+                    assertEquals(expected, registryKeys);
+                }
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1\\subKey11"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1\\subKey12"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey1\\subKey13"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2\\subKey21"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2\\subKey22"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey2\\subKey23"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3\\subKey31"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3\\subKey32"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\subKey3\\subKey33"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, times(13)).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+                verify(RegistryKey.api).RegCloseKey(subKey1);
+                verify(RegistryKey.api).RegCloseKey(subKey2);
+                verify(RegistryKey.api).RegCloseKey(subKey3);
+                verify(RegistryKey.api).RegCloseKey(subKey11);
+                verify(RegistryKey.api).RegCloseKey(subKey12);
+                verify(RegistryKey.api).RegCloseKey(subKey13);
+                verify(RegistryKey.api).RegCloseKey(subKey21);
+                verify(RegistryKey.api).RegCloseKey(subKey22);
+                verify(RegistryKey.api).RegCloseKey(subKey23);
+                verify(RegistryKey.api).RegCloseKey(subKey31);
+                verify(RegistryKey.api).RegCloseKey(subKey32);
+                verify(RegistryKey.api).RegCloseKey(subKey33);
+                verify(RegistryKey.api, times(13)).RegCloseKey(any());
+            }
+        }
+
+        @Test
+        @DisplayName("negative maxDepth")
+        void testNegativeMaxDepth() {
+            RegistryKey registryKey = remoteRoot.resolve("path");
+            assertThrows(IllegalArgumentException.class, () -> registryKey.traverse(-1));
+        }
+    }
+
+    @Nested
     @DisplayName("values")
     class Values {
 
@@ -840,9 +1100,9 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("non-existing")
         void testCreateNonExisting() {
-            HKEY pathHKey = newNestedHKEY(0);
-            HKEY childHKey = newNestedHKEY(1);
-            HKEY leafHKey = newNestedHKEY(2);
+            HKEY pathHKey = newHKEY();
+            HKEY childHKey = newHKEY();
+            HKEY leafHKey = newHKEY();
 
             when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
@@ -888,9 +1148,9 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("existing")
         void testCreateExisting() {
-            HKEY pathHKey = newNestedHKEY(0);
-            HKEY childHKey = newNestedHKEY(1);
-            HKEY leafHKey = newNestedHKEY(2);
+            HKEY pathHKey = newHKEY();
+            HKEY childHKey = newHKEY();
+            HKEY leafHKey = newHKEY();
 
             when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
@@ -953,7 +1213,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure at parent")
         void testFailureAtParent() {
-            HKEY pathHKey = newNestedHKEY(0);
+            HKEY pathHKey = newHKEY();
 
             when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
@@ -985,8 +1245,8 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure at leaf")
         void testFailureAtLeaf() {
-            HKEY pathHKey = newNestedHKEY(0);
-            HKEY childHKey = newNestedHKEY(1);
+            HKEY pathHKey = newHKEY();
+            HKEY childHKey = newHKEY();
 
             when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
                     anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))

@@ -123,6 +123,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * Note that this method will never leave the root key.
      *
      * @param relativePath The path for the new registry key, relative to this registry key.
+     *                         Since registry keys can contain forward slashes, registry keys must be separated using back slashes ({@code \}).
      * @return The resulting registry key.
      * @throws NullPointerException If the given relative path is {@code null}.
      */
@@ -150,6 +151,66 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             handle.close(e);
             throw e;
         }
+    }
+
+    /**
+     * Returns a {@link Stream} that traverses through this registry keys and all of its nested keys. This stream should be closed afterwards.
+     * <p>
+     * Note that nothing can be said about the order of registry keys in the stream. It's also unspecified what happens if registry keys are removed
+     * while consuming the stream.
+     *
+     * @param options The options to configure the traversal.
+     * @return A {@link Stream} that traverses through this registry keys and all of its nested keys
+     */
+    public Stream<RegistryKey> traverse(TraverseOption... options) {
+        return traverse(Integer.MAX_VALUE, options);
+    }
+
+    /**
+     * Returns a {@link Stream} that traverses through this registry keys and all of its nested keys. This stream should be closed afterwards.
+     * <p>
+     * Note that nothing can be said about the order of registry keys in the stream. It's also unspecified what happens if registry keys are removed
+     * while consuming the stream.
+     *
+     * @param maxDepth The maximum number of registry key levels to visit. A value of 0 indicates that only this registry key should be returned;
+     *                     a value of 1 indicates that only this registry key and its direct {@link #subKeys() sub keys} should be returned.
+     * @param options The options to configure the traversal.
+     * @return A {@link Stream} that traverses through this registry keys and all of its nested keys
+     * @throws IllegalArgumentException If the given maximum depth is negative.
+     */
+    public Stream<RegistryKey> traverse(int maxDepth, TraverseOption... options) {
+        if (maxDepth < 0) {
+            throw new IllegalArgumentException(maxDepth + " < 0"); //$NON-NLS-1$
+        }
+
+        Set<TraverseOption> optionSet = EnumSet.noneOf(TraverseOption.class);
+        Collections.addAll(optionSet, options);
+
+        return optionSet.contains(TraverseOption.SUB_KEYS_FIRST)
+                ? traverseWithSubKeysFirst(maxDepth)
+                : traverseWithSubKeysLast(maxDepth);
+    }
+
+    private Stream<RegistryKey> traverseWithSubKeysFirst(int maxDepth) {
+        return maxDepth == 0
+                ? Stream.of(this)
+                : Stream.concat(subKeys().flatMap(k -> k.traverseWithSubKeysFirst(maxDepth - 1)), Stream.of(this));
+    }
+
+    private Stream<RegistryKey> traverseWithSubKeysLast(int maxDepth) {
+        return maxDepth == 0
+                ? Stream.of(this)
+                : Stream.concat(Stream.of(this), subKeys().flatMap(k -> k.traverseWithSubKeysLast(maxDepth - 1)));
+    }
+
+    /**
+     * An enumeration over the possible options for traversing a registry key.
+     *
+     * @author Rob Spoor
+     */
+    public enum TraverseOption {
+        /** Indicates that sub keys come before their parents. */
+        SUB_KEYS_FIRST,
     }
 
     // values

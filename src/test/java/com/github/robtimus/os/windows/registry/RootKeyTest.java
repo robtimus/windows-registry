@@ -167,6 +167,81 @@ class RootKeyTest extends RegistryKeyTest {
     }
 
     @Nested
+    @DisplayName("traverse")
+    class Traverse {
+
+        @Test
+        @DisplayName("maxDepth == 0")
+        void testMaxDepthIsZero() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            try (Stream<RegistryKey> stream = registryKey.traverse(0)) {
+                List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                List<RegistryKey> expected = Arrays.asList(registryKey);
+
+                assertEquals(expected, registryKeys);
+            }
+
+            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Nested
+        @DisplayName("maxDepth == 1")
+        class MaxDepthIsOne {
+
+            @Test
+            @DisplayName("subKeys first")
+            void testSubKeysFirst() {
+                mockSubKeys(WinReg.HKEY_CURRENT_USER, "subKey1", "subKey2", "subKey3");
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (Stream<RegistryKey> stream = registryKey.traverse(1, RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
+                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                    List<RegistryKey> expected = Arrays.asList(
+                            registryKey.resolve("subKey1"),
+                            registryKey.resolve("subKey2"),
+                            registryKey.resolve("subKey3"),
+                            registryKey
+                    );
+
+                    assertEquals(expected, registryKeys);
+                }
+            }
+
+            @Test
+            @DisplayName("subKeys not first")
+            void testSubKeysNotFirst() {
+                mockSubKeys(WinReg.HKEY_CURRENT_USER, "subKey1", "subKey2", "subKey3");
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (Stream<RegistryKey> stream = registryKey.traverse(1)) {
+                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+
+                    List<RegistryKey> expected = Arrays.asList(
+                            registryKey,
+                            registryKey.resolve("subKey1"),
+                            registryKey.resolve("subKey2"),
+                            registryKey.resolve("subKey3")
+                    );
+
+                    assertEquals(expected, registryKeys);
+                }
+            }
+        }
+
+        // Testing with maxDepth > 1 conflicts with the assertions in teardown
+
+        @Test
+        @DisplayName("negative maxDepth")
+        void testNegativeMaxDepth() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(IllegalArgumentException.class, () -> registryKey.traverse(-1));
+        }
+    }
+
+    @Nested
     @DisplayName("values")
     class Values {
 

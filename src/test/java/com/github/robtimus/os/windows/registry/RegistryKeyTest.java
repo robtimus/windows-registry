@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -29,11 +30,14 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.WinError;
+import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 import com.sun.jna.platform.win32.WinReg.HKEYByReference;
 import com.sun.jna.ptr.IntByReference;
 
 abstract class RegistryKeyTest {
+
+    private static int hKeyValue = 0;
 
     @BeforeEach
     void setup() {
@@ -46,15 +50,13 @@ abstract class RegistryKeyTest {
     }
 
     static HKEY newHKEY() {
-        return new HKEY(1);
-    }
-
-    static HKEY newRemoteHKEY() {
-        return new HKEY(2);
-    }
-
-    static HKEY newNestedHKEY(int level) {
-        return new HKEY(level + 10);
+        HKEY hKey = new HKEY(++hKeyValue);
+        assertNotEquals(WinReg.HKEY_CLASSES_ROOT, hKey);
+        assertNotEquals(WinReg.HKEY_CURRENT_USER, hKey);
+        assertNotEquals(WinReg.HKEY_LOCAL_MACHINE, hKey);
+        assertNotEquals(WinReg.HKEY_USERS, hKey);
+        assertNotEquals(WinReg.HKEY_CURRENT_CONFIG, hKey);
+        return hKey;
     }
 
     static HKEY mockOpenAndClose(HKEY hKey, String path) {
@@ -82,7 +84,7 @@ abstract class RegistryKeyTest {
     }
 
     static HKEY mockConnect(HKEY hKey, String machineName) {
-        HKEY result = newRemoteHKEY();
+        HKEY result = newHKEY();
 
         when(RegistryKey.api.RegConnectRegistry(eq(machineName), eq(hKey), any())).thenAnswer(i -> {
             i.getArgument(2, HKEYByReference.class).setValue(result);
@@ -105,7 +107,7 @@ abstract class RegistryKeyTest {
         int maxLength = Arrays.stream(names)
                 .mapToInt(String::length)
                 .max()
-                .orElseThrow();
+                .orElse(0);
 
         when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), notNull(), any(), any(), any(), any(), any(), any()))
                 .thenAnswer(i -> {
