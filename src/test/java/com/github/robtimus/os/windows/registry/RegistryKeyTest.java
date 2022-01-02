@@ -53,6 +53,10 @@ abstract class RegistryKeyTest {
         return new HKEY(2);
     }
 
+    static HKEY newNestedHKEY(int level) {
+        return new HKEY(level + 10);
+    }
+
     static HKEY mockOpenAndClose(HKEY hKey, String path) {
         HKEY result = mockOpen(hKey, path);
         mockClose(hKey);

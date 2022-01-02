@@ -288,6 +288,14 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     public abstract boolean createIfNotExists();
 
     /**
+     * Creates this registry key by creating all non-existing parent registry keys first.
+     * This method behaves like calling {@link #createIfNotExists()} for this registry key and all of its parent registry keys.
+     *
+     * @return {@code true} if the registry key was created, or {@code false} if it already {@link #exists() existed}.
+     */
+    public abstract boolean createAll();
+
+    /**
      * Deletes this registry key and all of its values.
      *
      * @throws UnsupportedOperationException If trying to delete on of the root keys.

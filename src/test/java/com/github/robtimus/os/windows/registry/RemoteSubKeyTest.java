@@ -33,6 +33,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.Arrays;
@@ -829,6 +830,199 @@ class RemoteSubKeyTest extends RegistryKeyTest {
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("createAll")
+    class CreateAll {
+
+        @Test
+        @DisplayName("non-existing")
+        void testCreateNonExisting() {
+            HKEY pathHKey = newNestedHKEY(0);
+            HKEY childHKey = newNestedHKEY(1);
+            HKEY leafHKey = newNestedHKEY(2);
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(pathHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\child"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(childHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\child\\leaf"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(leafHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\child\\leaf");
+            assertTrue(registryKey.createAll());
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\child"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\child\\leaf"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCloseKey(pathHKey);
+            verify(RegistryKey.api).RegCloseKey(childHKey);
+            verify(RegistryKey.api).RegCloseKey(leafHKey);
+        }
+
+        @Test
+        @DisplayName("existing")
+        void testCreateExisting() {
+            HKEY pathHKey = newNestedHKEY(0);
+            HKEY childHKey = newNestedHKEY(1);
+            HKEY leafHKey = newNestedHKEY(2);
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(pathHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\child"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(childHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\child\\leaf"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(leafHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\child\\leaf");
+            assertFalse(registryKey.createAll());
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\child"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\child\\leaf"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCloseKey(pathHKey);
+            verify(RegistryKey.api).RegCloseKey(childHKey);
+            verify(RegistryKey.api).RegCloseKey(leafHKey);
+        }
+
+        @Test
+        @DisplayName("failure at grand parent")
+        void testFailureAtGrandParent() {
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\child\\failure");
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createAll);
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\child\\failure", exception.path());
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("failure at parent")
+        void testFailureAtParent() {
+            HKEY pathHKey = newNestedHKEY(0);
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(pathHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\failure\\leaf");
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createAll);
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\failure\\leaf", exception.path());
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api, never()).RegCreateKeyEx(eq(rootHKey), eq("path\\failure\\leaf"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCloseKey(pathHKey);
+            verify(RegistryKey.api).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("failure at leaf")
+        void testFailureAtLeaf() {
+            HKEY pathHKey = newNestedHKEY(0);
+            HKEY childHKey = newNestedHKEY(1);
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(pathHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\child"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(7, HKEYByReference.class).setValue(childHKey);
+                        i.getArgument(8, IntByReference.class).setValue(WinNT.REG_OPENED_EXISTING_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eq("path\\child\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\child\\failure");
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createAll);
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\child\\failure", exception.path());
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\child"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\child\\failure"),
+                    anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegCloseKey(pathHKey);
+            verify(RegistryKey.api).RegCloseKey(childHKey);
+            verify(RegistryKey.api, times(2)).RegCloseKey(any());
         }
     }
 
