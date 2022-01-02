@@ -527,6 +527,17 @@ class RemoteRootKeyTest extends RegistryKeyTest {
                 }
             });
         }
+
+        @Test
+        @DisplayName("close twice")
+        void testCloseTwice() {
+            RegistryKey registryKey = remoteRoot;
+            assertDoesNotThrow(() -> {
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    handle.close();
+                }
+            });
+        }
     }
 
     @ParameterizedTest(name = "{1}", autoCloseArguments = false)
@@ -559,5 +570,12 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         RegistryKey registryKey = remoteRoot;
 
         assertEquals(registryKey.hashCode(), registryKey.hashCode());
+    }
+
+    @Test
+    @DisplayName("close twice")
+    void testCloseTwice() {
+        // The second time is called by teardown
+        assertDoesNotThrow(remoteRoot::close);
     }
 }

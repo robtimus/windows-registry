@@ -486,6 +486,17 @@ class RootKeyTest extends RegistryKeyTest {
                 }
             });
         }
+
+        @Test
+        @DisplayName("close twice")
+        void testCloseTwice() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertDoesNotThrow(() -> {
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    handle.close();
+                }
+            });
+        }
     }
 
     @ParameterizedTest(name = "{1}")

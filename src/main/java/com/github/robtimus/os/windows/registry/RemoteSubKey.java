@@ -136,19 +136,28 @@ final class RemoteSubKey extends RegistryKey {
 
     final class Handle extends RegistryKey.Handle {
 
+        private boolean closed;
+
         private Handle(int samDesired, boolean create) {
             super(create ? local.createOrOpenKey(root.hKey, samDesired) : local.openKey(root.hKey, samDesired));
+            this.closed = false;
         }
 
         @Override
         public void close() {
-            closeKey(hKey);
+            if (!closed) {
+                closeKey(hKey);
+                closed = true;
+            }
         }
 
         @Override
         void close(RuntimeException exception) {
+            // No need to check the current state; this method is only called for non-exposed handles
             int code = api.RegCloseKey(hKey);
-            if (code != WinError.ERROR_SUCCESS) {
+            if (code == WinError.ERROR_SUCCESS) {
+                closed = true;
+            } else {
                 exception.addSuppressed(RegistryException.of(code, path()));
             }
         }

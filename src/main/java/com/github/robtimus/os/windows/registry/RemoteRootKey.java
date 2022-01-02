@@ -27,12 +27,14 @@ final class RemoteRootKey extends RemoteRegistryKey {
     final HKEY hKey;
     private final RootKey rootKey;
     private final Handle handle;
+    private boolean closed;
 
     RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey) {
         this.machineName = machineName;
         this.rootKey = rootKey;
         this.hKey = hKey;
         this.handle = new Handle();
+        this.closed = false;
     }
 
     // structural
@@ -141,7 +143,10 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public void close() {
-        closeKey(hKey);
+        if (!closed) {
+            closeKey(hKey);
+            closed = true;
+        }
     }
 
     private final class Handle extends RegistryKey.Handle {

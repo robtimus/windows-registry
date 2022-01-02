@@ -1071,6 +1071,21 @@ class SubKeyTest extends RegistryKeyTest {
         }
 
         @Test
+        @DisplayName("close twice")
+        void testCloseTwice() {
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            try (RegistryKey.Handle handle = registryKey.handle()) {
+                handle.close();
+            }
+
+            verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
         @DisplayName("open failure")
         void testOpenFailure() {
             when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any()))

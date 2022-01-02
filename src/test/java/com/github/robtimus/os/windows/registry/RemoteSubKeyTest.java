@@ -1006,6 +1006,21 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         }
 
         @Test
+        @DisplayName("close twice")
+        void testCloseTwice() {
+            HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
+
+            RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
+            try (RegistryKey.Handle handle = registryKey.handle()) {
+                handle.close();
+            }
+
+            verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
         @DisplayName("open failure")
         void testOpenFailure() {
             when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any()))
