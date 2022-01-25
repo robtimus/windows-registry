@@ -19,6 +19,7 @@ package com.github.robtimus.os.windows.registry;
 
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.matchesRegex;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -30,6 +31,7 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
+import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -186,34 +188,51 @@ class RegistryIT {
 
             StringRegistryValue stringValue = new StringRegistryValue("string-value", "Lorem ipsum");
             MultiStringRegistryValue multiStringValue = new MultiStringRegistryValue("multi-string-value", "value1", "value2", "value3");
+            ExpandableStringRegistryValue expandableStringValue = new ExpandableStringRegistryValue("expandable-string-value", "%PATH%");
             DWordRegistryValue dwordValue = new DWordRegistryValue("dword-value", 13);
+            DWordRegistryValue beDWordValue = new DWordRegistryValue("be-dword-value", 26, ByteOrder.BIG_ENDIAN);
+            DWordRegistryValue leDWordValue = new DWordRegistryValue("le-dword-value", 26, ByteOrder.LITTLE_ENDIAN);
             QWordRegistryValue qwordValue = new QWordRegistryValue("qword-value", 481);
             BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary-value", "Hello World".getBytes());
 
             registryKey.setValue(stringValue);
             registryKey.setValue(multiStringValue);
+            registryKey.setValue(expandableStringValue);
             registryKey.setValue(dwordValue);
+            registryKey.setValue(beDWordValue);
+            registryKey.setValue(leDWordValue);
             registryKey.setValue(qwordValue);
             registryKey.setValue(binaryValue);
 
             assertEquals(Optional.of(stringValue), registryKey.getValue("string-value"));
             assertEquals(Optional.of(multiStringValue), registryKey.getValue("multi-string-value"));
+            assertEquals(Optional.of(expandableStringValue), registryKey.getValue("expandable-string-value"));
             assertEquals(Optional.of(dwordValue), registryKey.getValue("dword-value"));
+            assertEquals(Optional.of(beDWordValue), registryKey.getValue("be-dword-value"));
+            assertEquals(Optional.of(leDWordValue), registryKey.getValue("le-dword-value"));
             assertEquals(Optional.of(qwordValue), registryKey.getValue("qword-value"));
             assertEquals(Optional.of(binaryValue), registryKey.getValue("binary-value"));
 
             assertEquals(Optional.of(stringValue), registryKey.values().filter(v -> "string-value".equals(v.name())).findAny());
             assertEquals(Optional.of(multiStringValue), registryKey.values().filter(v -> "multi-string-value".equals(v.name())).findAny());
+            assertEquals(Optional.of(expandableStringValue), registryKey.values().filter(v -> "expandable-string-value".equals(v.name())).findAny());
             assertEquals(Optional.of(dwordValue), registryKey.values().filter(v -> "dword-value".equals(v.name())).findAny());
+            assertEquals(Optional.of(beDWordValue), registryKey.values().filter(v -> "be-dword-value".equals(v.name())).findAny());
+            assertEquals(Optional.of(leDWordValue), registryKey.values().filter(v -> "le-dword-value".equals(v.name())).findAny());
             assertEquals(Optional.of(qwordValue), registryKey.values().filter(v -> "qword-value".equals(v.name())).findAny());
             assertEquals(Optional.of(binaryValue), registryKey.values().filter(v -> "binary-value".equals(v.name())).findAny());
 
-            assertEquals(Set.of(stringValue, multiStringValue), registryKey.values(RegistryValue.filter().strings()).collect(Collectors.toSet()));
+            assertEquals(Set.of(stringValue, multiStringValue, expandableStringValue),
+                    registryKey.values(RegistryValue.filter().strings()).collect(Collectors.toSet()));
+            assertEquals(Set.of(dwordValue, beDWordValue, leDWordValue, qwordValue),
+                    registryKey.values(RegistryValue.filter().words()).collect(Collectors.toSet()));
 
-            queryKey(registryKey).assertValues(stringValue, multiStringValue, dwordValue, qwordValue, binaryValue);
+            queryKey(registryKey).assertValues(stringValue, multiStringValue, expandableStringValue, dwordValue, beDWordValue, leDWordValue,
+                    qwordValue, binaryValue);
 
             registryKey.deleteValue("binary-value");
-            queryKey(registryKey).assertValues(stringValue, multiStringValue, dwordValue, qwordValue);
+            queryKey(registryKey).assertValues(stringValue, multiStringValue, expandableStringValue, dwordValue, beDWordValue, leDWordValue,
+                    qwordValue);
             assertFalse(registryKey.deleteValueIfExists("binary-value"));
             assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("binary-value"));
 
@@ -336,7 +355,7 @@ class RegistryIT {
         // DWORD: values are hex-encoded
         REG_DWORD(WinNT.REG_DWORD, s -> Integer.decode(s).toString()),
         REG_DWORD_LITTLE_ENDIAN(WinNT.REG_DWORD_LITTLE_ENDIAN, s -> Integer.decode(s).toString()),
-        REG_DWORD_BIG_ENDIAN(WinNT.REG_DWORD_BIG_ENDIAN, s -> Integer.decode(s).toString()),
+        REG_DWORD_BIG_ENDIAN(WinNT.REG_DWORD_BIG_ENDIAN, ValueType::convertBigEndian),
         REG_LINK(WinNT.REG_LINK),
         // Multi string: values are separated with \0
         REG_MULTI_SZ(WinNT.REG_MULTI_SZ, s -> "[" + s.replace("\\0", ", ") + "]"),
@@ -366,6 +385,15 @@ class RegistryIT {
 
             String expected = registryValue.name() + "=" + valueMapper.apply(valueString);
             assertEquals(expected, registryValue.toString());
+        }
+
+        private static String convertBigEndian(String value) {
+            Pattern pattern = Pattern.compile("0x([0-9a-z]{2})([0-9a-z]{2})([0-9a-z]{2})([0-9a-z]{2})", Pattern.CASE_INSENSITIVE);
+            assertThat(value, matchesRegex(pattern));
+            Matcher matcher = pattern.matcher(value);
+            assertTrue(matcher.matches());
+            String convertedValue = "0x" + matcher.group(4) + matcher.group(3) + matcher.group(2) + matcher.group(1);
+            return Integer.decode(convertedValue).toString();
         }
     }
 
