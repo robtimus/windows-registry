@@ -359,7 +359,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     /**
      * Deletes this registry key and all of its values.
      *
-     * @throws UnsupportedOperationException If trying to delete on of the root keys.
+     * @throws UnsupportedOperationException If trying to delete one of the root keys.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
@@ -369,7 +369,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * Deletes this registry key and all of its values if it exists.
      *
      * @return {@code true} if this registry key existed and has been removed, or {@code false} if it didn't {@link #exists() exist}.
-     * @throws UnsupportedOperationException If trying to delete on of the root keys.
+     * @throws UnsupportedOperationException If trying to delete one of the root keys.
      * @throws RegistryException If the registry key cannot be deleted for another reason.
      */
     public abstract boolean deleteIfExists();
