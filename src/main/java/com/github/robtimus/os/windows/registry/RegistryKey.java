@@ -259,16 +259,34 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * Returns a registry value.
      *
      * @param name The name of the registry value to return.
+     * @return The registry value with the given name.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws NoSuchRegistryValueException If there is no such registry value.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     */
+    public RegistryValue getValue(String name) {
+        Objects.requireNonNull(name);
+
+        try (Handle handle = handle(WinNT.KEY_READ)) {
+            return handle.getValue(name);
+        }
+    }
+
+    /**
+     * Tries to return a registry value.
+     *
+     * @param name The name of the registry value to return.
      * @return An {@link Optional} with the registry value with the given name, or {@link Optional#empty()} if there is no such registry value.
      * @throws NullPointerException If the given name is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the value cannot be returned for another reason.
      */
-    public Optional<RegistryValue> getValue(String name) {
+    public Optional<RegistryValue> findValue(String name) {
         Objects.requireNonNull(name);
 
         try (Handle handle = handle(WinNT.KEY_READ)) {
-            return handle.getValue(name);
+            return handle.findValue(name);
         }
     }
 
@@ -610,13 +628,43 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * Returns a registry value.
          *
          * @param name The name of the registry value to return.
+         * @return The registry value with the given name.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
+         * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
+         * @throws NoSuchRegistryValueException If there is no such registry value.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         */
+        public RegistryValue getValue(String name) {
+            Objects.requireNonNull(name);
+
+            IntByReference lpType = new IntByReference();
+            IntByReference lpcbData = new IntByReference();
+            int code = api.RegQueryValueEx(hKey, name, 0, lpType, (byte[]) null, lpcbData);
+            if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
+                byte[] byteData = new byte[lpcbData.getValue() + Native.WCHAR_SIZE];
+                Arrays.fill(byteData, (byte) 0);
+                lpcbData.setValue(byteData.length);
+
+                code = api.RegQueryValueEx(hKey, name, 0, null, byteData, lpcbData);
+                if (code == WinError.ERROR_SUCCESS) {
+                    return RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue());
+                }
+            }
+            throw RegistryException.of(code, path(), name);
+        }
+
+        /**
+         * Tries to return a registry value.
+         *
+         * @param name The name of the registry value to return.
          * @return An {@link Optional} with the registry value with the given name, or {@link Optional#empty()} if there is no such registry value.
          * @throws NullPointerException If the given name is {@code null}.
          * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the value cannot be returned for another reason.
          */
-        public Optional<RegistryValue> getValue(String name) {
+        public Optional<RegistryValue> findValue(String name) {
             Objects.requireNonNull(name);
 
             IntByReference lpType = new IntByReference();

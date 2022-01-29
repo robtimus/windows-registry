@@ -72,7 +72,7 @@ class RegistryIT {
         @DisplayName("Windows build")
         void testWindowsBuild() {
             RegistryKey registryKey = RegistryKey.HKEY_LOCAL_MACHINE.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
-            RegistryValue registryValue = registryKey.getValue("CurrentBuild").orElseThrow();
+            RegistryValue registryValue = registryKey.getValue("CurrentBuild");
             String buildNumber = assertInstanceOf(StringRegistryValue.class, registryValue).value();
             String expected = readBuildNumber();
             assertEquals(expected, buildNumber);
@@ -140,9 +140,7 @@ class RegistryIT {
                 assertTrue(subKey3.exists());
 
                 handle.setValue(new ExpandableStringRegistryValue("path", "%PATH%"));
-                ExpandableStringRegistryValue value = handle.getValue("path")
-                        .map(ExpandableStringRegistryValue.class::cast)
-                        .orElseThrow();
+                ExpandableStringRegistryValue value = (ExpandableStringRegistryValue) handle.getValue("path");
                 assertEquals(System.getenv("PATH"), value.expandedValue());
             }
 
@@ -184,7 +182,7 @@ class RegistryIT {
         private void testValues(RegistryKey registryKey) {
             assertEquals(Collections.emptySet(), registryKey.values().collect(Collectors.toSet()));
 
-            assertEquals(Optional.empty(), registryKey.getValue(UUID.randomUUID().toString()));
+            assertEquals(Optional.empty(), registryKey.findValue(UUID.randomUUID().toString()));
 
             StringRegistryValue stringValue = new StringRegistryValue("string-value", "Lorem ipsum");
             MultiStringRegistryValue multiStringValue = new MultiStringRegistryValue("multi-string-value", "value1", "value2", "value3");
@@ -204,14 +202,23 @@ class RegistryIT {
             registryKey.setValue(qwordValue);
             registryKey.setValue(binaryValue);
 
-            assertEquals(Optional.of(stringValue), registryKey.getValue("string-value"));
-            assertEquals(Optional.of(multiStringValue), registryKey.getValue("multi-string-value"));
-            assertEquals(Optional.of(expandableStringValue), registryKey.getValue("expandable-string-value"));
-            assertEquals(Optional.of(dwordValue), registryKey.getValue("dword-value"));
-            assertEquals(Optional.of(beDWordValue), registryKey.getValue("be-dword-value"));
-            assertEquals(Optional.of(leDWordValue), registryKey.getValue("le-dword-value"));
-            assertEquals(Optional.of(qwordValue), registryKey.getValue("qword-value"));
-            assertEquals(Optional.of(binaryValue), registryKey.getValue("binary-value"));
+            assertEquals(stringValue, registryKey.getValue("string-value"));
+            assertEquals(multiStringValue, registryKey.getValue("multi-string-value"));
+            assertEquals(expandableStringValue, registryKey.getValue("expandable-string-value"));
+            assertEquals(dwordValue, registryKey.getValue("dword-value"));
+            assertEquals(beDWordValue, registryKey.getValue("be-dword-value"));
+            assertEquals(leDWordValue, registryKey.getValue("le-dword-value"));
+            assertEquals(qwordValue, registryKey.getValue("qword-value"));
+            assertEquals(binaryValue, registryKey.getValue("binary-value"));
+
+            assertEquals(Optional.of(stringValue), registryKey.findValue("string-value"));
+            assertEquals(Optional.of(multiStringValue), registryKey.findValue("multi-string-value"));
+            assertEquals(Optional.of(expandableStringValue), registryKey.findValue("expandable-string-value"));
+            assertEquals(Optional.of(dwordValue), registryKey.findValue("dword-value"));
+            assertEquals(Optional.of(beDWordValue), registryKey.findValue("be-dword-value"));
+            assertEquals(Optional.of(leDWordValue), registryKey.findValue("le-dword-value"));
+            assertEquals(Optional.of(qwordValue), registryKey.findValue("qword-value"));
+            assertEquals(Optional.of(binaryValue), registryKey.findValue("binary-value"));
 
             assertEquals(Optional.of(stringValue), registryKey.values().filter(v -> "string-value".equals(v.name())).findAny());
             assertEquals(Optional.of(multiStringValue), registryKey.values().filter(v -> "multi-string-value".equals(v.name())).findAny());

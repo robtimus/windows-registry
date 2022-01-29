@@ -693,8 +693,8 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             mockValue(hKey, stringValue);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            Optional<RegistryValue> value = registryKey.getValue("string");
-            assertEquals(Optional.of(stringValue), value);
+            RegistryValue value = registryKey.getValue("string");
+            assertEquals(stringValue, value);
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -723,8 +723,9 @@ class RemoteSubKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
-            Optional<RegistryValue> value = registryKey.getValue("string");
-            assertEquals(Optional.empty(), value);
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getValue("string"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("string", exception.name());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -739,6 +740,73 @@ class RemoteSubKeyTest extends RegistryKeyTest {
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+    }
+
+    @Nested
+    @DisplayName("findValue")
+    class FindValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+
+            HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
+
+            mockValue(hKey, stringValue);
+
+            RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
+            Optional<RegistryValue> value = registryKey.findValue("string");
+            assertEquals(Optional.of(stringValue), value);
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
+        @DisplayName("non-existing key")
+        void testNonExistingKey() {
+            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
+            NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.findValue("string"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            HKEY hKey = mockOpenAndClose(rootHKey, "path\\non-existing");
+
+            when(RegistryKey.api.RegQueryValueEx(eq(hKey), eq("string"), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
+            Optional<RegistryValue> value = registryKey.findValue("string");
+            assertEquals(Optional.empty(), value);
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            HKEY hKey = mockOpenAndClose(rootHKey, "path\\failure");
+
+            mockValue(hKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\failure");
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());

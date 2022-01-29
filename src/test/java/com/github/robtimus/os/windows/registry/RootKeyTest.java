@@ -356,7 +356,46 @@ class RootKeyTest extends RegistryKeyTest {
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            Optional<RegistryValue> value = registryKey.getValue("string");
+            RegistryValue value = registryKey.getValue("string");
+            assertEquals(stringValue, value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getValue("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+            assertEquals("string", exception.name());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+    }
+
+    @Nested
+    @DisplayName("findValue")
+    class FindValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            Optional<RegistryValue> value = registryKey.findValue("string");
             assertEquals(Optional.of(stringValue), value);
         }
 
@@ -367,7 +406,7 @@ class RootKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            Optional<RegistryValue> value = registryKey.getValue("string");
+            Optional<RegistryValue> value = registryKey.findValue("string");
             assertEquals(Optional.empty(), value);
         }
 
@@ -377,7 +416,7 @@ class RootKeyTest extends RegistryKeyTest {
             mockValue(WinReg.HKEY_CURRENT_USER, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
             assertEquals("HKEY_CURRENT_USER", exception.path());
         }
     }
