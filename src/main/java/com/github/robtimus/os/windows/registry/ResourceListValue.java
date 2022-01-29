@@ -1,5 +1,5 @@
 /*
- * ResourceListRegistryValue.java
+ * ResourceListValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -25,11 +25,11 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public final class ResourceListRegistryValue extends RegistryValue {
+public final class ResourceListValue extends RegistryValue {
 
     private final byte[] data;
 
-    ResourceListRegistryValue(String name, byte[] data, int dataLength) {
+    ResourceListValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_RESOURCE_LIST);
         this.data = Arrays.copyOfRange(data, 0, dataLength);
     }
@@ -42,7 +42,7 @@ public final class ResourceListRegistryValue extends RegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        ResourceListRegistryValue other = (ResourceListRegistryValue) o;
+        ResourceListValue other = (ResourceListValue) o;
         return Arrays.equals(data, other.data);
     }
 
@@ -56,6 +56,6 @@ public final class ResourceListRegistryValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + BinaryRegistryValue.toString(data);
+        return name() + "=" + BinaryValue.toString(data);
     }
 }

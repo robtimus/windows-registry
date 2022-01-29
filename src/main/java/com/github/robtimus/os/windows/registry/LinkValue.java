@@ -1,5 +1,5 @@
 /*
- * FullResourceDescriptorRegistryValue.java
+ * LinkValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,16 @@ import java.util.Arrays;
 import com.sun.jna.platform.win32.WinNT;
 
 /**
- * A representation of full resource descriptor registry values.
+ * A representation of link registry values.
  *
  * @author Rob Spoor
  */
-public final class FullResourceDescriptorRegistryValue extends RegistryValue {
+public final class LinkValue extends RegistryValue {
 
     private final byte[] data;
 
-    FullResourceDescriptorRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR);
+    LinkValue(String name, byte[] data, int dataLength) {
+        super(name, WinNT.REG_LINK);
         this.data = Arrays.copyOfRange(data, 0, dataLength);
     }
 
@@ -42,7 +42,7 @@ public final class FullResourceDescriptorRegistryValue extends RegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        FullResourceDescriptorRegistryValue other = (FullResourceDescriptorRegistryValue) o;
+        LinkValue other = (LinkValue) o;
         return Arrays.equals(data, other.data);
     }
 
@@ -56,6 +56,6 @@ public final class FullResourceDescriptorRegistryValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + BinaryRegistryValue.toString(data);
+        return name() + "=" + BinaryValue.toString(data);
     }
 }

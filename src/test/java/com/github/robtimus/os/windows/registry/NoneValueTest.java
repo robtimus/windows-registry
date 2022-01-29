@@ -1,5 +1,5 @@
 /*
- * LinkRegistryValueTest.java
+ * NoneValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,25 +28,25 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class LinkRegistryValueTest {
+class NoneValueTest {
 
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(LinkRegistryValue value, Object other, boolean expected) {
+    void testEquals(NoneValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = randomData();
-        LinkRegistryValue value = new LinkRegistryValue("test", data, data.length);
+        NoneValue value = new NoneValue("test", data, data.length);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new LinkRegistryValue("test", data, data.length), true),
-                arguments(value, new LinkRegistryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new LinkRegistryValue("test2", data, data.length), false),
-                arguments(value, new LinkRegistryValue("test", data, data.length - 1), false),
+                arguments(value, new NoneValue("test", data, data.length), true),
+                arguments(value, new NoneValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new NoneValue("test2", data, data.length), false),
+                arguments(value, new NoneValue("test", data, data.length - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -56,9 +56,9 @@ class LinkRegistryValueTest {
     @DisplayName("hashCode")
     void testHashCode() {
         byte[] data = randomData();
-        LinkRegistryValue value = new LinkRegistryValue("test", data, data.length);
+        NoneValue value = new NoneValue("test", data, data.length);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new LinkRegistryValue("test", data, data.length).hashCode());
+        assertEquals(value.hashCode(), new NoneValue("test", data, data.length).hashCode());
     }
 }

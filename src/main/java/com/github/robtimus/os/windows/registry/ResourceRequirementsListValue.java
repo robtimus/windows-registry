@@ -1,5 +1,5 @@
 /*
- * NoneRegistryValue.java
+ * ResourceRequirementsListValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -21,16 +21,16 @@ import java.util.Arrays;
 import com.sun.jna.platform.win32.WinNT;
 
 /**
- * Represents registry values with no defined value types.
+ * A representation of resource requirements registry values.
  *
  * @author Rob Spoor
  */
-public final class NoneRegistryValue extends RegistryValue {
+public final class ResourceRequirementsListValue extends RegistryValue {
 
     private final byte[] data;
 
-    NoneRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_NONE);
+    ResourceRequirementsListValue(String name, byte[] data, int dataLength) {
+        super(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST);
         this.data = Arrays.copyOfRange(data, 0, dataLength);
     }
 
@@ -42,7 +42,7 @@ public final class NoneRegistryValue extends RegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        NoneRegistryValue other = (NoneRegistryValue) o;
+        ResourceRequirementsListValue other = (ResourceRequirementsListValue) o;
         return Arrays.equals(data, other.data);
     }
 
@@ -56,6 +56,6 @@ public final class NoneRegistryValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + BinaryRegistryValue.toString(data);
+        return name() + "=" + BinaryValue.toString(data);
     }
 }

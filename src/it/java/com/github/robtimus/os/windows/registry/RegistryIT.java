@@ -73,7 +73,7 @@ class RegistryIT {
         void testWindowsBuild() {
             RegistryKey registryKey = RegistryKey.HKEY_LOCAL_MACHINE.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
             RegistryValue registryValue = registryKey.getValue("CurrentBuild");
-            String buildNumber = assertInstanceOf(StringRegistryValue.class, registryValue).value();
+            String buildNumber = assertInstanceOf(StringValue.class, registryValue).value();
             String expected = readBuildNumber();
             assertEquals(expected, buildNumber);
         }
@@ -139,8 +139,8 @@ class RegistryIT {
             try (RegistryKey.Handle handle = subKey3.handle(HandleOption.CREATE, HandleOption.MANAGE_VALUES)) {
                 assertTrue(subKey3.exists());
 
-                handle.setValue(new ExpandableStringRegistryValue("path", "%PATH%"));
-                ExpandableStringRegistryValue value = (ExpandableStringRegistryValue) handle.getValue("path");
+                handle.setValue(new ExpandableStringValue("path", "%PATH%"));
+                ExpandableStringValue value = (ExpandableStringValue) handle.getValue("path");
                 assertEquals(System.getenv("PATH"), value.expandedValue());
             }
 
@@ -184,14 +184,14 @@ class RegistryIT {
 
             assertEquals(Optional.empty(), registryKey.findValue(UUID.randomUUID().toString()));
 
-            StringRegistryValue stringValue = new StringRegistryValue("string-value", "Lorem ipsum");
-            MultiStringRegistryValue multiStringValue = new MultiStringRegistryValue("multi-string-value", "value1", "value2", "value3");
-            ExpandableStringRegistryValue expandableStringValue = new ExpandableStringRegistryValue("expandable-string-value", "%PATH%");
-            DWordRegistryValue dwordValue = new DWordRegistryValue("dword-value", 13);
-            DWordRegistryValue beDWordValue = new DWordRegistryValue("be-dword-value", 26, ByteOrder.BIG_ENDIAN);
-            DWordRegistryValue leDWordValue = new DWordRegistryValue("le-dword-value", 26, ByteOrder.LITTLE_ENDIAN);
-            QWordRegistryValue qwordValue = new QWordRegistryValue("qword-value", 481);
-            BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary-value", "Hello World".getBytes());
+            StringValue stringValue = new StringValue("string-value", "Lorem ipsum");
+            MultiStringValue multiStringValue = new MultiStringValue("multi-string-value", "value1", "value2", "value3");
+            ExpandableStringValue expandableStringValue = new ExpandableStringValue("expandable-string-value", "%PATH%");
+            DWordValue dwordValue = new DWordValue("dword-value", 13);
+            DWordValue beDWordValue = new DWordValue("be-dword-value", 26, ByteOrder.BIG_ENDIAN);
+            DWordValue leDWordValue = new DWordValue("le-dword-value", 26, ByteOrder.LITTLE_ENDIAN);
+            QWordValue qwordValue = new QWordValue("qword-value", 481);
+            BinaryValue binaryValue = new BinaryValue("binary-value", "Hello World".getBytes());
 
             registryKey.setValue(stringValue);
             registryKey.setValue(multiStringValue);

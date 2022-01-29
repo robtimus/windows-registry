@@ -1,5 +1,5 @@
 /*
- * ResourceListRegistryValueTest.java
+ * FullResourceDescriptorValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,25 +28,25 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class ResourceListRegistryValueTest {
+class FullResourceDescriptorValueTest {
 
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(ResourceListRegistryValue value, Object other, boolean expected) {
+    void testEquals(FullResourceDescriptorValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = randomData();
-        ResourceListRegistryValue value = new ResourceListRegistryValue("test", data, data.length);
+        FullResourceDescriptorValue value = new FullResourceDescriptorValue("test", data, data.length);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new ResourceListRegistryValue("test", data, data.length), true),
-                arguments(value, new ResourceListRegistryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new ResourceListRegistryValue("test2", data, data.length), false),
-                arguments(value, new ResourceListRegistryValue("test", data, data.length - 1), false),
+                arguments(value, new FullResourceDescriptorValue("test", data, data.length), true),
+                arguments(value, new FullResourceDescriptorValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new FullResourceDescriptorValue("test2", data, data.length), false),
+                arguments(value, new FullResourceDescriptorValue("test", data, data.length - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -56,9 +56,9 @@ class ResourceListRegistryValueTest {
     @DisplayName("hashCode")
     void testHashCode() {
         byte[] data = randomData();
-        ResourceListRegistryValue value = new ResourceListRegistryValue("test", data, data.length);
+        FullResourceDescriptorValue value = new FullResourceDescriptorValue("test", data, data.length);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new ResourceListRegistryValue("test", data, data.length).hashCode());
+        assertEquals(value.hashCode(), new FullResourceDescriptorValue("test", data, data.length).hashCode());
     }
 }

@@ -530,9 +530,9 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("without filter")
             void testWithoutFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
@@ -554,9 +554,9 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("with name filter")
             void testWithNameFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
@@ -579,9 +579,9 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("with type filter")
             void testWithTypeFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
@@ -686,7 +686,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
@@ -736,7 +736,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         void testFailure() {
             HKEY hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            mockValue(hKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
@@ -754,7 +754,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
@@ -803,7 +803,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         void testFailure() {
             HKEY hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            mockValue(hKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
@@ -821,7 +821,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
             byte[] data = stringValue.rawData();
 
             HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
@@ -844,7 +844,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
@@ -861,7 +861,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             HKEY hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
@@ -1584,7 +1584,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
 
             mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
 
-            mockValue(hKey, new StringRegistryValue("test", "test"), WinError.ERROR_ACCESS_DENIED);
+            mockValue(hKey, new StringValue("test", "test"), WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));

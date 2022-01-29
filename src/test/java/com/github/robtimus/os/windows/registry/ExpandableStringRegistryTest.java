@@ -1,5 +1,5 @@
 /*
- * ExpandableStringRegistryValueTest.java
+ * ExpandableStringRegistryTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class ExpandableStringRegistryValueTest {
+class ExpandableStringRegistryTest {
 
     @Nested
     @DisplayName("value")
@@ -44,7 +44,7 @@ class ExpandableStringRegistryValueTest {
         @Test
         @DisplayName("from String")
         void testFromString() {
-            ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", TEXT);
+            ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
 
             assertEquals(TEXT, value.value());
         }
@@ -53,7 +53,7 @@ class ExpandableStringRegistryValueTest {
         @DisplayName("from bytes")
         void testFromBytes() {
             byte[] bytes = textAsBytes();
-            ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", bytes, bytes.length);
+            ExpandableStringValue value = new ExpandableStringValue("test", bytes, bytes.length);
 
             assertEquals(TEXT, value.value());
         }
@@ -73,7 +73,7 @@ class ExpandableStringRegistryValueTest {
                 .limit(3)
                 .collect(Collectors.joining(", ", "Three values: ", ""));
 
-        ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", text);
+        ExpandableStringValue value = new ExpandableStringValue("test", text);
         assertEquals(expectedValue, value.expandedValue());
     }
 
@@ -84,7 +84,7 @@ class ExpandableStringRegistryValueTest {
         @Test
         @DisplayName("from String")
         void testFromString() {
-            ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", TEXT);
+            ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
 
             assertArrayEquals(textAsBytes(), value.rawData());
         }
@@ -93,7 +93,7 @@ class ExpandableStringRegistryValueTest {
         @DisplayName("from bytes")
         void testFromBytes() {
             byte[] bytes = textAsBytes();
-            ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", bytes, bytes.length);
+            ExpandableStringValue value = new ExpandableStringValue("test", bytes, bytes.length);
 
             assertArrayEquals(bytes, value.rawData());
         }
@@ -102,22 +102,22 @@ class ExpandableStringRegistryValueTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(ExpandableStringRegistryValue value, Object other, boolean expected) {
+    void testEquals(ExpandableStringValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = textAsBytes();
-        ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", TEXT);
+        ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new ExpandableStringRegistryValue("test", TEXT), true),
-                arguments(value, new ExpandableStringRegistryValue("test", data, data.length), true),
-                arguments(value, new ExpandableStringRegistryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new ExpandableStringRegistryValue("test2", TEXT), false),
-                arguments(value, new ExpandableStringRegistryValue("test", TEXT.substring(0, TEXT.length() - 1)), false),
-                arguments(value, new ExpandableStringRegistryValue("test", data, data.length - 4), false),
+                arguments(value, new ExpandableStringValue("test", TEXT), true),
+                arguments(value, new ExpandableStringValue("test", data, data.length), true),
+                arguments(value, new ExpandableStringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new ExpandableStringValue("test2", TEXT), false),
+                arguments(value, new ExpandableStringValue("test", TEXT.substring(0, TEXT.length() - 1)), false),
+                arguments(value, new ExpandableStringValue("test", data, data.length - 4), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -126,9 +126,9 @@ class ExpandableStringRegistryValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        ExpandableStringRegistryValue value = new ExpandableStringRegistryValue("test", TEXT);
+        ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new ExpandableStringRegistryValue("test", TEXT).hashCode());
+        assertEquals(value.hashCode(), new ExpandableStringValue("test", TEXT).hashCode());
     }
 }

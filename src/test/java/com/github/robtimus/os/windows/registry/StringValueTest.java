@@ -1,5 +1,5 @@
 /*
- * QWordRegistryValueTest.java
+ * StringValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,9 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.TEXT;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytes;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,27 +31,27 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class QWordRegistryValueTest {
+class StringValueTest {
 
     @Nested
     @DisplayName("value")
     class Value {
 
         @Test
-        @DisplayName("from value")
-        void testFromValue() {
-            QWordRegistryValue value = new QWordRegistryValue("test", 578437695752307201L);
+        @DisplayName("from String")
+        void testFromString() {
+            StringValue value = new StringValue("test", TEXT);
 
-            assertEquals(578437695752307201L, value.value());
+            assertEquals(TEXT, value.value());
         }
 
         @Test
         @DisplayName("from bytes")
         void testFromBytes() {
-            byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
-            QWordRegistryValue value = new QWordRegistryValue("test", bytes);
+            byte[] bytes = textAsBytes();
+            StringValue value = new StringValue("test", bytes, bytes.length);
 
-            assertEquals(578437695752307201L, value.value());
+            assertEquals(TEXT, value.value());
         }
     }
 
@@ -57,19 +60,18 @@ class QWordRegistryValueTest {
     class RawData {
 
         @Test
-        @DisplayName("from long")
-        void testFromLong() {
-            byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
-            QWordRegistryValue value = new QWordRegistryValue("test", 578437695752307201L);
+        @DisplayName("from String")
+        void testFromString() {
+            StringValue value = new StringValue("test", TEXT);
 
-            assertArrayEquals(bytes, value.rawData());
+            assertArrayEquals(textAsBytes(), value.rawData());
         }
 
         @Test
         @DisplayName("from bytes")
         void testFromBytes() {
-            byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
-            QWordRegistryValue value = new QWordRegistryValue("test", bytes);
+            byte[] bytes = textAsBytes();
+            StringValue value = new StringValue("test", bytes, bytes.length);
 
             assertArrayEquals(bytes, value.rawData());
         }
@@ -78,22 +80,22 @@ class QWordRegistryValueTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(QWordRegistryValue value, Object other, boolean expected) {
+    void testEquals(StringValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
-        byte[] data = { 1, 2, 3, 4, 5, 6, 7, 8, };
-        byte[] otherData = { 1, 2, 3, 4, 5, 6, 7, 0, };
-        QWordRegistryValue value = new QWordRegistryValue("test", data);
+        byte[] data = textAsBytes();
+        StringValue value = new StringValue("test", TEXT);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new QWordRegistryValue("test", data), true),
-                arguments(value, new QWordRegistryValue("test", 578437695752307201L), true),
-                arguments(value, new QWordRegistryValue("test", otherData), false),
-                arguments(value, new QWordRegistryValue("test2", data), false),
-                arguments(value, new QWordRegistryValue("test", 578437695752307200L), false),
+                arguments(value, new StringValue("test", TEXT), true),
+                arguments(value, new StringValue("test", data, data.length), true),
+                arguments(value, new StringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new StringValue("test2", TEXT), false),
+                arguments(value, new StringValue("test", TEXT.substring(0, TEXT.length() - 1)), false),
+                arguments(value, new StringValue("test", data, data.length - 4), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -102,9 +104,9 @@ class QWordRegistryValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        QWordRegistryValue value = new QWordRegistryValue("test", 123456);
+        StringValue value = new StringValue("test", TEXT);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new QWordRegistryValue("test", 123456).hashCode());
+        assertEquals(value.hashCode(), new StringValue("test", TEXT).hashCode());
     }
 }

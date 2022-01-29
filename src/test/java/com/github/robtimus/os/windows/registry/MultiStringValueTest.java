@@ -1,5 +1,5 @@
 /*
- * MultiStringRegistryValueTest.java
+ * MultiStringValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -30,7 +30,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class MultiStringRegistryValueTest {
+class MultiStringValueTest {
 
     private static final String VALUE1 = "value1";
     private static final String VALUE2 = "value2";
@@ -43,7 +43,7 @@ class MultiStringRegistryValueTest {
         @Test
         @DisplayName("from Strings")
         void testFromString() {
-            MultiStringRegistryValue value = new MultiStringRegistryValue("test", VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
 
             assertEquals(Arrays.asList(VALUE1, VALUE2, VALUE3), value.values());
         }
@@ -52,7 +52,7 @@ class MultiStringRegistryValueTest {
         @DisplayName("from bytes")
         void testFromBytes() {
             byte[] bytes = textAsBytes(VALUE1, VALUE2, VALUE3);
-            MultiStringRegistryValue value = new MultiStringRegistryValue("test", bytes, bytes.length);
+            MultiStringValue value = new MultiStringValue("test", bytes, bytes.length);
 
             assertEquals(Arrays.asList(VALUE1, VALUE2, VALUE3), value.values());
         }
@@ -65,7 +65,7 @@ class MultiStringRegistryValueTest {
         @Test
         @DisplayName("from Strings")
         void testFromString() {
-            MultiStringRegistryValue value = new MultiStringRegistryValue("test", VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
 
             assertArrayEquals(textAsBytes(VALUE1, VALUE2, VALUE3), value.rawData());
         }
@@ -74,7 +74,7 @@ class MultiStringRegistryValueTest {
         @DisplayName("from bytes")
         void testFromBytes() {
             byte[] bytes = textAsBytes(VALUE1, VALUE2, VALUE3);
-            MultiStringRegistryValue value = new MultiStringRegistryValue("test", bytes, bytes.length);
+            MultiStringValue value = new MultiStringValue("test", bytes, bytes.length);
 
             assertArrayEquals(bytes, value.rawData());
         }
@@ -83,22 +83,22 @@ class MultiStringRegistryValueTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(MultiStringRegistryValue value, Object other, boolean expected) {
+    void testEquals(MultiStringValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = textAsBytes(VALUE1, VALUE2, VALUE3);
-        MultiStringRegistryValue value = new MultiStringRegistryValue("test", VALUE1, VALUE2, VALUE3);
+        MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new MultiStringRegistryValue("test", VALUE1, VALUE2, VALUE3), true),
-                arguments(value, new MultiStringRegistryValue("test", data, data.length), true),
-                arguments(value, new MultiStringRegistryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new MultiStringRegistryValue("test2", VALUE1, VALUE2, VALUE3), false),
-                arguments(value, new MultiStringRegistryValue("test", VALUE1, VALUE2), false),
-                arguments(value, new MultiStringRegistryValue("test", data, data.length - 10), false),
+                arguments(value, new MultiStringValue("test", VALUE1, VALUE2, VALUE3), true),
+                arguments(value, new MultiStringValue("test", data, data.length), true),
+                arguments(value, new MultiStringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new MultiStringValue("test2", VALUE1, VALUE2, VALUE3), false),
+                arguments(value, new MultiStringValue("test", VALUE1, VALUE2), false),
+                arguments(value, new MultiStringValue("test", data, data.length - 10), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -107,9 +107,9 @@ class MultiStringRegistryValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        MultiStringRegistryValue value = new MultiStringRegistryValue("test", VALUE1, VALUE2, VALUE3);
+        MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new MultiStringRegistryValue("test", VALUE1, VALUE2, VALUE3).hashCode());
+        assertEquals(value.hashCode(), new MultiStringValue("test", VALUE1, VALUE2, VALUE3).hashCode());
     }
 }

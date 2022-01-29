@@ -1,5 +1,5 @@
 /*
- * BinaryRegistryValueTest.java
+ * BinaryValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -31,13 +31,13 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class BinaryRegistryValueTest {
+class BinaryValueTest {
 
     @Test
     @DisplayName("data")
     void testData() {
         byte[] data = randomData();
-        BinaryRegistryValue value = new BinaryRegistryValue("test", data, data.length - 10);
+        BinaryValue value = new BinaryValue("test", data, data.length - 10);
 
         assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.data());
     }
@@ -46,7 +46,7 @@ class BinaryRegistryValueTest {
     @DisplayName("inputStream")
     void testInputStream() throws IOException {
         byte[] data = randomData();
-        BinaryRegistryValue value = new BinaryRegistryValue("test", data, data.length - 10);
+        BinaryValue value = new BinaryValue("test", data, data.length - 10);
 
         byte[] content = new byte[data.length - 10];
         try (InputStream inputStream = value.inputStream()) {
@@ -63,7 +63,7 @@ class BinaryRegistryValueTest {
     @DisplayName("rawData")
     void testRawData() {
         byte[] data = randomData();
-        BinaryRegistryValue value = new BinaryRegistryValue("test", data, data.length - 10);
+        BinaryValue value = new BinaryValue("test", data, data.length - 10);
 
         assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.rawData());
     }
@@ -71,21 +71,21 @@ class BinaryRegistryValueTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(BinaryRegistryValue value, Object other, boolean expected) {
+    void testEquals(BinaryValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = randomData();
-        BinaryRegistryValue value = new BinaryRegistryValue("test", data);
+        BinaryValue value = new BinaryValue("test", data);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new BinaryRegistryValue("test", data), true),
-                arguments(value, new BinaryRegistryValue("test", data, data.length), true),
-                arguments(value, new BinaryRegistryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new BinaryRegistryValue("test2", data), false),
-                arguments(value, new BinaryRegistryValue("test", data, data.length - 1), false),
+                arguments(value, new BinaryValue("test", data), true),
+                arguments(value, new BinaryValue("test", data, data.length), true),
+                arguments(value, new BinaryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new BinaryValue("test2", data), false),
+                arguments(value, new BinaryValue("test", data, data.length - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -95,9 +95,9 @@ class BinaryRegistryValueTest {
     @DisplayName("hashCode")
     void testHashCode() {
         byte[] data = randomData();
-        BinaryRegistryValue value = new BinaryRegistryValue("test", data);
+        BinaryValue value = new BinaryValue("test", data);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new BinaryRegistryValue("test", data).hashCode());
+        assertEquals(value.hashCode(), new BinaryValue("test", data).hashCode());
     }
 }

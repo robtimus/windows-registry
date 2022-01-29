@@ -72,28 +72,28 @@ public abstract class RegistryValue {
     static RegistryValue of(String name, int type, byte[] data, int dataLength) {
         switch (type) {
             case WinNT.REG_NONE:
-                return new NoneRegistryValue(name, data, dataLength);
+                return new NoneValue(name, data, dataLength);
             case WinNT.REG_SZ:
-                return new StringRegistryValue(name, data, dataLength);
+                return new StringValue(name, data, dataLength);
             case WinNT.REG_EXPAND_SZ:
-                return new ExpandableStringRegistryValue(name, data, dataLength);
+                return new ExpandableStringValue(name, data, dataLength);
             case WinNT.REG_BINARY:
-                return new BinaryRegistryValue(name, data, dataLength);
+                return new BinaryValue(name, data, dataLength);
             case WinNT.REG_DWORD_LITTLE_ENDIAN:
             case WinNT.REG_DWORD_BIG_ENDIAN:
-                return new DWordRegistryValue(name, type, data);
+                return new DWordValue(name, type, data);
             case WinNT.REG_LINK:
-                return new LinkRegistryValue(name, data, dataLength);
+                return new LinkValue(name, data, dataLength);
             case WinNT.REG_MULTI_SZ:
-                return new MultiStringRegistryValue(name, data, dataLength);
+                return new MultiStringValue(name, data, dataLength);
             case WinNT.REG_RESOURCE_LIST:
-                return new ResourceListRegistryValue(name, data, dataLength);
+                return new ResourceListValue(name, data, dataLength);
             case WinNT.REG_FULL_RESOURCE_DESCRIPTOR:
-                return new FullResourceDescriptorRegistryValue(name, data, dataLength);
+                return new FullResourceDescriptorValue(name, data, dataLength);
             case WinNT.REG_RESOURCE_REQUIREMENTS_LIST:
-                return new ResourceRequirementsListRegistryValue(name, data, dataLength);
+                return new ResourceRequirementsListValue(name, data, dataLength);
             case WinNT.REG_QWORD_LITTLE_ENDIAN:
-                return new QWordRegistryValue(name, data);
+                return new QWordValue(name, data);
             default:
                 throw new IllegalStateException(Messages.RegistryValue.unsupportedType.get(type));
         }
@@ -123,18 +123,18 @@ public abstract class RegistryValue {
         private static Class<? extends RegistryValue>[] registryClasses() {
             @SuppressWarnings("unchecked")
             Class<? extends RegistryValue>[] classes = new Class[WinNT.REG_QWORD_LITTLE_ENDIAN + 1];
-            classes[WinNT.REG_NONE] = NoneRegistryValue.class;
-            classes[WinNT.REG_SZ] = StringRegistryValue.class;
-            classes[WinNT.REG_EXPAND_SZ] = ExpandableStringRegistryValue.class;
-            classes[WinNT.REG_BINARY] = BinaryRegistryValue.class;
-            classes[WinNT.REG_DWORD_LITTLE_ENDIAN] = DWordRegistryValue.class;
-            classes[WinNT.REG_DWORD_BIG_ENDIAN] = DWordRegistryValue.class;
-            classes[WinNT.REG_LINK] = LinkRegistryValue.class;
-            classes[WinNT.REG_MULTI_SZ] = MultiStringRegistryValue.class;
-            classes[WinNT.REG_RESOURCE_LIST] = ResourceListRegistryValue.class;
-            classes[WinNT.REG_FULL_RESOURCE_DESCRIPTOR] = FullResourceDescriptorRegistryValue.class;
-            classes[WinNT.REG_RESOURCE_REQUIREMENTS_LIST] = ResourceRequirementsListRegistryValue.class;
-            classes[WinNT.REG_QWORD_LITTLE_ENDIAN] = QWordRegistryValue.class;
+            classes[WinNT.REG_NONE] = NoneValue.class;
+            classes[WinNT.REG_SZ] = StringValue.class;
+            classes[WinNT.REG_EXPAND_SZ] = ExpandableStringValue.class;
+            classes[WinNT.REG_BINARY] = BinaryValue.class;
+            classes[WinNT.REG_DWORD_LITTLE_ENDIAN] = DWordValue.class;
+            classes[WinNT.REG_DWORD_BIG_ENDIAN] = DWordValue.class;
+            classes[WinNT.REG_LINK] = LinkValue.class;
+            classes[WinNT.REG_MULTI_SZ] = MultiStringValue.class;
+            classes[WinNT.REG_RESOURCE_LIST] = ResourceListValue.class;
+            classes[WinNT.REG_FULL_RESOURCE_DESCRIPTOR] = FullResourceDescriptorValue.class;
+            classes[WinNT.REG_RESOURCE_REQUIREMENTS_LIST] = ResourceRequirementsListValue.class;
+            classes[WinNT.REG_QWORD_LITTLE_ENDIAN] = QWordValue.class;
             return classes;
         }
 
@@ -172,34 +172,33 @@ public abstract class RegistryValue {
 
         /**
          * Specifies that all string registry values should be included.
-         * This method is shorthand for calling {@link #classes(Class...)} with class literals for {@link StringRegistryValue},
-         * {@link ExpandableStringRegistryValue} and {@link MultiStringRegistryValue}.
+         * This method is shorthand for calling {@link #classes(Class...)} with class literals for {@link StringValue}, {@link ExpandableStringValue}
+         * and {@link MultiStringValue}.
          *
          * @return This filter.
          */
         public Filter strings() {
-            return classes(StringRegistryValue.class, ExpandableStringRegistryValue.class, MultiStringRegistryValue.class);
+            return classes(StringValue.class, ExpandableStringValue.class, MultiStringValue.class);
         }
 
         /**
          * Specifies that all binary registry values should be included.
-         * This method is shorthand for calling {@link #classes(Class...)} with a class literal for {@link BinaryRegistryValue}.
+         * This method is shorthand for calling {@link #classes(Class...)} with a class literal for {@link BinaryValue}.
          *
          * @return This filter.
          */
         public Filter binaries() {
-            return classes(BinaryRegistryValue.class);
+            return classes(BinaryValue.class);
         }
 
         /**
          * Specifies that all WORD (or numeric) registry values should be included.
-         * This method is shorthand for calling {@link #classes(Class...)} with class literals for {@link DWordRegistryValue} and
-         * {@link QWordRegistryValue}.
+         * This method is shorthand for calling {@link #classes(Class...)} with class literals for {@link DWordValue} and {@link QWordValue}.
          *
          * @return This filter.
          */
         public Filter words() {
-            return classes(DWordRegistryValue.class, QWordRegistryValue.class);
+            return classes(DWordValue.class, QWordValue.class);
         }
 
         /**

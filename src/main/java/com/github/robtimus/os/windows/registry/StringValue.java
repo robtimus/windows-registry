@@ -1,5 +1,5 @@
 /*
- * ExpandableStringRegistryValue.java
+ * StringValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,7 +18,6 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.util.Objects;
-import com.sun.jna.platform.win32.Kernel32Util;
 import com.sun.jna.platform.win32.WinNT;
 
 /**
@@ -26,7 +25,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public final class ExpandableStringRegistryValue extends SettableRegistryValue {
+public final class StringValue extends SettableRegistryValue {
 
     private final String value;
 
@@ -36,13 +35,13 @@ public final class ExpandableStringRegistryValue extends SettableRegistryValue {
      * @param name The name of the registry value.
      * @param value The registry value's string value.
      */
-    public ExpandableStringRegistryValue(String name, String value) {
-        super(name, WinNT.REG_EXPAND_SZ);
+    public StringValue(String name, String value) {
+        super(name, WinNT.REG_SZ);
         this.value = Objects.requireNonNull(value);
     }
 
-    ExpandableStringRegistryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_EXPAND_SZ);
+    StringValue(String name, byte[] data, int dataLength) {
+        super(name, WinNT.REG_SZ);
         value = StringUtils.toString(data, dataLength);
     }
 
@@ -53,15 +52,6 @@ public final class ExpandableStringRegistryValue extends SettableRegistryValue {
      */
     public String value() {
         return value;
-    }
-
-    /**
-     * Returns the registry value's expanded string value.
-     *
-     * @return The registry value's expanded string value.
-     */
-    public String expandedValue() {
-        return Kernel32Util.expandEnvironmentStrings(value);
     }
 
     @Override
@@ -77,7 +67,7 @@ public final class ExpandableStringRegistryValue extends SettableRegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        ExpandableStringRegistryValue other = (ExpandableStringRegistryValue) o;
+        StringValue other = (StringValue) o;
         return value.equals(other.value);
     }
 

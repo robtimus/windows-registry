@@ -587,9 +587,9 @@ class SubKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("without filter")
             void testWithoutFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
@@ -611,9 +611,9 @@ class SubKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("with name filter")
             void testWithNameFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
@@ -636,9 +636,9 @@ class SubKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("with type filter")
             void testWithTypeFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
@@ -743,7 +743,7 @@ class SubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
@@ -793,7 +793,7 @@ class SubKeyTest extends RegistryKeyTest {
         void testFailure() {
             HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            mockValue(hKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
@@ -811,7 +811,7 @@ class SubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
@@ -860,7 +860,7 @@ class SubKeyTest extends RegistryKeyTest {
         void testFailure() {
             HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-            mockValue(hKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
@@ -878,7 +878,7 @@ class SubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
             byte[] data = stringValue.rawData();
 
             HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
@@ -901,7 +901,7 @@ class SubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
@@ -918,7 +918,7 @@ class SubKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
@@ -1655,7 +1655,7 @@ class SubKeyTest extends RegistryKeyTest {
 
             mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
 
-            mockValue(hKey, new StringRegistryValue("test", "test"), WinError.ERROR_ACCESS_DENIED);
+            mockValue(hKey, new StringValue("test", "test"), WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));

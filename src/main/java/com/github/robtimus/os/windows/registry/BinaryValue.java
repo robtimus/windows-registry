@@ -1,5 +1,5 @@
 /*
- * BinaryRegistryValue.java
+ * BinaryValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public final class BinaryRegistryValue extends SettableRegistryValue {
+public final class BinaryValue extends SettableRegistryValue {
 
     private final byte[] data;
 
@@ -37,12 +37,12 @@ public final class BinaryRegistryValue extends SettableRegistryValue {
      * @param name The name of the registry value.
      * @param data The registry value's binary data.
      */
-    public BinaryRegistryValue(String name, byte[] data) {
+    public BinaryValue(String name, byte[] data) {
         super(name, WinNT.REG_BINARY);
         this.data = data.clone();
     }
 
-    BinaryRegistryValue(String name, byte[] data, int dataLength) {
+    BinaryValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_BINARY);
         this.data = Arrays.copyOf(data, dataLength);
     }
@@ -78,7 +78,7 @@ public final class BinaryRegistryValue extends SettableRegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        BinaryRegistryValue other = (BinaryRegistryValue) o;
+        BinaryValue other = (BinaryValue) o;
         return Arrays.equals(data, other.data);
     }
 

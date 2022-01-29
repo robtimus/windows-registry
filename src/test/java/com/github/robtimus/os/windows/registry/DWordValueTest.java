@@ -1,5 +1,5 @@
 /*
- * DWordRegistryValueTest.java
+ * DWordValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import com.sun.jna.platform.win32.WinNT;
 
 @SuppressWarnings("nls")
-class DWordRegistryValueTest {
+class DWordValueTest {
 
     @Nested
     @DisplayName("value")
@@ -43,7 +43,7 @@ class DWordRegistryValueTest {
         @Test
         @DisplayName("from value without byte order")
         void testFromValueWithoutByteOrder() {
-            DWordRegistryValue value = new DWordRegistryValue("test", 16909060);
+            DWordValue value = new DWordValue("test", 16909060);
 
             assertEquals(16909060, value.value());
         }
@@ -52,7 +52,7 @@ class DWordRegistryValueTest {
         @ArgumentsSource(ByteOrderProvider.class)
         @DisplayName("from value with byte order")
         void testFromValueWithoutByteOrder(ByteOrder byteOrder) {
-            DWordRegistryValue value = new DWordRegistryValue("test", 16909060, byteOrder);
+            DWordValue value = new DWordValue("test", 16909060, byteOrder);
 
             assertEquals(16909060, value.value());
         }
@@ -65,7 +65,7 @@ class DWordRegistryValueTest {
             @DisplayName("REG_DWORD_BIG_ENDIAN")
             void testBigEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordRegistryValue value = new DWordRegistryValue("test", WinNT.REG_DWORD_BIG_ENDIAN, bytes);
+                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, bytes);
 
                 assertEquals(16909060, value.value());
             }
@@ -74,7 +74,7 @@ class DWordRegistryValueTest {
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordRegistryValue value = new DWordRegistryValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, bytes);
+                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, bytes);
 
                 assertEquals(67305985, value.value());
             }
@@ -93,7 +93,7 @@ class DWordRegistryValueTest {
             @DisplayName("BigEndian")
             void testBigEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordRegistryValue value = new DWordRegistryValue("test", 16909060, ByteOrder.BIG_ENDIAN);
+                DWordValue value = new DWordValue("test", 16909060, ByteOrder.BIG_ENDIAN);
 
                 assertArrayEquals(bytes, value.rawData());
             }
@@ -102,7 +102,7 @@ class DWordRegistryValueTest {
             @DisplayName("LittleEndian")
             void testLittleEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordRegistryValue value = new DWordRegistryValue("test", 67305985, ByteOrder.LITTLE_ENDIAN);
+                DWordValue value = new DWordValue("test", 67305985, ByteOrder.LITTLE_ENDIAN);
 
                 assertArrayEquals(bytes, value.rawData());
             }
@@ -116,7 +116,7 @@ class DWordRegistryValueTest {
             @DisplayName("REG_DWORD_BIG_ENDIAN")
             void testBigEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordRegistryValue value = new DWordRegistryValue("test", WinNT.REG_DWORD_BIG_ENDIAN, bytes);
+                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, bytes);
 
                 assertArrayEquals(bytes, value.rawData());
             }
@@ -125,7 +125,7 @@ class DWordRegistryValueTest {
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordRegistryValue value = new DWordRegistryValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, bytes);
+                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, bytes);
 
                 assertArrayEquals(bytes, value.rawData());
             }
@@ -135,21 +135,21 @@ class DWordRegistryValueTest {
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(DWordRegistryValue value, Object other, boolean expected) {
+    void testEquals(DWordValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = { 1, 2, 3, 4, };
-        DWordRegistryValue value = new DWordRegistryValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
+        DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new DWordRegistryValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data), true),
-                arguments(value, new DWordRegistryValue("test", 67305985), true),
-                arguments(value, new DWordRegistryValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data), false),
-                arguments(value, new DWordRegistryValue("test2", WinNT.REG_DWORD_LITTLE_ENDIAN, data), false),
-                arguments(value, new DWordRegistryValue("test", 67305984), false),
+                arguments(value, new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data), true),
+                arguments(value, new DWordValue("test", 67305985), true),
+                arguments(value, new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data), false),
+                arguments(value, new DWordValue("test2", WinNT.REG_DWORD_LITTLE_ENDIAN, data), false),
+                arguments(value, new DWordValue("test", 67305984), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -158,10 +158,10 @@ class DWordRegistryValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        DWordRegistryValue value = new DWordRegistryValue("test", 123456);
+        DWordValue value = new DWordValue("test", 123456);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new DWordRegistryValue("test", 123456).hashCode());
+        assertEquals(value.hashCode(), new DWordValue("test", 123456).hashCode());
     }
 
     private static final class ByteOrderProvider implements ArgumentsProvider {

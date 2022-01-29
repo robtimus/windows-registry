@@ -278,9 +278,9 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("without filter")
             void testWithoutFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 mockValues(rootHKey, stringValue, binaryValue, wordValue);
 
@@ -297,9 +297,9 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("with name filter")
             void testWithNameFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 mockValues(rootHKey, stringValue, binaryValue, wordValue);
 
@@ -317,9 +317,9 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             @Test
             @DisplayName("with type filter")
             void testWithTypeFilter() {
-                StringRegistryValue stringValue = new StringRegistryValue("string", "value");
-                BinaryRegistryValue binaryValue = new BinaryRegistryValue("binary", randomData());
-                DWordRegistryValue wordValue = new DWordRegistryValue("dword", 13);
+                StringValue stringValue = new StringValue("string", "value");
+                BinaryValue binaryValue = new BinaryValue("binary", randomData());
+                DWordValue wordValue = new DWordValue("dword", 13);
 
                 mockValues(rootHKey, stringValue, binaryValue, wordValue);
 
@@ -371,7 +371,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             mockValue(rootHKey, stringValue);
 
@@ -395,7 +395,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(rootHKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(rootHKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
@@ -410,7 +410,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             mockValue(rootHKey, stringValue);
 
@@ -433,7 +433,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(rootHKey, new StringRegistryValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(rootHKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
@@ -448,7 +448,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
             byte[] data = stringValue.rawData();
 
             when(RegistryKey.api.RegSetValueEx(any(), eq("string"), anyInt(), eq(WinNT.REG_SZ), (byte[]) isNull(), anyInt()))
@@ -465,7 +465,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            StringRegistryValue stringValue = new StringRegistryValue("string", "value");
+            StringValue stringValue = new StringValue("string", "value");
 
             when(RegistryKey.api.RegSetValueEx(any(), any(), anyInt(), anyInt(), any(byte[].class), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);

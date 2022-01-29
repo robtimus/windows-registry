@@ -1,5 +1,5 @@
 /*
- * MultiStringRegistryValue.java
+ * MultiStringValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,7 +29,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public final class MultiStringRegistryValue extends SettableRegistryValue {
+public final class MultiStringValue extends SettableRegistryValue {
 
     private final List<String> values;
 
@@ -39,7 +39,7 @@ public final class MultiStringRegistryValue extends SettableRegistryValue {
      * @param name The name of the registry value.
      * @param values The registry value's string values.
      */
-    public MultiStringRegistryValue(String name, String... values) {
+    public MultiStringValue(String name, String... values) {
         this(name, Arrays.asList(values));
     }
 
@@ -49,12 +49,12 @@ public final class MultiStringRegistryValue extends SettableRegistryValue {
      * @param name The name of the registry value.
      * @param values The registry value's string values.
      */
-    public MultiStringRegistryValue(String name, List<String> values) {
+    public MultiStringValue(String name, List<String> values) {
         super(name, WinNT.REG_MULTI_SZ);
         this.values = copyOf(values);
     }
 
-    MultiStringRegistryValue(String name, byte[] data, int dataLength) {
+    MultiStringValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_MULTI_SZ);
         values = StringUtils.toStringList(data, dataLength);
     }
@@ -89,7 +89,7 @@ public final class MultiStringRegistryValue extends SettableRegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        MultiStringRegistryValue other = (MultiStringRegistryValue) o;
+        MultiStringValue other = (MultiStringValue) o;
         return values.equals(other.values);
     }
 

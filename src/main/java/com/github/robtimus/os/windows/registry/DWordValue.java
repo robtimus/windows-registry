@@ -1,5 +1,5 @@
 /*
- * DWordRegistryValue.java
+ * DWordValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public final class DWordRegistryValue extends SettableRegistryValue {
+public final class DWordValue extends SettableRegistryValue {
 
     private final int value;
     private final ByteOrder byteOrder;
@@ -38,7 +38,7 @@ public final class DWordRegistryValue extends SettableRegistryValue {
      * @param name The name of the registry value.
      * @param value The registry value's DWORD value.
      */
-    public DWordRegistryValue(String name, int value) {
+    public DWordValue(String name, int value) {
         super(name, WinNT.REG_DWORD);
         this.value = value;
         this.byteOrder = getByteOrder(WinNT.REG_DWORD);
@@ -51,13 +51,13 @@ public final class DWordRegistryValue extends SettableRegistryValue {
      * @param value The registry value's DWORD value.
      * @param byteOrder The byte order for the registry value; either {@link ByteOrder#BIG_ENDIAN} or {@link ByteOrder#LITTLE_ENDIAN}.
      */
-    public DWordRegistryValue(String name, int value, ByteOrder byteOrder) {
+    public DWordValue(String name, int value, ByteOrder byteOrder) {
         super(name, getType(byteOrder));
         this.value = value;
         this.byteOrder = Objects.requireNonNull(byteOrder);
     }
 
-    DWordRegistryValue(String name, int type, byte[] data) {
+    DWordValue(String name, int type, byte[] data) {
         super(name, type);
 
         byteOrder = getByteOrder(type);
@@ -113,7 +113,7 @@ public final class DWordRegistryValue extends SettableRegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        DWordRegistryValue other = (DWordRegistryValue) o;
+        DWordValue other = (DWordValue) o;
         return value == other.value;
     }
 

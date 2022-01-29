@@ -1,5 +1,5 @@
 /*
- * ResourceRequirementsListRegistryValueTest.java
+ * ResourceRequirementsListValueTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -28,25 +28,25 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 @SuppressWarnings("nls")
-class ResourceRequirementsListRegistryValueTest {
+class ResourceRequirementsListValueTest {
 
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(ResourceRequirementsListRegistryValue value, Object other, boolean expected) {
+    void testEquals(ResourceRequirementsListValue value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
         byte[] data = randomData();
-        ResourceRequirementsListRegistryValue value = new ResourceRequirementsListRegistryValue("test", data, data.length);
+        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.length);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new ResourceRequirementsListRegistryValue("test", data, data.length), true),
-                arguments(value, new ResourceRequirementsListRegistryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new ResourceRequirementsListRegistryValue("test2", data, data.length), false),
-                arguments(value, new ResourceRequirementsListRegistryValue("test", data, data.length - 1), false),
+                arguments(value, new ResourceRequirementsListValue("test", data, data.length), true),
+                arguments(value, new ResourceRequirementsListValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new ResourceRequirementsListValue("test2", data, data.length), false),
+                arguments(value, new ResourceRequirementsListValue("test", data, data.length - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -56,9 +56,9 @@ class ResourceRequirementsListRegistryValueTest {
     @DisplayName("hashCode")
     void testHashCode() {
         byte[] data = randomData();
-        ResourceRequirementsListRegistryValue value = new ResourceRequirementsListRegistryValue("test", data, data.length);
+        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.length);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new ResourceRequirementsListRegistryValue("test", data, data.length).hashCode());
+        assertEquals(value.hashCode(), new ResourceRequirementsListValue("test", data, data.length).hashCode());
     }
 }

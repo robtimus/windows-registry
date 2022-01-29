@@ -1,5 +1,5 @@
 /*
- * QWordRegistryValue.java
+ * QWordValue.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -26,7 +26,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public final class QWordRegistryValue extends SettableRegistryValue {
+public final class QWordValue extends SettableRegistryValue {
 
     private final long value;
 
@@ -36,12 +36,12 @@ public final class QWordRegistryValue extends SettableRegistryValue {
      * @param name The name of the registry value.
      * @param value The registry value's QWORD value.
      */
-    public QWordRegistryValue(String name, long value) {
+    public QWordValue(String name, long value) {
         super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
         this.value = value;
     }
 
-    QWordRegistryValue(String name, byte[] data) {
+    QWordValue(String name, byte[] data) {
         super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
 
         ByteBuffer buffer = ByteBuffer.wrap(data);
@@ -75,7 +75,7 @@ public final class QWordRegistryValue extends SettableRegistryValue {
         if (!super.equals(o)) {
             return false;
         }
-        QWordRegistryValue other = (QWordRegistryValue) o;
+        QWordValue other = (QWordValue) o;
         return value == other.value;
     }
 
