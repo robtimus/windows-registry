@@ -29,7 +29,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class MultiStringRegistryValue extends SettableRegistryValue {
+public final class MultiStringRegistryValue extends SettableRegistryValue {
 
     private final List<String> values;
 

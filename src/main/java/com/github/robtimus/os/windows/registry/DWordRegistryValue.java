@@ -27,7 +27,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class DWordRegistryValue extends SettableRegistryValue {
+public final class DWordRegistryValue extends SettableRegistryValue {
 
     private final int value;
     private final ByteOrder byteOrder;

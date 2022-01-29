@@ -27,7 +27,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class BinaryRegistryValue extends SettableRegistryValue {
+public final class BinaryRegistryValue extends SettableRegistryValue {
 
     private final byte[] data;
 

@@ -25,7 +25,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class StringRegistryValue extends SettableRegistryValue {
+public final class StringRegistryValue extends SettableRegistryValue {
 
     private final String value;
 

@@ -25,7 +25,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class ResourceRequirementsListRegistryValue extends RegistryValue {
+public final class ResourceRequirementsListRegistryValue extends RegistryValue {
 
     private final byte[] data;
 

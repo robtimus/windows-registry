@@ -26,7 +26,7 @@ import com.sun.jna.platform.win32.WinNT;
  *
  * @author Rob Spoor
  */
-public class QWordRegistryValue extends SettableRegistryValue {
+public final class QWordRegistryValue extends SettableRegistryValue {
 
     private final long value;
 
