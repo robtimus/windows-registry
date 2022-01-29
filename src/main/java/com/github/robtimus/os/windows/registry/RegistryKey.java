@@ -240,6 +240,9 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     /**
      * Returns all values of this registry key. This stream should be closed afterwards.
      * <p>
+     * While filtering can be done on a stream returned by {@link #values()}, this method allows limited filtering before any objects are even created
+     * for registry values. This offers a small performance gain.
+     * <p>
      * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while consuming
      * the stream.
      *
@@ -492,7 +495,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         /**
          * Returns all direct sub keys of the registry key from which this handle was retrieved.
-         * This stream is valid until this handle is closed.
+         * This stream is valid until this handle is closed, and does not need to be closed afterwards.
          * <p>
          * Note that nothing can be said about the order of sub keys in the stream. It's also unspecified what happens if sub keys are removed while
          * consuming the stream.
@@ -543,8 +546,8 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         // values
 
         /**
-         * Returns all values of the registry key from which this handle was retrieved. This stream should be closed afterwards.
-         * This stream is valid until this handle is closed.
+         * Returns all values of the registry key from which this handle was retrieved.
+         * This stream is valid until this handle is closed, and does not need to be closed afterwards.
          * <p>
          * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while
          * consuming the stream.
@@ -559,8 +562,11 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         }
 
         /**
-         * Returns all values of the registry key from which this handle was retrieved. This stream should be closed afterwards.
-         * This stream is valid until this handle is closed.
+         * Returns all values of the registry key from which this handle was retrieved.
+         * This stream is valid until this handle is closed, and does not need to be closed afterwards.
+         * <p>
+         * While filtering can be done on a stream returned by {@link #values()}, this method allows limited filtering before any objects are even
+         * created for registry values. This offers a small performance gain.
          * <p>
          * Note that nothing can be said about the order of values in the stream. It's also unspecified what happens if values are removed while
          * consuming the stream.
