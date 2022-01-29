@@ -128,7 +128,11 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             "..\\..\\.., HKEY_LOCAL_MACHINE",
             "..\\..\\..\\.., HKEY_LOCAL_MACHINE",
             "child, HKEY_LOCAL_MACHINE\\child",
-            "..\\..\\..\\..\\..\\Something\\..\\..\\Something else\\\\.\\leaf, HKEY_LOCAL_MACHINE\\Something else\\leaf"
+            "..\\..\\..\\..\\..\\Something\\..\\..\\Something else\\\\.\\leaf, HKEY_LOCAL_MACHINE\\Something else\\leaf",
+            "\\absolute, HKEY_LOCAL_MACHINE\\absolute",
+            "child\\, HKEY_LOCAL_MACHINE\\child",
+            "\\, HKEY_LOCAL_MACHINE",
+            "\\\\\\, HKEY_LOCAL_MACHINE"
     })
     @DisplayName("resolve")
     void testResolve(String relativePath, String expectedPath) {

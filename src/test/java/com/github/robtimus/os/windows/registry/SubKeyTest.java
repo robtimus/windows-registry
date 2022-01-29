@@ -116,7 +116,11 @@ class SubKeyTest extends RegistryKeyTest {
                 "..\\..\\.., HKEY_CURRENT_USER",
                 "..\\..\\..\\.., HKEY_CURRENT_USER",
                 "child, HKEY_CURRENT_USER\\Software\\JavaSoft\\Prefs\\child",
-                "..\\..\\..\\..\\..\\Something\\..\\..\\Something else\\\\.\\leaf, HKEY_CURRENT_USER\\Something else\\leaf"
+                "..\\..\\..\\..\\..\\Something\\..\\..\\Something else\\\\.\\leaf, HKEY_CURRENT_USER\\Something else\\leaf",
+                "\\absolute, HKEY_CURRENT_USER\\absolute",
+                "child\\, HKEY_CURRENT_USER\\Software\\JavaSoft\\Prefs\\child",
+                "\\, HKEY_CURRENT_USER",
+                "\\\\\\, HKEY_CURRENT_USER"
         })
         @DisplayName("resolve")
         void testResolve(String relativePath, String expectedPath) {
@@ -182,7 +186,11 @@ class SubKeyTest extends RegistryKeyTest {
                 "..\\..\\.., HKEY_CURRENT_USER",
                 "..\\..\\..\\.., HKEY_CURRENT_USER",
                 "child, HKEY_CURRENT_USER\\Software\\JavaSoft\\Prefs\\child",
-                "..\\..\\..\\..\\..\\Something\\..\\..\\Something else\\\\.\\leaf, HKEY_CURRENT_USER\\Something else\\leaf"
+                "..\\..\\..\\..\\..\\Something\\..\\..\\Something else\\\\.\\leaf, HKEY_CURRENT_USER\\Something else\\leaf",
+                "\\absolute, HKEY_CURRENT_USER\\absolute",
+                "child\\, HKEY_CURRENT_USER\\Software\\JavaSoft\\Prefs\\child",
+                "\\, HKEY_CURRENT_USER",
+                "\\\\\\, HKEY_CURRENT_USER"
         })
         @DisplayName("resolve")
         void testResolve(String relativePath, String expectedPath) {
