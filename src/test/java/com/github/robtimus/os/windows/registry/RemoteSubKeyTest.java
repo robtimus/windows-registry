@@ -693,7 +693,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             mockValue(hKey, stringValue);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            RegistryValue value = registryKey.getValue("string");
+            StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
@@ -707,7 +707,8 @@ class RemoteSubKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
-            NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.getValue("string"));
+            NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
@@ -723,7 +724,8 @@ class RemoteSubKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
-            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getValue("string"));
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("string", exception.name());
 
@@ -739,10 +741,27 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             mockValue(hKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = new StringValue("string", "value");
+
+            HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
+
+            mockValue(hKey, stringValue);
+
+            RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
+            assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
@@ -761,7 +780,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             mockValue(hKey, stringValue);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            Optional<RegistryValue> value = registryKey.findValue("string");
+            Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
@@ -775,7 +794,8 @@ class RemoteSubKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
-            NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.findValue("string"));
+            NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
+                    () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
@@ -791,7 +811,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
-            Optional<RegistryValue> value = registryKey.findValue("string");
+            Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
@@ -806,10 +826,27 @@ class RemoteSubKeyTest extends RegistryKeyTest {
             mockValue(hKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = new StringValue("string", "value");
+
+            HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
+
+            mockValue(hKey, stringValue);
+
+            RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
+            assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
         }
     }
@@ -1597,7 +1634,7 @@ class RemoteSubKeyTest extends RegistryKeyTest {
 
         private void triggerCloseFailure(RegistryKey registryKey) {
             try (RegistryKey.Handle handle = registryKey.handle()) {
-                handle.getValue("test");
+                handle.getValue("test", RegistryValue.class);
             }
         }
     }

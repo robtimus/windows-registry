@@ -356,7 +356,7 @@ class RootKeyTest extends RegistryKeyTest {
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            RegistryValue value = registryKey.getValue("string");
+            StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
         }
 
@@ -367,7 +367,8 @@ class RootKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getValue("string"));
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER", exception.path());
             assertEquals("string", exception.name());
         }
@@ -378,8 +379,20 @@ class RootKeyTest extends RegistryKeyTest {
             mockValue(WinReg.HKEY_CURRENT_USER, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = new StringValue("string", "value");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
         }
     }
 
@@ -395,7 +408,7 @@ class RootKeyTest extends RegistryKeyTest {
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            Optional<RegistryValue> value = registryKey.findValue("string");
+            Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
         }
 
@@ -406,7 +419,7 @@ class RootKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            Optional<RegistryValue> value = registryKey.findValue("string");
+            Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
         }
 
@@ -416,8 +429,20 @@ class RootKeyTest extends RegistryKeyTest {
             mockValue(WinReg.HKEY_CURRENT_USER, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = new StringValue("string", "value");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
         }
     }
 

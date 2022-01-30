@@ -261,35 +261,43 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     /**
      * Returns a registry value.
      *
+     * @param <V> The type of registry value to return.
      * @param name The name of the registry value to return.
+     * @param valueType The type of registry value to return.
      * @return The registry value with the given name.
-     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NullPointerException If the given name or value type is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws NoSuchRegistryValueException If there is no such registry value.
      * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name cannot be cast to the given value type.
      */
-    public RegistryValue getValue(String name) {
+    public <V extends RegistryValue> V getValue(String name, Class<V> valueType) {
         Objects.requireNonNull(name);
+        Objects.requireNonNull(valueType);
 
         try (Handle handle = handle(WinNT.KEY_READ)) {
-            return handle.getValue(name);
+            return handle.getValue(name, valueType);
         }
     }
 
     /**
      * Tries to return a registry value.
      *
+     * @param <V> The type of registry value to return.
      * @param name The name of the registry value to return.
+     * @param valueType The type of registry value to return.
      * @return An {@link Optional} with the registry value with the given name, or {@link Optional#empty()} if there is no such registry value.
-     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NullPointerException If the given name or value type is {@code null}.
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name cannot be cast to the given value type.
      */
-    public Optional<RegistryValue> findValue(String name) {
+    public <V extends RegistryValue> Optional<V> findValue(String name, Class<V> valueType) {
         Objects.requireNonNull(name);
+        Objects.requireNonNull(valueType);
 
         try (Handle handle = handle(WinNT.KEY_READ)) {
-            return handle.findValue(name);
+            return handle.findValue(name, valueType);
         }
     }
 
@@ -633,16 +641,20 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         /**
          * Returns a registry value.
          *
+         * @param <V> The type of registry value to return.
          * @param name The name of the registry value to return.
+         * @param valueType The type of registry value to return.
          * @return The registry value with the given name.
-         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NullPointerException If the given name or value type is {@code null}.
          * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws NoSuchRegistryValueException If there is no such registry value.
          * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name cannot be cast to the given value type.
          */
-        public RegistryValue getValue(String name) {
+        public <V extends RegistryValue> V getValue(String name, Class<V> valueType) {
             Objects.requireNonNull(name);
+            Objects.requireNonNull(valueType);
 
             IntByReference lpType = new IntByReference();
             IntByReference lpcbData = new IntByReference();
@@ -654,7 +666,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
                 code = api.RegQueryValueEx(hKey, name, 0, null, byteData, lpcbData);
                 if (code == WinError.ERROR_SUCCESS) {
-                    return RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue());
+                    return valueType.cast(RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue()));
                 }
             }
             throw RegistryException.of(code, path(), name);
@@ -663,15 +675,19 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         /**
          * Tries to return a registry value.
          *
+         * @param <V> The type of registry value to return.
          * @param name The name of the registry value to return.
+         * @param valueType The type of registry value to return.
          * @return An {@link Optional} with the registry value with the given name, or {@link Optional#empty()} if there is no such registry value.
-         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NullPointerException If the given name or value type is {@code null}.
          * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If the registry key from which this handle was retrieved no longer {@link RegistryKey#exists() exists}.
          * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name cannot be cast to the given value type.
          */
-        public Optional<RegistryValue> findValue(String name) {
+        public <V extends RegistryValue> Optional<V> findValue(String name, Class<V> valueType) {
             Objects.requireNonNull(name);
+            Objects.requireNonNull(valueType);
 
             IntByReference lpType = new IntByReference();
             IntByReference lpcbData = new IntByReference();
@@ -687,7 +703,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                 code = api.RegQueryValueEx(hKey, name, 0, null, byteData, lpcbData);
                 if (code == WinError.ERROR_SUCCESS) {
                     RegistryValue value = RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue());
-                    return Optional.of(value);
+                    return Optional.of(valueType.cast(value));
                 }
             }
             throw RegistryException.of(code, path(), name);

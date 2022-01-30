@@ -376,7 +376,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             mockValue(rootHKey, stringValue);
 
             RegistryKey registryKey = remoteRoot;
-            RegistryValue value = registryKey.getValue("string");
+            StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
         }
 
@@ -387,7 +387,8 @@ class RemoteRootKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
-            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getValue("string"));
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
             assertEquals("string", exception.name());
         }
@@ -398,8 +399,20 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             mockValue(rootHKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = new StringValue("string", "value");
+
+            mockValue(rootHKey, stringValue);
+
+            RegistryKey registryKey = remoteRoot;
+            assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
         }
     }
 
@@ -415,7 +428,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             mockValue(rootHKey, stringValue);
 
             RegistryKey registryKey = remoteRoot;
-            Optional<RegistryValue> value = registryKey.findValue("string");
+            Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
         }
 
@@ -426,7 +439,7 @@ class RemoteRootKeyTest extends RegistryKeyTest {
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
-            Optional<RegistryValue> value = registryKey.findValue("string");
+            Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
         }
 
@@ -436,8 +449,20 @@ class RemoteRootKeyTest extends RegistryKeyTest {
             mockValue(rootHKey, new StringValue("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findValue("string"));
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = new StringValue("string", "value");
+
+            mockValue(rootHKey, stringValue);
+
+            RegistryKey registryKey = remoteRoot;
+            assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
         }
     }
 
