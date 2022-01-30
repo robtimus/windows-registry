@@ -20,7 +20,6 @@ package com.github.robtimus.os.windows.registry;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -156,7 +155,7 @@ class DWordValueTest {
 
             DWordValue otherValue = value.withName("test");
 
-            assertSame(value, otherValue);
+            assertEquals(value, otherValue);
         }
 
         @Test

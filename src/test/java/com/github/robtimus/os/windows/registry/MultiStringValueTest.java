@@ -21,7 +21,6 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBy
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
-import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
@@ -93,7 +92,7 @@ class MultiStringValueTest {
 
             MultiStringValue otherValue = value.withName("test");
 
-            assertSame(value, otherValue);
+            assertEquals(value, otherValue);
         }
 
         @Test

@@ -75,7 +75,7 @@ public final class QWordValue extends SettableRegistryValue {
 
     @Override
     public QWordValue withName(String name) {
-        return name.equals(name()) ? this : new QWordValue(name, value);
+        return new QWordValue(name, value);
     }
 
     @Override

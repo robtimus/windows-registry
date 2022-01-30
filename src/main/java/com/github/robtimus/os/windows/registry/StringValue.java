@@ -105,7 +105,7 @@ public final class StringValue extends SettableRegistryValue {
 
     @Override
     public StringValue withName(String name) {
-        return name.equals(name()) ? this : new StringValue(name, type(), value);
+        return new StringValue(name, type(), value);
     }
 
     @Override
