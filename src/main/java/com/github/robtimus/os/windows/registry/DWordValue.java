@@ -118,6 +118,54 @@ public final class DWordValue extends SettableRegistryValue {
         return new DWordValue(name, type(), value, byteOrder);
     }
 
+    /**
+     * Returns a registry value with the same name as this registry value but a different value. This method does not change the byte order.
+     *
+     * @param value The value of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given value.
+     */
+    public DWordValue withValue(int value) {
+        return new DWordValue(name(), type(), value, byteOrder);
+    }
+
+    /**
+     * Returns a registry value with the same name as this registry value but a different little-endian value.
+     *
+     * @param value The value of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given value.
+     */
+    public DWordValue withLittleEndianValue(int value) {
+        return littleEndianOf(name(), value);
+    }
+
+    /**
+     * Returns a registry value with the same name as this registry value but a different big-endian value.
+     *
+     * @param value The value of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given value.
+     */
+    public DWordValue withBigEndianValue(int value) {
+        return bigEndianOf(name(), value);
+    }
+
+    /**
+     * Returns a registry value with the same name and value as this registry value but little-endian byte order.
+     *
+     * @return A registry value with the same name and value as this registry value but little-endian byte order.
+     */
+    public DWordValue withLittleEndianValue() {
+        return littleEndianOf(name(), value);
+    }
+
+    /**
+     * Returns a registry value with the same name and value as this registry value but big-endian byte order.
+     *
+     * @return A registry value with the same name and value as this registry value but big-endian byte order.
+     */
+    public DWordValue withBigEndianValue() {
+        return bigEndianOf(name(), value);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

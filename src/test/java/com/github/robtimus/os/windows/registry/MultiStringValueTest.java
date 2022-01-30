@@ -108,6 +108,33 @@ class MultiStringValueTest {
         }
     }
 
+    @Nested
+    @DisplayName("withValues")
+    class WithValues {
+
+        @Test
+        @DisplayName("same values")
+        void testSameValues() {
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
+
+            MultiStringValue otherValue = value.withValues(VALUE1, VALUE2, VALUE3);
+
+            assertEquals(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different values")
+        void testDifferentName() {
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
+
+            MultiStringValue otherValue = value.withValues(VALUE3, VALUE2, VALUE1);
+
+            assertNotEquals(value, otherValue);
+            assertEquals(value.name(), otherValue.name());
+            assertEquals(Arrays.asList(VALUE3, VALUE2, VALUE1), otherValue.values());
+        }
+    }
+
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")

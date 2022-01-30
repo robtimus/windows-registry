@@ -32,7 +32,7 @@ public abstract class SettableRegistryValue extends RegistryValue {
     abstract byte[] rawData();
 
     /**
-     * Returns a registry value with the same value as this registry value.
+     * Returns a registry value with the same value as this registry value but a different name.
      *
      * @param name The name of the registry value to return.
      * @return A registry value with the same value as this registry value and the given name.

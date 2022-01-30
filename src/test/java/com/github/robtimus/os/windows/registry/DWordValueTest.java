@@ -171,6 +171,336 @@ class DWordValueTest {
         }
     }
 
+    @Nested
+    @DisplayName("withValue")
+    class WithValue {
+
+        @Nested
+        @DisplayName("default endian")
+        class DefaultEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withValue(16909060);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+        }
+
+        @Nested
+        @DisplayName("little-endian")
+        class LittleEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withValue(16909060);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+        }
+
+        @Nested
+        @DisplayName("big-endian")
+        class BigEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withValue(16909060);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("withLittleEndianValue")
+    class WithLittleEndianValue {
+
+        @Nested
+        @DisplayName("default endian")
+        class DefaultEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue(16909060);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+
+            @Test
+            @DisplayName("byte-order only")
+            void testByteOrderOnly() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue();
+
+                assertEquals(value, otherValue);
+            }
+        }
+
+        @Nested
+        @DisplayName("little-endian")
+        class LittleEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue(16909060);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+
+            @Test
+            @DisplayName("byte-order only")
+            void testByteOrderOnly() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue();
+
+                assertEquals(value, otherValue);
+            }
+        }
+
+        @Nested
+        @DisplayName("big-endian")
+        class BigEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue(16909060);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+
+            @Test
+            @DisplayName("byte-order only")
+            void testByteOrderOnly() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withLittleEndianValue();
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("withBigEndianValue")
+    class WithBigEndianValue {
+
+        @Nested
+        @DisplayName("default endian")
+        class DefaultEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue(16909060);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+
+            @Test
+            @DisplayName("byte-order only")
+            void testByteOrderOnly() {
+                DWordValue value = DWordValue.of("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue();
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+        }
+
+        @Nested
+        @DisplayName("little-endian")
+        class LittleEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue(16909060);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+
+            @Test
+            @DisplayName("byte-order only")
+            void testByteOrderOnly() {
+                DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue();
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+        }
+
+        @Nested
+        @DisplayName("big-endian")
+        class BigEndian {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue(16909060);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue(67305985);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(67305985, otherValue.value());
+            }
+
+            @Test
+            @DisplayName("byte-order only")
+            void testByteOrderOnly() {
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+
+                DWordValue otherValue = value.withBigEndianValue();
+
+                assertEquals(value, otherValue);
+            }
+        }
+    }
+
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")

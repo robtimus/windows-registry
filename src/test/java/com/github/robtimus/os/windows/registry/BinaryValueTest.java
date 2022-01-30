@@ -147,6 +147,48 @@ class BinaryValueTest {
         }
     }
 
+    @Nested
+    @DisplayName("withData")
+    class WithData {
+
+        @Test
+        @DisplayName("same data")
+        void testSameData() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            BinaryValue otherValue = value.withData(data);
+
+            assertEquals(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different data array")
+        void testDifferentDataArray() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            BinaryValue otherValue = value.withData(Arrays.copyOf(data, data.length - 1));
+
+            assertNotEquals(value, otherValue);
+            assertEquals(value.name(), otherValue.name());
+            assertArrayEquals(Arrays.copyOf(data, data.length - 1), otherValue.data());
+        }
+
+        @Test
+        @DisplayName("different data stream")
+        void testDifferentDataStream() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            BinaryValue otherValue = assertDoesNotThrow(() -> value.withData(new ByteArrayInputStream(data, 0, data.length - 1)));
+
+            assertNotEquals(value, otherValue);
+            assertEquals(value.name(), otherValue.name());
+            assertArrayEquals(Arrays.copyOf(data, data.length - 1), otherValue.data());
+        }
+    }
+
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")

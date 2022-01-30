@@ -108,6 +108,30 @@ public final class StringValue extends SettableRegistryValue {
         return new StringValue(name, type(), value);
     }
 
+    /**
+     * Returns a registry value with the same name as this registry value but a different value.
+     * This registry value will not be {@link #isExpandable() expandable}.
+     *
+     * @param value The value of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given value.
+     * @throws NullPointerException If the given value is {@code null}.
+     */
+    public StringValue withValue(String value) {
+        return of(name(), value);
+    }
+
+    /**
+     * Returns a registry value with the same name as this registry value but a different value.
+     * This registry value will be {@link #isExpandable() expandable}.
+     *
+     * @param value The value of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given value.
+     * @throws NullPointerException If the given value is {@code null}.
+     */
+    public StringValue withExpandableValue(String value) {
+        return expandableOf(name(), value);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

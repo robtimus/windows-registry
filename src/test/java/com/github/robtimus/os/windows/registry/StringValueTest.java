@@ -91,7 +91,7 @@ class StringValueTest {
 
         @Test
         @DisplayName("not expandable")
-        void testFromString() {
+        void testNotExpandable() {
             Map<String, String> getenv = System.getenv();
 
             String text = getenv.keySet().stream()
@@ -102,22 +102,36 @@ class StringValueTest {
             assertThrows(IllegalStateException.class, value::expandedValue);
         }
 
-        @Test
+        @Nested
         @DisplayName("expandable")
-        // No need to mock anything, just make sure we run on Windows
-        @EnabledOnOs(OS.WINDOWS)
-        void testFromBytes() {
-            Map<String, String> getenv = System.getenv();
+        class Expandable {
 
-            String text = getenv.keySet().stream()
-                    .limit(3)
-                    .collect(Collectors.joining("%, %", "Three values: %", "%"));
-            String expectedValue = getenv.values().stream()
-                    .limit(3)
-                    .collect(Collectors.joining(", ", "Three values: ", ""));
+            @Test
+            @DisplayName("with environment variables")
+            // No need to mock anything, just make sure we run on Windows
+            @EnabledOnOs(OS.WINDOWS)
+            void testWithEnvironmentVairables() {
+                Map<String, String> getenv = System.getenv();
 
-            StringValue value = StringValue.expandableOf("test", text);
-            assertEquals(expectedValue, value.expandedValue());
+                String text = getenv.keySet().stream()
+                        .limit(3)
+                        .collect(Collectors.joining("%, %", "Three values: %", "%"));
+                String expectedValue = getenv.values().stream()
+                        .limit(3)
+                        .collect(Collectors.joining(", ", "Three values: ", ""));
+
+                StringValue value = StringValue.expandableOf("test", text);
+                assertEquals(expectedValue, value.expandedValue());
+            }
+
+            @Test
+            @DisplayName("without environment variables")
+            // No need to mock anything, just make sure we run on Windows
+            @EnabledOnOs(OS.WINDOWS)
+            void testWithoutEnvironmentVairables() {
+                StringValue value = StringValue.expandableOf("test", TEXT);
+                assertEquals(TEXT, value.expandedValue());
+            }
         }
     }
 
@@ -167,6 +181,128 @@ class StringValueTest {
             assertNotEquals(value, otherValue);
             assertEquals("test2", otherValue.name());
             assertEquals(value.value(), otherValue.value());
+        }
+    }
+
+    @Nested
+    @DisplayName("withValue")
+    class WithValue {
+
+        @Nested
+        @DisplayName("not expandable")
+        class NotExpandable {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                StringValue value = StringValue.of("test", TEXT);
+
+                StringValue otherValue = value.withValue(TEXT);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                StringValue value = StringValue.of("test", TEXT);
+
+                StringValue otherValue = value.withValue(TEXT + TEXT);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(TEXT + TEXT, otherValue.value());
+            }
+        }
+
+        @Nested
+        @DisplayName("expandable")
+        class Expandable {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                StringValue value = StringValue.expandableOf("test", TEXT);
+
+                StringValue otherValue = value.withValue(TEXT);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                StringValue value = StringValue.expandableOf("test", TEXT);
+
+                StringValue otherValue = value.withValue(TEXT + TEXT);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(TEXT + TEXT, otherValue.value());
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("withExpandableValue")
+    class WithExpandableValue {
+
+        @Nested
+        @DisplayName("not expandable")
+        class NotExpandable {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                StringValue value = StringValue.of("test", TEXT);
+
+                StringValue otherValue = value.withExpandableValue(TEXT);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(value.value(), otherValue.value());
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                StringValue value = StringValue.of("test", TEXT);
+
+                StringValue otherValue = value.withExpandableValue(TEXT + TEXT);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(TEXT + TEXT, otherValue.value());
+            }
+        }
+
+        @Nested
+        @DisplayName("expandable")
+        class Expandable {
+
+            @Test
+            @DisplayName("same value")
+            void testSameValue() {
+                StringValue value = StringValue.expandableOf("test", TEXT);
+
+                StringValue otherValue = value.withExpandableValue(TEXT);
+
+                assertEquals(value, otherValue);
+            }
+
+            @Test
+            @DisplayName("different value")
+            void testDifferentValue() {
+                StringValue value = StringValue.expandableOf("test", TEXT);
+
+                StringValue otherValue = value.withExpandableValue(TEXT + TEXT);
+
+                assertNotEquals(value, otherValue);
+                assertEquals(value.name(), otherValue.name());
+                assertEquals(TEXT + TEXT, otherValue.value());
+            }
         }
     }
 

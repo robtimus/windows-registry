@@ -99,6 +99,28 @@ public final class BinaryValue extends SettableRegistryValue {
         return new BinaryValue(name, data);
     }
 
+    /**
+     * Returns a registry value with the same name as this registry value but different binary data.
+     *
+     * @param data The binary data of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given binary data.
+     * @throws NullPointerException If the given array is {@code null}.
+     */
+    public BinaryValue withData(byte[] data) {
+        return of(name(), data);
+    }
+
+    /**
+     * Returns a registry value with the same name as this registry value but different binary data.
+     *
+     * @param data An input stream with the binary data of the registry value to return.
+     * @return A registry value with the same name as this registry value and the binary data from the given input stream.
+     * @throws IOException If an I/O error occurs while reading from the given input stream.
+     */
+    public BinaryValue withData(InputStream data) throws IOException {
+        return of(name(), data);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

@@ -78,6 +78,16 @@ public final class QWordValue extends SettableRegistryValue {
         return new QWordValue(name, value);
     }
 
+    /**
+     * Returns a registry value with the same name as this registry value but a different value.
+     *
+     * @param value The value of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given value.
+     */
+    public QWordValue withValue(long value) {
+        return of(name(), value);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

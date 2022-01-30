@@ -95,6 +95,28 @@ public final class MultiStringValue extends SettableRegistryValue {
         return new MultiStringValue(name, values);
     }
 
+    /**
+     * Returns a registry value with the same name as this registry value but a different value.
+     *
+     * @param values The values of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given values.
+     * @throws NullPointerException If any of the given values is {@code null}.
+     */
+    public MultiStringValue withValues(String... values) {
+        return withValues(Arrays.asList(values));
+    }
+
+    /**
+     * Returns a registry value with the same name as this registry value but a different value.
+     *
+     * @param values The values of the registry value to return.
+     * @return A registry value with the same name as this registry value and the given values.
+     * @throws NullPointerException If any of the given values is {@code null}.
+     */
+    public MultiStringValue withValues(List<String> values) {
+        return of(name(), values);
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) {

@@ -103,6 +103,33 @@ class QWordRegistryTest {
         }
     }
 
+    @Nested
+    @DisplayName("withValue")
+    class WithValue {
+
+        @Test
+        @DisplayName("same value")
+        void testSameValue() {
+            QWordValue value = QWordValue.of("test", 578437695752307201L);
+
+            QWordValue otherValue = value.withValue(578437695752307201L);
+
+            assertEquals(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different value")
+        void testDifferentValue() {
+            QWordValue value = QWordValue.of("test", 578437695752307201L);
+
+            QWordValue otherValue = value.withValue(578437695752307200L);
+
+            assertNotEquals(value, otherValue);
+            assertEquals(value.name(), otherValue.name());
+            assertEquals(578437695752307200L, otherValue.value());
+        }
+    }
+
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
