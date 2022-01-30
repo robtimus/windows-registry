@@ -29,6 +29,18 @@ final class StringUtils {
     private StringUtils() {
     }
 
+    static String toHexString(byte[] array) {
+        StringBuilder sb = new StringBuilder(2 + array.length * 2);
+        sb.append("0x"); //$NON-NLS-1$
+        for (byte b : array) {
+            int high = (b >> 4) & 0xF;
+            int low = b & 0xF;
+            sb.append(Character.forDigit(high, 16));
+            sb.append(Character.forDigit(low, 16));
+        }
+        return sb.toString();
+    }
+
     static String toString(byte[] data, int dataLength) {
         Memory memory = new Memory((long) dataLength + Native.WCHAR_SIZE);
         memory.clear();

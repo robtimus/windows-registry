@@ -56,6 +56,6 @@ public final class NoneValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + BinaryValue.toString(data);
+        return name() + "=" + StringUtils.toHexString(data);
     }
 }
