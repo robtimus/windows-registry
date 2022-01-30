@@ -33,30 +33,38 @@ public final class MultiStringValue extends SettableRegistryValue {
 
     private final List<String> values;
 
-    /**
-     * Creates a new multi-string registry value.
-     *
-     * @param name The name of the registry value.
-     * @param values The registry value's string values.
-     */
-    public MultiStringValue(String name, String... values) {
-        this(name, Arrays.asList(values));
-    }
-
-    /**
-     * Creates a new multi-string registry value.
-     *
-     * @param name The name of the registry value.
-     * @param values The registry value's string values.
-     */
-    public MultiStringValue(String name, List<String> values) {
-        super(name, WinNT.REG_MULTI_SZ);
-        this.values = copyOf(values);
-    }
-
     MultiStringValue(String name, byte[] data, int dataLength) {
         super(name, WinNT.REG_MULTI_SZ);
         values = StringUtils.toStringList(data, dataLength);
+    }
+
+    private MultiStringValue(String name, List<String> values) {
+        super(name, WinNT.REG_MULTI_SZ);
+        this.values = values;
+    }
+
+    /**
+     * Creates a new multi-string registry value.
+     *
+     * @param name The name of the registry value.
+     * @param values The registry value's string values.
+     * @return The created multi-string registry value.
+     * @throws NullPointerException If the name or any of the given values is {@code null}.
+     */
+    public static MultiStringValue of(String name, String... values) {
+        return of(name, Arrays.asList(values));
+    }
+
+    /**
+     * Creates a new multi-string registry value.
+     *
+     * @param name The name of the registry value.
+     * @param values The registry value's string values.
+     * @return The created multi-string registry value.
+     * @throws NullPointerException If the name or any of the given values is {@code null}.
+     */
+    public static MultiStringValue of(String name, List<String> values) {
+        return new MultiStringValue(name, copyOf(values));
     }
 
     private static List<String> copyOf(List<String> values) {

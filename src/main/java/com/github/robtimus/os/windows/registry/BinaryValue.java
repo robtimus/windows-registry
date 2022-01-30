@@ -18,6 +18,8 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import com.sun.jna.platform.win32.WinNT;
@@ -31,20 +33,41 @@ public final class BinaryValue extends SettableRegistryValue {
 
     private final byte[] data;
 
+    BinaryValue(String name, byte[] data, int dataLength) {
+        super(name, WinNT.REG_BINARY);
+        this.data = Arrays.copyOf(data, dataLength);
+    }
+
+    private BinaryValue(String name, byte[] data) {
+        super(name, WinNT.REG_BINARY);
+        this.data = data;
+    }
+
     /**
      * Creates a new binary registry value.
      *
      * @param name The name of the registry value.
      * @param data The registry value's binary data.
+     * @return The created binary registry value.
+     * @throws NullPointerException If the given name or byte array is {@code null}.
      */
-    public BinaryValue(String name, byte[] data) {
-        super(name, WinNT.REG_BINARY);
-        this.data = data.clone();
+    public static BinaryValue of(String name, byte[] data) {
+        return new BinaryValue(name, data.clone());
     }
 
-    BinaryValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_BINARY);
-        this.data = Arrays.copyOf(data, dataLength);
+    /**
+     * Creates a new binary registry value.
+     *
+     * @param name The name of the registry value.
+     * @param data An input stream with the registry value's binary data.
+     * @return The created binary registry value.
+     * @throws NullPointerException If the given name or input stream is {@code null}.
+     * @throws IOException If an I/O error occurs while reading from the given input stream.
+     */
+    public static BinaryValue of(String name, InputStream data) throws IOException {
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        data.transferTo(outputStream);
+        return new BinaryValue(name, outputStream.toByteArray());
     }
 
     /**

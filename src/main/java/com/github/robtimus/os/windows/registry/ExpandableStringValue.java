@@ -30,20 +30,26 @@ public final class ExpandableStringValue extends SettableRegistryValue {
 
     private final String value;
 
+    ExpandableStringValue(String name, byte[] data, int dataLength) {
+        super(name, WinNT.REG_EXPAND_SZ);
+        value = StringUtils.toString(data, dataLength);
+    }
+
+    private ExpandableStringValue(String name, String value) {
+        super(name, WinNT.REG_EXPAND_SZ);
+        this.value = Objects.requireNonNull(value);
+    }
+
     /**
      * Creates a new string registry value.
      *
      * @param name The name of the registry value.
      * @param value The registry value's string value.
+     * @return The created string registry value.
+     * @throws NullPointerException If the given name or value is {@code null}.
      */
-    public ExpandableStringValue(String name, String value) {
-        super(name, WinNT.REG_EXPAND_SZ);
-        this.value = Objects.requireNonNull(value);
-    }
-
-    ExpandableStringValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_EXPAND_SZ);
-        value = StringUtils.toString(data, dataLength);
+    public static ExpandableStringValue of(String name, String value) {
+        return new ExpandableStringValue(name, value);
     }
 
     /**

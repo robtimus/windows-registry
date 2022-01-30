@@ -40,7 +40,7 @@ class StringValueTest {
         @Test
         @DisplayName("from String")
         void testFromString() {
-            StringValue value = new StringValue("test", TEXT);
+            StringValue value = StringValue.of("test", TEXT);
 
             assertEquals(TEXT, value.value());
         }
@@ -62,7 +62,7 @@ class StringValueTest {
         @Test
         @DisplayName("from String")
         void testFromString() {
-            StringValue value = new StringValue("test", TEXT);
+            StringValue value = StringValue.of("test", TEXT);
 
             assertArrayEquals(textAsBytes(), value.rawData());
         }
@@ -86,15 +86,15 @@ class StringValueTest {
 
     static Arguments[] equalsArguments() {
         byte[] data = textAsBytes();
-        StringValue value = new StringValue("test", TEXT);
+        StringValue value = StringValue.of("test", TEXT);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new StringValue("test", TEXT), true),
+                arguments(value, StringValue.of("test", TEXT), true),
                 arguments(value, new StringValue("test", data, data.length), true),
                 arguments(value, new StringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new StringValue("test2", TEXT), false),
-                arguments(value, new StringValue("test", TEXT.substring(0, TEXT.length() - 1)), false),
+                arguments(value, StringValue.of("test2", TEXT), false),
+                arguments(value, StringValue.of("test", TEXT.substring(0, TEXT.length() - 1)), false),
                 arguments(value, new StringValue("test", data, data.length - 4), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
@@ -104,9 +104,9 @@ class StringValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        StringValue value = new StringValue("test", TEXT);
+        StringValue value = StringValue.of("test", TEXT);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new StringValue("test", TEXT).hashCode());
+        assertEquals(value.hashCode(), StringValue.of("test", TEXT).hashCode());
     }
 }

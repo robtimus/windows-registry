@@ -31,7 +31,6 @@ import java.io.InputStreamReader;
 import java.io.Reader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
-import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -139,7 +138,7 @@ class RegistryIT {
             try (RegistryKey.Handle handle = subKey3.handle(HandleOption.CREATE, HandleOption.MANAGE_VALUES)) {
                 assertTrue(subKey3.exists());
 
-                handle.setValue(new ExpandableStringValue("path", "%PATH%"));
+                handle.setValue(ExpandableStringValue.of("path", "%PATH%"));
                 ExpandableStringValue value = handle.getValue("path", ExpandableStringValue.class);
                 assertEquals(System.getenv("PATH"), value.expandedValue());
             }
@@ -184,14 +183,14 @@ class RegistryIT {
 
             assertEquals(Optional.empty(), registryKey.findValue(UUID.randomUUID().toString(), RegistryValue.class));
 
-            StringValue stringValue = new StringValue("string-value", "Lorem ipsum");
-            MultiStringValue multiStringValue = new MultiStringValue("multi-string-value", "value1", "value2", "value3");
-            ExpandableStringValue expandableStringValue = new ExpandableStringValue("expandable-string-value", "%PATH%");
-            DWordValue dwordValue = new DWordValue("dword-value", 13);
-            DWordValue beDWordValue = new DWordValue("be-dword-value", 26, ByteOrder.BIG_ENDIAN);
-            DWordValue leDWordValue = new DWordValue("le-dword-value", 26, ByteOrder.LITTLE_ENDIAN);
-            QWordValue qwordValue = new QWordValue("qword-value", 481);
-            BinaryValue binaryValue = new BinaryValue("binary-value", "Hello World".getBytes());
+            StringValue stringValue = StringValue.of("string-value", "Lorem ipsum");
+            MultiStringValue multiStringValue = MultiStringValue.of("multi-string-value", "value1", "value2", "value3");
+            ExpandableStringValue expandableStringValue = ExpandableStringValue.of("expandable-string-value", "%PATH%");
+            DWordValue dwordValue = DWordValue.of("dword-value", 13);
+            DWordValue beDWordValue = DWordValue.bigEndianOf("be-dword-value", 26);
+            DWordValue leDWordValue = DWordValue.littleEndianOf("le-dword-value", 26);
+            QWordValue qwordValue = QWordValue.of("qword-value", 481);
+            BinaryValue binaryValue = BinaryValue.of("binary-value", "Hello World".getBytes());
 
             registryKey.setValue(stringValue);
             registryKey.setValue(multiStringValue);

@@ -44,7 +44,7 @@ class ExpandableStringRegistryTest {
         @Test
         @DisplayName("from String")
         void testFromString() {
-            ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
+            ExpandableStringValue value = ExpandableStringValue.of("test", TEXT);
 
             assertEquals(TEXT, value.value());
         }
@@ -73,7 +73,7 @@ class ExpandableStringRegistryTest {
                 .limit(3)
                 .collect(Collectors.joining(", ", "Three values: ", ""));
 
-        ExpandableStringValue value = new ExpandableStringValue("test", text);
+        ExpandableStringValue value = ExpandableStringValue.of("test", text);
         assertEquals(expectedValue, value.expandedValue());
     }
 
@@ -84,7 +84,7 @@ class ExpandableStringRegistryTest {
         @Test
         @DisplayName("from String")
         void testFromString() {
-            ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
+            ExpandableStringValue value = ExpandableStringValue.of("test", TEXT);
 
             assertArrayEquals(textAsBytes(), value.rawData());
         }
@@ -108,15 +108,15 @@ class ExpandableStringRegistryTest {
 
     static Arguments[] equalsArguments() {
         byte[] data = textAsBytes();
-        ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
+        ExpandableStringValue value = ExpandableStringValue.of("test", TEXT);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new ExpandableStringValue("test", TEXT), true),
+                arguments(value, ExpandableStringValue.of("test", TEXT), true),
                 arguments(value, new ExpandableStringValue("test", data, data.length), true),
                 arguments(value, new ExpandableStringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new ExpandableStringValue("test2", TEXT), false),
-                arguments(value, new ExpandableStringValue("test", TEXT.substring(0, TEXT.length() - 1)), false),
+                arguments(value, ExpandableStringValue.of("test2", TEXT), false),
+                arguments(value, ExpandableStringValue.of("test", TEXT.substring(0, TEXT.length() - 1)), false),
                 arguments(value, new ExpandableStringValue("test", data, data.length - 4), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
@@ -126,9 +126,9 @@ class ExpandableStringRegistryTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        ExpandableStringValue value = new ExpandableStringValue("test", TEXT);
+        ExpandableStringValue value = ExpandableStringValue.of("test", TEXT);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new ExpandableStringValue("test", TEXT).hashCode());
+        assertEquals(value.hashCode(), ExpandableStringValue.of("test", TEXT).hashCode());
     }
 }

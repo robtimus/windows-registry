@@ -20,16 +20,11 @@ package com.github.robtimus.os.windows.registry;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import java.nio.ByteOrder;
-import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.ArgumentsProvider;
-import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.provider.MethodSource;
 import com.sun.jna.platform.win32.WinNT;
 
@@ -43,16 +38,23 @@ class DWordValueTest {
         @Test
         @DisplayName("from value without byte order")
         void testFromValueWithoutByteOrder() {
-            DWordValue value = new DWordValue("test", 16909060);
+            DWordValue value = DWordValue.of("test", 16909060);
 
             assertEquals(16909060, value.value());
         }
 
-        @ParameterizedTest
-        @ArgumentsSource(ByteOrderProvider.class)
-        @DisplayName("from value with byte order")
-        void testFromValueWithoutByteOrder(ByteOrder byteOrder) {
-            DWordValue value = new DWordValue("test", 16909060, byteOrder);
+        @Test
+        @DisplayName("from value with little-endian byte order")
+        void testFromValueWithLittleEndianByteOrder() {
+            DWordValue value = DWordValue.littleEndianOf("test", 16909060);
+
+            assertEquals(16909060, value.value());
+        }
+
+        @Test
+        @DisplayName("from value with big-endian byte order")
+        void testFromValueWithBigEndianByteOrder() {
+            DWordValue value = DWordValue.bigEndianOf("test", 16909060);
 
             assertEquals(16909060, value.value());
         }
@@ -62,21 +64,21 @@ class DWordValueTest {
         class FromBytes {
 
             @Test
-            @DisplayName("REG_DWORD_BIG_ENDIAN")
-            void testBigEndian() {
-                byte[] bytes = { 1, 2, 3, 4 };
-                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, bytes);
-
-                assertEquals(16909060, value.value());
-            }
-
-            @Test
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
                 DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, bytes);
 
                 assertEquals(67305985, value.value());
+            }
+
+            @Test
+            @DisplayName("REG_DWORD_BIG_ENDIAN")
+            void testBigEndian() {
+                byte[] bytes = { 1, 2, 3, 4 };
+                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, bytes);
+
+                assertEquals(16909060, value.value());
             }
         }
     }
@@ -90,19 +92,28 @@ class DWordValueTest {
         class FromInt {
 
             @Test
-            @DisplayName("BigEndian")
-            void testBigEndian() {
+            @DisplayName("default endian")
+            void testDefaultEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordValue value = new DWordValue("test", 16909060, ByteOrder.BIG_ENDIAN);
+                DWordValue value = DWordValue.of("test", 67305985);
 
                 assertArrayEquals(bytes, value.rawData());
             }
 
             @Test
-            @DisplayName("LittleEndian")
+            @DisplayName("little-endian")
             void testLittleEndian() {
                 byte[] bytes = { 1, 2, 3, 4 };
-                DWordValue value = new DWordValue("test", 67305985, ByteOrder.LITTLE_ENDIAN);
+                DWordValue value = DWordValue.littleEndianOf("test", 67305985);
+
+                assertArrayEquals(bytes, value.rawData());
+            }
+
+            @Test
+            @DisplayName("big-endian")
+            void testBigEndian() {
+                byte[] bytes = { 1, 2, 3, 4 };
+                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
 
                 assertArrayEquals(bytes, value.rawData());
             }
@@ -146,10 +157,10 @@ class DWordValueTest {
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data), true),
-                arguments(value, new DWordValue("test", 67305985), true),
+                arguments(value, DWordValue.of("test", 67305985), true),
                 arguments(value, new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data), false),
                 arguments(value, new DWordValue("test2", WinNT.REG_DWORD_LITTLE_ENDIAN, data), false),
-                arguments(value, new DWordValue("test", 67305984), false),
+                arguments(value, DWordValue.of("test", 67305984), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -158,18 +169,9 @@ class DWordValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        DWordValue value = new DWordValue("test", 123456);
+        DWordValue value = DWordValue.of("test", 123456);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new DWordValue("test", 123456).hashCode());
-    }
-
-    private static final class ByteOrderProvider implements ArgumentsProvider {
-
-        @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
-            return Stream.of(ByteOrder.BIG_ENDIAN, ByteOrder.LITTLE_ENDIAN)
-                    .map(Arguments::arguments);
-        }
+        assertEquals(value.hashCode(), DWordValue.of("test", 123456).hashCode());
     }
 }

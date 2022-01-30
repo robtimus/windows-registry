@@ -19,12 +19,15 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -33,13 +36,68 @@ import org.junit.jupiter.params.provider.MethodSource;
 @SuppressWarnings("nls")
 class BinaryValueTest {
 
-    @Test
+    @Nested
     @DisplayName("data")
-    void testData() {
-        byte[] data = randomData();
-        BinaryValue value = new BinaryValue("test", data, data.length - 10);
+    class Data {
 
-        assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.data());
+        @Test
+        @DisplayName("from bytes")
+        void testFromBytes() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            assertArrayEquals(data, value.data());
+        }
+
+        @Test
+        @DisplayName("from input stream")
+        void testFromInputStream() {
+            byte[] data = randomData();
+            BinaryValue value = assertDoesNotThrow(() -> BinaryValue.of("test", new ByteArrayInputStream(data)));
+
+            assertArrayEquals(data, value.data());
+        }
+
+        @Test
+        @DisplayName("from bytes with length")
+        void testFromBytesWithLength() {
+            byte[] data = randomData();
+            BinaryValue value = new BinaryValue("test", data, data.length - 10);
+
+            assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.data());
+        }
+    }
+
+    @Nested
+    @DisplayName("raw data")
+    class RawData {
+
+        @Test
+        @DisplayName("from bytes")
+        void testFromBytes() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            assertArrayEquals(data, value.rawData());
+        }
+
+        @Test
+        @DisplayName("from input stream")
+        void testFromInputStream() {
+            byte[] data = randomData();
+            BinaryValue value = assertDoesNotThrow(() -> BinaryValue.of("test", new ByteArrayInputStream(data)));
+
+            assertArrayEquals(data, value.rawData());
+        }
+
+        @Test
+        @DisplayName("from bytes with length")
+        void testFromBytesWithLength() {
+            byte[] data = randomData();
+            BinaryValue value = new BinaryValue("test", data, data.length - 10);
+
+            assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.rawData());
+        }
     }
 
     @Test
@@ -59,15 +117,6 @@ class BinaryValueTest {
         assertArrayEquals(Arrays.copyOf(data, data.length - 10), content);
     }
 
-    @Test
-    @DisplayName("rawData")
-    void testRawData() {
-        byte[] data = randomData();
-        BinaryValue value = new BinaryValue("test", data, data.length - 10);
-
-        assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.rawData());
-    }
-
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
@@ -77,14 +126,14 @@ class BinaryValueTest {
 
     static Arguments[] equalsArguments() {
         byte[] data = randomData();
-        BinaryValue value = new BinaryValue("test", data);
+        BinaryValue value = BinaryValue.of("test", data);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new BinaryValue("test", data), true),
+                arguments(value, BinaryValue.of("test", data), true),
                 arguments(value, new BinaryValue("test", data, data.length), true),
                 arguments(value, new BinaryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new BinaryValue("test2", data), false),
+                arguments(value, BinaryValue.of("test2", data), false),
                 arguments(value, new BinaryValue("test", data, data.length - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
@@ -95,9 +144,9 @@ class BinaryValueTest {
     @DisplayName("hashCode")
     void testHashCode() {
         byte[] data = randomData();
-        BinaryValue value = new BinaryValue("test", data);
+        BinaryValue value = BinaryValue.of("test", data);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new BinaryValue("test", data).hashCode());
+        assertEquals(value.hashCode(), BinaryValue.of("test", data).hashCode());
     }
 }

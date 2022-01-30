@@ -37,7 +37,7 @@ class QWordRegistryTest {
         @Test
         @DisplayName("from value")
         void testFromValue() {
-            QWordValue value = new QWordValue("test", 578437695752307201L);
+            QWordValue value = QWordValue.of("test", 578437695752307201L);
 
             assertEquals(578437695752307201L, value.value());
         }
@@ -60,7 +60,7 @@ class QWordRegistryTest {
         @DisplayName("from long")
         void testFromLong() {
             byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
-            QWordValue value = new QWordValue("test", 578437695752307201L);
+            QWordValue value = QWordValue.of("test", 578437695752307201L);
 
             assertArrayEquals(bytes, value.rawData());
         }
@@ -90,10 +90,10 @@ class QWordRegistryTest {
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, new QWordValue("test", data), true),
-                arguments(value, new QWordValue("test", 578437695752307201L), true),
+                arguments(value, QWordValue.of("test", 578437695752307201L), true),
                 arguments(value, new QWordValue("test", otherData), false),
                 arguments(value, new QWordValue("test2", data), false),
-                arguments(value, new QWordValue("test", 578437695752307200L), false),
+                arguments(value, QWordValue.of("test", 578437695752307200L), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -102,9 +102,9 @@ class QWordRegistryTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        QWordValue value = new QWordValue("test", 123456);
+        QWordValue value = QWordValue.of("test", 123456);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new QWordValue("test", 123456).hashCode());
+        assertEquals(value.hashCode(), QWordValue.of("test", 123456).hashCode());
     }
 }

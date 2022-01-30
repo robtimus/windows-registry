@@ -43,7 +43,7 @@ class MultiStringValueTest {
         @Test
         @DisplayName("from Strings")
         void testFromString() {
-            MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
             assertEquals(Arrays.asList(VALUE1, VALUE2, VALUE3), value.values());
         }
@@ -65,7 +65,7 @@ class MultiStringValueTest {
         @Test
         @DisplayName("from Strings")
         void testFromString() {
-            MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
             assertArrayEquals(textAsBytes(VALUE1, VALUE2, VALUE3), value.rawData());
         }
@@ -89,15 +89,15 @@ class MultiStringValueTest {
 
     static Arguments[] equalsArguments() {
         byte[] data = textAsBytes(VALUE1, VALUE2, VALUE3);
-        MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
+        MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new MultiStringValue("test", VALUE1, VALUE2, VALUE3), true),
+                arguments(value, MultiStringValue.of("test", VALUE1, VALUE2, VALUE3), true),
                 arguments(value, new MultiStringValue("test", data, data.length), true),
                 arguments(value, new MultiStringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new MultiStringValue("test2", VALUE1, VALUE2, VALUE3), false),
-                arguments(value, new MultiStringValue("test", VALUE1, VALUE2), false),
+                arguments(value, MultiStringValue.of("test2", VALUE1, VALUE2, VALUE3), false),
+                arguments(value, MultiStringValue.of("test", VALUE1, VALUE2), false),
                 arguments(value, new MultiStringValue("test", data, data.length - 10), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
@@ -107,9 +107,9 @@ class MultiStringValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        MultiStringValue value = new MultiStringValue("test", VALUE1, VALUE2, VALUE3);
+        MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new MultiStringValue("test", VALUE1, VALUE2, VALUE3).hashCode());
+        assertEquals(value.hashCode(), MultiStringValue.of("test", VALUE1, VALUE2, VALUE3).hashCode());
     }
 }

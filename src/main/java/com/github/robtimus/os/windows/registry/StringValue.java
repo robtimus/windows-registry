@@ -29,20 +29,26 @@ public final class StringValue extends SettableRegistryValue {
 
     private final String value;
 
+    StringValue(String name, byte[] data, int dataLength) {
+        super(name, WinNT.REG_SZ);
+        value = StringUtils.toString(data, dataLength);
+    }
+
+    private StringValue(String name, String value) {
+        super(name, WinNT.REG_SZ);
+        this.value = Objects.requireNonNull(value);
+    }
+
     /**
      * Creates a new string registry value.
      *
      * @param name The name of the registry value.
      * @param value The registry value's string value.
+     * @return The created string registry value.
+     * @throws NullPointerException If the given name or value is {@code null}.
      */
-    public StringValue(String name, String value) {
-        super(name, WinNT.REG_SZ);
-        this.value = Objects.requireNonNull(value);
-    }
-
-    StringValue(String name, byte[] data, int dataLength) {
-        super(name, WinNT.REG_SZ);
-        value = StringUtils.toString(data, dataLength);
+    public static StringValue of(String name, String value) {
+        return new StringValue(name, value);
     }
 
     /**

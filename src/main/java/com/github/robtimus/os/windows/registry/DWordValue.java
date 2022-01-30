@@ -32,31 +32,6 @@ public final class DWordValue extends SettableRegistryValue {
     private final int value;
     private final ByteOrder byteOrder;
 
-    /**
-     * Creates a new DWORD registry value.
-     *
-     * @param name The name of the registry value.
-     * @param value The registry value's DWORD value.
-     */
-    public DWordValue(String name, int value) {
-        super(name, WinNT.REG_DWORD);
-        this.value = value;
-        this.byteOrder = getByteOrder(WinNT.REG_DWORD);
-    }
-
-    /**
-     * Creates a new DWORD registry value.
-     *
-     * @param name The name of the registry value.
-     * @param value The registry value's DWORD value.
-     * @param byteOrder The byte order for the registry value; either {@link ByteOrder#BIG_ENDIAN} or {@link ByteOrder#LITTLE_ENDIAN}.
-     */
-    public DWordValue(String name, int value, ByteOrder byteOrder) {
-        super(name, getType(byteOrder));
-        this.value = value;
-        this.byteOrder = Objects.requireNonNull(byteOrder);
-    }
-
     DWordValue(String name, int type, byte[] data) {
         super(name, type);
 
@@ -66,14 +41,47 @@ public final class DWordValue extends SettableRegistryValue {
         this.value = buffer.getInt();
     }
 
-    private static int getType(ByteOrder byteOrder) {
-        if (byteOrder == ByteOrder.BIG_ENDIAN) {
-            return WinNT.REG_DWORD_BIG_ENDIAN;
-        }
-        if (byteOrder == ByteOrder.LITTLE_ENDIAN) {
-            return WinNT.REG_DWORD_LITTLE_ENDIAN;
-        }
-        return WinNT.REG_DWORD;
+    private DWordValue(String name, int type, int value, ByteOrder byteOrder) {
+        super(name, type);
+        this.value = value;
+        this.byteOrder = Objects.requireNonNull(byteOrder);
+    }
+
+    /**
+     * Creates a new DWORD registry value.
+     *
+     * @param name The name of the registry value.
+     * @param value The registry value's DWORD value.
+     * @return The created DWORD registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     */
+    public static DWordValue of(String name, int value) {
+        // WinNT.REG_DWORD is the same as WinNT.REG_DWORD_LITTLE_ENDIAN
+        return littleEndianOf(name, value);
+    }
+
+    /**
+     * Creates a new little-endian DWORD registry value. This is actually the same as {@link #of(String, int)}, but makes the byte order explicit.
+     *
+     * @param name The name of the registry value.
+     * @param value The registry value's DWORD value.
+     * @return The created DWORD registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     */
+    public static DWordValue littleEndianOf(String name, int value) {
+        return new DWordValue(name, WinNT.REG_DWORD_LITTLE_ENDIAN, value, ByteOrder.LITTLE_ENDIAN);
+    }
+
+    /**
+     * Creates a new big-endian DWORD registry value.
+     *
+     * @param name The name of the registry value.
+     * @param value The registry value's DWORD value.
+     * @return The created DWORD registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     */
+    public static DWordValue bigEndianOf(String name, int value) {
+        return new DWordValue(name, WinNT.REG_DWORD_BIG_ENDIAN, value, ByteOrder.BIG_ENDIAN);
     }
 
     private static ByteOrder getByteOrder(int type) {

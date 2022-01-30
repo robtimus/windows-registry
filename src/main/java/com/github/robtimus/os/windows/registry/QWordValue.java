@@ -30,23 +30,29 @@ public final class QWordValue extends SettableRegistryValue {
 
     private final long value;
 
-    /**
-     * Creates a new QWORD registry value.
-     *
-     * @param name The name of the registry value.
-     * @param value The registry value's QWORD value.
-     */
-    public QWordValue(String name, long value) {
-        super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
-        this.value = value;
-    }
-
     QWordValue(String name, byte[] data) {
         super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
 
         ByteBuffer buffer = ByteBuffer.wrap(data);
         buffer.order(ByteOrder.LITTLE_ENDIAN);
         this.value = buffer.getLong();
+    }
+
+    private QWordValue(String name, long value) {
+        super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
+        this.value = value;
+    }
+
+    /**
+     * Creates a new QWORD registry value.
+     *
+     * @param name The name of the registry value.
+     * @param value The registry value's QWORD value.
+     * @return The created QWORD registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     */
+    public static QWordValue of(String name, long value) {
+        return new QWordValue(name, value);
     }
 
     /**
