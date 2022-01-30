@@ -24,6 +24,7 @@ import com.sun.jna.platform.win32.WinNT;
 
 /**
  * A representation of DWORD registry values.
+ * Instances of this class are immutable.
  *
  * @author Rob Spoor
  */

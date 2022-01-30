@@ -26,6 +26,7 @@ import com.sun.jna.platform.win32.WinNT;
 
 /**
  * A representation of multi-string registry values.
+ * Instances of this class are immutable.
  *
  * @author Rob Spoor
  */
