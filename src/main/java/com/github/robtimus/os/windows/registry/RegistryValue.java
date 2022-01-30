@@ -74,9 +74,8 @@ public abstract class RegistryValue {
             case WinNT.REG_NONE:
                 return new NoneValue(name, data, dataLength);
             case WinNT.REG_SZ:
-                return new StringValue(name, data, dataLength);
             case WinNT.REG_EXPAND_SZ:
-                return new ExpandableStringValue(name, data, dataLength);
+                return new StringValue(name, type, data, dataLength);
             case WinNT.REG_BINARY:
                 return new BinaryValue(name, data, dataLength);
             case WinNT.REG_DWORD_LITTLE_ENDIAN:
@@ -125,7 +124,7 @@ public abstract class RegistryValue {
             Class<? extends RegistryValue>[] classes = new Class[WinNT.REG_QWORD_LITTLE_ENDIAN + 1];
             classes[WinNT.REG_NONE] = NoneValue.class;
             classes[WinNT.REG_SZ] = StringValue.class;
-            classes[WinNT.REG_EXPAND_SZ] = ExpandableStringValue.class;
+            classes[WinNT.REG_EXPAND_SZ] = StringValue.class;
             classes[WinNT.REG_BINARY] = BinaryValue.class;
             classes[WinNT.REG_DWORD_LITTLE_ENDIAN] = DWordValue.class;
             classes[WinNT.REG_DWORD_BIG_ENDIAN] = DWordValue.class;
@@ -172,13 +171,12 @@ public abstract class RegistryValue {
 
         /**
          * Specifies that all string registry values should be included.
-         * This method is shorthand for calling {@link #classes(Class...)} with class literals for {@link StringValue}, {@link ExpandableStringValue}
-         * and {@link MultiStringValue}.
+         * This method is shorthand for calling {@link #classes(Class...)} with class literals for {@link StringValue} and {@link MultiStringValue}.
          *
          * @return This filter.
          */
         public Filter strings() {
-            return classes(StringValue.class, ExpandableStringValue.class, MultiStringValue.class);
+            return classes(StringValue.class, MultiStringValue.class);
         }
 
         /**

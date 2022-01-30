@@ -138,8 +138,8 @@ class RegistryIT {
             try (RegistryKey.Handle handle = subKey3.handle(HandleOption.CREATE, HandleOption.MANAGE_VALUES)) {
                 assertTrue(subKey3.exists());
 
-                handle.setValue(ExpandableStringValue.of("path", "%PATH%"));
-                ExpandableStringValue value = handle.getValue("path", ExpandableStringValue.class);
+                handle.setValue(StringValue.expandableOf("path", "%PATH%"));
+                StringValue value = handle.getValue("path", StringValue.class);
                 assertEquals(System.getenv("PATH"), value.expandedValue());
             }
 
@@ -185,7 +185,7 @@ class RegistryIT {
 
             StringValue stringValue = StringValue.of("string-value", "Lorem ipsum");
             MultiStringValue multiStringValue = MultiStringValue.of("multi-string-value", "value1", "value2", "value3");
-            ExpandableStringValue expandableStringValue = ExpandableStringValue.of("expandable-string-value", "%PATH%");
+            StringValue expandableStringValue = StringValue.expandableOf("expandable-string-value", "%PATH%");
             DWordValue dwordValue = DWordValue.of("dword-value", 13);
             DWordValue beDWordValue = DWordValue.bigEndianOf("be-dword-value", 26);
             DWordValue leDWordValue = DWordValue.littleEndianOf("le-dword-value", 26);

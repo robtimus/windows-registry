@@ -21,14 +21,22 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.TEXT;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytes;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.util.Arrays;
+import java.util.Map;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import com.sun.jna.platform.win32.WinNT;
 
 @SuppressWarnings("nls")
 class StringValueTest {
@@ -49,9 +57,66 @@ class StringValueTest {
         @DisplayName("from bytes")
         void testFromBytes() {
             byte[] bytes = textAsBytes();
-            StringValue value = new StringValue("test", bytes, bytes.length);
+            StringValue value = new StringValue("test", WinNT.REG_SZ, bytes, bytes.length);
 
             assertEquals(TEXT, value.value());
+        }
+    }
+
+    @Nested
+    @DisplayName("isExpandable")
+    class IsExpandable {
+
+        @Test
+        @DisplayName("not expandable")
+        void testFromString() {
+            StringValue value = StringValue.of("test", TEXT);
+
+            assertFalse(value.isExpandable());
+        }
+
+        @Test
+        @DisplayName("expandable")
+        void testFromBytes() {
+            StringValue value = StringValue.expandableOf("test", TEXT);
+
+            assertTrue(value.isExpandable());
+        }
+    }
+
+    @Nested
+    @DisplayName("expandedValue")
+    class ExpandedValue {
+
+        @Test
+        @DisplayName("not expandable")
+        void testFromString() {
+            Map<String, String> getenv = System.getenv();
+
+            String text = getenv.keySet().stream()
+                    .limit(3)
+                    .collect(Collectors.joining("%, %", "Three values: %", "%"));
+
+            StringValue value = StringValue.of("test", text);
+            assertThrows(IllegalStateException.class, value::expandedValue);
+        }
+
+        @Test
+        @DisplayName("expandable")
+        // No need to mock anything, just make sure we run on Windows
+        @EnabledOnOs(OS.WINDOWS)
+        void testFromBytes() {
+            Map<String, String> getenv = System.getenv();
+
+            String text = getenv.keySet().stream()
+                    .limit(3)
+                    .collect(Collectors.joining("%, %", "Three values: %", "%"));
+            String expectedValue = getenv.values().stream()
+                    .limit(3)
+                    .collect(Collectors.joining(", ", "Three values: ", ""));
+
+            StringValue value = StringValue.expandableOf("test", text);
+            assertEquals(expectedValue, value.expandedValue());
         }
     }
 
@@ -71,7 +136,7 @@ class StringValueTest {
         @DisplayName("from bytes")
         void testFromBytes() {
             byte[] bytes = textAsBytes();
-            StringValue value = new StringValue("test", bytes, bytes.length);
+            StringValue value = new StringValue("test", WinNT.REG_SZ, bytes, bytes.length);
 
             assertArrayEquals(bytes, value.rawData());
         }
@@ -91,11 +156,12 @@ class StringValueTest {
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, StringValue.of("test", TEXT), true),
-                arguments(value, new StringValue("test", data, data.length), true),
-                arguments(value, new StringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new StringValue("test", WinNT.REG_SZ, data, data.length), true),
+                arguments(value, new StringValue("test", WinNT.REG_EXPAND_SZ, data, data.length), false),
+                arguments(value, new StringValue("test", WinNT.REG_SZ, Arrays.copyOf(data, data.length + 10), data.length), true),
                 arguments(value, StringValue.of("test2", TEXT), false),
                 arguments(value, StringValue.of("test", TEXT.substring(0, TEXT.length() - 1)), false),
-                arguments(value, new StringValue("test", data, data.length - 4), false),
+                arguments(value, new StringValue("test", WinNT.REG_SZ, data, data.length - 4), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };

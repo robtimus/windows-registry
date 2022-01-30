@@ -74,7 +74,7 @@ final class RegistryValueTest {
             byte[] data = textAsBytes();
 
             RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.length);
-            ExpandableStringValue expandableStringValue = assertInstanceOf(ExpandableStringValue.class, value);
+            StringValue expandableStringValue = assertInstanceOf(StringValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_EXPAND_SZ, value.type());
             assertArrayEquals(data, expandableStringValue.rawData());
