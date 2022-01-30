@@ -19,6 +19,8 @@ package com.github.robtimus.os.windows.registry;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -140,6 +142,33 @@ class DWordValueTest {
 
                 assertArrayEquals(bytes, value.rawData());
             }
+        }
+    }
+
+    @Nested
+    @DisplayName("withName")
+    class WithName {
+
+        @Test
+        @DisplayName("same name")
+        void testSameName() {
+            DWordValue value = DWordValue.of("test", 16909060);
+
+            DWordValue otherValue = value.withName("test");
+
+            assertSame(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different name")
+        void testDifferentName() {
+            DWordValue value = DWordValue.of("test", 16909060);
+
+            DWordValue otherValue = value.withName("test2");
+
+            assertNotEquals(value, otherValue);
+            assertEquals("test2", otherValue.name());
+            assertEquals(value.value(), otherValue.value());
         }
     }
 

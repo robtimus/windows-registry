@@ -22,6 +22,8 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBy
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -139,6 +141,33 @@ class StringValueTest {
             StringValue value = new StringValue("test", WinNT.REG_SZ, bytes, bytes.length);
 
             assertArrayEquals(bytes, value.rawData());
+        }
+    }
+
+    @Nested
+    @DisplayName("withName")
+    class WithName {
+
+        @Test
+        @DisplayName("same name")
+        void testSameName() {
+            StringValue value = StringValue.of("test", TEXT);
+
+            StringValue otherValue = value.withName("test");
+
+            assertSame(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different name")
+        void testDifferentName() {
+            StringValue value = StringValue.of("test", TEXT);
+
+            StringValue otherValue = value.withName("test2");
+
+            assertNotEquals(value, otherValue);
+            assertEquals("test2", otherValue.name());
+            assertEquals(value.value(), otherValue.value());
         }
     }
 

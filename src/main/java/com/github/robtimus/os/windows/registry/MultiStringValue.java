@@ -90,6 +90,12 @@ public final class MultiStringValue extends SettableRegistryValue {
     }
 
     @Override
+    public MultiStringValue withName(String name) {
+        // The values list is unmodifiable, so it's safe to share
+        return name.equals(name()) ? this : new MultiStringValue(name, values);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

@@ -30,4 +30,13 @@ public abstract class SettableRegistryValue extends RegistryValue {
     }
 
     abstract byte[] rawData();
+
+    /**
+     * Returns a registry value with the same value as this registry value.
+     *
+     * @param name The name of the registry value to return.
+     * @return A registry value with the same value as this registry value and the given name.
+     * @throws NullPointerException If the given name is {@code null}.
+     */
+    public abstract SettableRegistryValue withName(String name);
 }

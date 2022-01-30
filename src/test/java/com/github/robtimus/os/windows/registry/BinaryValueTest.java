@@ -21,6 +21,8 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDa
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
@@ -115,6 +117,35 @@ class BinaryValueTest {
             }
         }
         assertArrayEquals(Arrays.copyOf(data, data.length - 10), content);
+    }
+
+    @Nested
+    @DisplayName("withName")
+    class WithName {
+
+        @Test
+        @DisplayName("same name")
+        void testSameName() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            BinaryValue otherValue = value.withName("test");
+
+            assertSame(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different name")
+        void testDifferentName() {
+            byte[] data = randomData();
+            BinaryValue value = BinaryValue.of("test", data);
+
+            BinaryValue otherValue = value.withName("test2");
+
+            assertNotEquals(value, otherValue);
+            assertEquals("test2", otherValue.name());
+            assertArrayEquals(data, otherValue.data());
+        }
     }
 
     @ParameterizedTest(name = "{1}")

@@ -94,6 +94,12 @@ public final class BinaryValue extends SettableRegistryValue {
     }
 
     @Override
+    public BinaryValue withName(String name) {
+        // The data is not exposed directly, so it's safe to share
+        return name.equals(name()) ? this : new BinaryValue(name, data);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

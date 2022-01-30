@@ -20,6 +20,8 @@ package com.github.robtimus.os.windows.registry;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytes;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
@@ -77,6 +79,33 @@ class MultiStringValueTest {
             MultiStringValue value = new MultiStringValue("test", bytes, bytes.length);
 
             assertArrayEquals(bytes, value.rawData());
+        }
+    }
+
+    @Nested
+    @DisplayName("withName")
+    class WithName {
+
+        @Test
+        @DisplayName("same name")
+        void testSameName() {
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
+
+            MultiStringValue otherValue = value.withName("test");
+
+            assertSame(value, otherValue);
+        }
+
+        @Test
+        @DisplayName("different name")
+        void testDifferentName() {
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
+
+            MultiStringValue otherValue = value.withName("test2");
+
+            assertNotEquals(value, otherValue);
+            assertEquals("test2", otherValue.name());
+            assertEquals(value.values(), otherValue.values());
         }
     }
 

@@ -114,6 +114,11 @@ public final class DWordValue extends SettableRegistryValue {
     }
 
     @Override
+    public DWordValue withName(String name) {
+        return name.equals(name()) ? this : new DWordValue(name, type(), value, byteOrder);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;

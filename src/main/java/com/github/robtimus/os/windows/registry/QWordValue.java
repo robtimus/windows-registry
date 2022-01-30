@@ -74,6 +74,11 @@ public final class QWordValue extends SettableRegistryValue {
     }
 
     @Override
+    public QWordValue withName(String name) {
+        return name.equals(name()) ? this : new QWordValue(name, value);
+    }
+
+    @Override
     public boolean equals(Object o) {
         if (this == o) {
             return true;
