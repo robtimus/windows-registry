@@ -21,6 +21,7 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBy
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
@@ -124,7 +125,7 @@ class MultiStringValueTest {
 
         @Test
         @DisplayName("different values")
-        void testDifferentName() {
+        void testDifferentValues() {
             MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
             MultiStringValue otherValue = value.withValues(VALUE3, VALUE2, VALUE1);
@@ -132,6 +133,14 @@ class MultiStringValueTest {
             assertNotEquals(value, otherValue);
             assertEquals(value.name(), otherValue.name());
             assertEquals(Arrays.asList(VALUE3, VALUE2, VALUE1), otherValue.values());
+        }
+
+        @Test
+        @DisplayName("empty value")
+        void testEmptyValue() {
+            MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
+
+            assertThrows(IllegalArgumentException.class, () -> value.withValues(VALUE3, VALUE2, VALUE1, ""));
         }
     }
 

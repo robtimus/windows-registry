@@ -21,7 +21,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.Objects;
 import com.sun.jna.platform.win32.WinNT;
 
 /**
@@ -51,6 +50,7 @@ public final class MultiStringValue extends SettableRegistryValue {
      * @param values The registry value's string values.
      * @return The created multi-string registry value.
      * @throws NullPointerException If the name or any of the given values is {@code null}.
+     * @throws IllegalArgumentException If any of the given values is empty.
      */
     public static MultiStringValue of(String name, String... values) {
         return of(name, Arrays.asList(values));
@@ -63,6 +63,7 @@ public final class MultiStringValue extends SettableRegistryValue {
      * @param values The registry value's string values.
      * @return The created multi-string registry value.
      * @throws NullPointerException If the name or any of the given values is {@code null}.
+     * @throws IllegalArgumentException If any of the given values is empty.
      */
     public static MultiStringValue of(String name, List<String> values) {
         return new MultiStringValue(name, copyOf(values));
@@ -71,7 +72,10 @@ public final class MultiStringValue extends SettableRegistryValue {
     private static List<String> copyOf(List<String> values) {
         List<String> result = new ArrayList<>(values.size());
         for (String value : values) {
-            result.add(Objects.requireNonNull(value));
+            if (value.isEmpty()) {
+                throw new IllegalArgumentException(Messages.MultiStringValue.emptyValue.get());
+            }
+            result.add(value);
         }
         return Collections.unmodifiableList(result);
     }
@@ -102,6 +106,7 @@ public final class MultiStringValue extends SettableRegistryValue {
      * @param values The values of the registry value to return.
      * @return A registry value with the same name as this registry value and the given values.
      * @throws NullPointerException If any of the given values is {@code null}.
+     * @throws IllegalArgumentException If any of the given values is empty.
      */
     public MultiStringValue withValues(String... values) {
         return withValues(Arrays.asList(values));
@@ -113,6 +118,7 @@ public final class MultiStringValue extends SettableRegistryValue {
      * @param values The values of the registry value to return.
      * @return A registry value with the same name as this registry value and the given values.
      * @throws NullPointerException If any of the given values is {@code null}.
+     * @throws IllegalArgumentException If any of the given values is empty.
      */
     public MultiStringValue withValues(List<String> values) {
         return of(name(), values);
