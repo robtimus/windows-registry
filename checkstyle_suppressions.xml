@@ -4,4 +4,5 @@
 
 <suppressions>
     <suppress files=".*\.java" checks="IllegalImport" />
+    <suppress files=".*Advapi32Extended\.java" checks="MethodName" />
 </suppressions>

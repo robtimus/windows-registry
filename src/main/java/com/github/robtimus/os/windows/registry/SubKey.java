@@ -147,6 +147,31 @@ final class SubKey extends RegistryKey {
     }
 
     @Override
+    public RegistryKey renameTo(String newName) {
+        return renameTo(root.hKey, newName);
+    }
+
+    SubKey renameTo(HKEY rootHKey, String newName) {
+        if (newName.contains(SEPARATOR)) {
+            throw new IllegalArgumentException(Messages.RegistryKey.nameContainsBackslash.get(newName));
+        }
+
+        Deque<String> newPathParts = new ArrayDeque<>(pathParts);
+        newPathParts.removeLast();
+        newPathParts.addLast(newName);
+        SubKey renamed = new SubKey(root, newPathParts);
+
+        int code = api.RegRenameKey(rootHKey, path, newName);
+        if (code == WinError.ERROR_SUCCESS) {
+            return renamed;
+        }
+        if (code == WinError.ERROR_ACCESS_DENIED && renamed.exists(rootHKey)) {
+            throw new RegistryKeyAlreadyExistsException(renamed.path());
+        }
+        throw RegistryException.of(code, path());
+    }
+
+    @Override
     public void delete() {
         delete(root.hKey);
     }

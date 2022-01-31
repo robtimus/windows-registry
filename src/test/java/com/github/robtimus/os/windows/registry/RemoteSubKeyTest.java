@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -185,8 +186,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -605,8 +605,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -703,8 +702,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
@@ -790,8 +788,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
@@ -883,8 +880,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.setValue(stringValue));
@@ -937,8 +933,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValue("string"));
@@ -1010,8 +1005,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValueIfExists("string"));
@@ -1058,8 +1052,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.exists());
@@ -1071,8 +1064,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::exists);
@@ -1199,6 +1191,95 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("renameTo")
+    class RenameTo {
+
+        @Test
+        @DisplayName("existing")
+        void testRenameExisting() {
+            when(RegistryKey.api.RegRenameKey(rootHKey, "path\\existing", "foo")).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+            RegistryKey renamed = registryKey.renameTo("foo");
+            assertEquals(registryKey.resolve("..\\foo"), renamed);
+
+            verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
+            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("non-existing")
+        void testNonExisting() {
+            when(RegistryKey.api.RegRenameKey(rootHKey, "path\\non-existing", "foo")).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
+            NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("foo"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+
+            verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\non-existing", "foo");
+            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("target exists")
+        void testTargetExists() {
+            when(RegistryKey.api.RegRenameKey(rootHKey, "path\\existing", "foo")).thenReturn(WinError.ERROR_ACCESS_DENIED);
+
+            HKEY targetHkey = mockOpenAndClose(rootHKey, "path\\foo");
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+            RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, () -> registryKey.renameTo("foo"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\foo", exception.path());
+
+            verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
+            verify(RegistryKey.api, never()).RegOpenKeyEx(eq(rootHKey), not(eq("path\\foo")), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(not(eq(targetHkey)));
+        }
+
+        @Test
+        @DisplayName("access denied")
+        void testAccessDenied() {
+            when(RegistryKey.api.RegRenameKey(rootHKey, "path\\existing", "foo")).thenReturn(WinError.ERROR_ACCESS_DENIED);
+
+            mockOpenFailure(rootHKey, "path\\foo", WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+            RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.renameTo("foo"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
+
+            verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
+            verify(RegistryKey.api, never()).RegOpenKeyEx(not(eq(rootHKey)), not(eq("path\\foo")), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("access failure")
+        void testFailure() {
+            when(RegistryKey.api.RegRenameKey(rootHKey, "path\\existing", "foo")).thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
+            assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
+
+            verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
+            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("invalid name")
+        void testInvalidName() {
+            RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+
+            assertThrows(IllegalArgumentException.class, () -> registryKey.renameTo("\\foo"));
+
+            verify(RegistryKey.api, never()).RegRenameKey(any(), any(), any());
         }
     }
 
@@ -1393,8 +1474,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("open failure")
         void testOpenFailure() {
-            when(RegistryKey.api.RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any()))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::handle);

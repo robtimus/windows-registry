@@ -611,6 +611,23 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         assertFalse(remoteRoot::createIfNotExists);
     }
 
+    @Nested
+    @DisplayName("renameTo")
+    class RenameTo {
+
+        @Test
+        @DisplayName("valid name")
+        void testValidName() {
+            assertThrows(UnsupportedOperationException.class, () -> remoteRoot.renameTo("foo"));
+        }
+
+        @Test
+        @DisplayName("invalid name")
+        void testInvalidName() {
+            assertThrows(UnsupportedOperationException.class, () -> remoteRoot.renameTo("\\foo"));
+        }
+    }
+
     @Test
     @DisplayName("delete")
     void testDelete() {

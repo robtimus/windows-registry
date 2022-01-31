@@ -31,7 +31,6 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.sun.jna.Native;
-import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -62,7 +61,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     static final String SEPARATOR = "\\"; //$NON-NLS-1$
 
     // Non-private non-final to allow replacing for testing
-    static Advapi32 api = Advapi32.INSTANCE;
+    static Advapi32Extended api = Advapi32Extended.INSTANCE;
 
     RegistryKey() {
     }
@@ -125,7 +124,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * Note that this method will never leave the root key.
      *
      * @param relativePath The path for the new registry key, relative to this registry key.
-     *                         Since registry keys can contain forward slashes, registry keys must be separated using back slashes ({@code \}).
+     *                         Since registry keys can contain forward slashes, registry keys must be separated using backslashes ({@code \}).
      * @return The resulting registry key.
      * @throws NullPointerException If the given relative path is {@code null}.
      */
@@ -496,6 +495,22 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * @throws RegistryException If this registry key cannot be created.
      */
     public abstract boolean createIfNotExists();
+
+    /**
+     * Renames this registry key.
+     * <p>
+     * Note: this method requires Windows Vista or later, or Windows Server 2008 or later.
+     *
+     * @param newName The new registry key name.
+     * @return A new registry key object representing the renamed registry key.
+     * @throws UnsupportedOperationException If trying to rename one of the root keys.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws IllegalArgumentException If the given name contains a backslash ({@code \}).
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryKeyAlreadyExistsException If this registry key's parent key already contains a sub key with the given name.
+     * @throws RegistryException If this registry key could not be renamed for another reason.
+     */
+    public abstract RegistryKey renameTo(String newName);
 
     /**
      * Deletes this registry key and all of its values.

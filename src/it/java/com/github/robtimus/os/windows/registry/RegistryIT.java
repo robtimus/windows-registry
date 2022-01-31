@@ -154,13 +154,17 @@ class RegistryIT {
 
             queryKey(registryKey).assertSubKeys("subKey", "sub key");
 
+            // Traverse with sub keys last
             List<RegistryKey> allKeys = registryKey.traverse().collect(Collectors.toList());
             assertThat(allKeys, containsInAnyOrder(registryKey, subKey1, subKey2));
             assertEquals(registryKey, allKeys.get(0));
 
+            // Assert that deleting the registry key fails if it has children
             assertThrows(RegistryAccessDeniedException.class, registryKey::delete);
             assertThrows(RegistryAccessDeniedException.class, registryKey::deleteIfExists);
 
+            // Traverse with sub keys first, and delete the tree
+            // First assert that the tree still exists
             assertTrue(registryKey.exists());
             assertTrue(subKey1.exists());
             assertTrue(subKey2.exists());
@@ -172,6 +176,7 @@ class RegistryIT {
                     .stream()
                     .forEach(RegistryKey::delete);
 
+            // Now assert that the tree no longer exists
             assertFalse(registryKey.exists());
             assertFalse(subKey1.exists());
             assertFalse(subKey2.exists());
@@ -245,6 +250,45 @@ class RegistryIT {
             try (RegistryKey.Handle handle = registryKey.handle()) {
                 assertThrows(RegistryAccessDeniedException.class, () -> handle.setValue(binaryValue));
             }
+        }
+
+        @Test
+        @DisplayName("rename")
+        void testRename() {
+            // Prepare the registry key and some content
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\rename");
+            registryKey.createIfNotExists();
+
+            List<String> subKeys = Arrays.asList("subKey1", "subKey2", "subKey3");
+            subKeys.forEach(s -> registryKey.resolve(s).create());
+
+            registryKey.setValue(StringValue.of("string", "test"));
+
+            // Rename
+            RegistryKey renamedRegistryKey = registryKey.renameTo("renamed");
+            assertEquals(registryKey.resolve("..\\renamed"), renamedRegistryKey);
+
+            // Assert that the content is available under the renamed key, and not under the old key
+            assertTrue(renamedRegistryKey.exists());
+            for (String subKey : subKeys) {
+                assertTrue(renamedRegistryKey.resolve(subKey).exists());
+            }
+            assertEquals(Optional.of("test"), renamedRegistryKey.findStringValue("string"));
+
+            assertFalse(registryKey.exists());
+            for (String subKey : subKeys) {
+                assertFalse(registryKey.resolve(subKey).exists());
+            }
+            assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.findStringValue("string"));
+
+            // Assert that renaming a non-existing key fails
+            RegistryException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("renamed"));
+            assertEquals(registryKey.path(), exception.path());
+
+            // Assert that renaming to an existing key fails
+            registryKey.create();
+            exception = assertThrows(RegistryKeyAlreadyExistsException.class, () -> renamedRegistryKey.renameTo("rename"));
+            assertEquals(registryKey.path(), exception.path());
         }
 
         @Nested

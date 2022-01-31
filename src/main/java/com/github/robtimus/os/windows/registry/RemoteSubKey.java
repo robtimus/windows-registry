@@ -90,6 +90,12 @@ final class RemoteSubKey extends RegistryKey {
     }
 
     @Override
+    public RegistryKey renameTo(String newName) {
+        SubKey renamed = local.renameTo(root.hKey, newName);
+        return new RemoteSubKey(root, renamed);
+    }
+
+    @Override
     public void delete() {
         local.delete(root.hKey);
     }

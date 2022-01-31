@@ -570,6 +570,23 @@ class RootKeyTest extends RegistryKeyTestBase {
         assertFalse(RegistryKey.HKEY_CURRENT_USER::createIfNotExists);
     }
 
+    @Nested
+    @DisplayName("renameTo")
+    class RenameTo {
+
+        @Test
+        @DisplayName("valid name")
+        void testValidName() {
+            assertThrows(UnsupportedOperationException.class, () -> RegistryKey.HKEY_CURRENT_USER.renameTo("foo"));
+        }
+
+        @Test
+        @DisplayName("invalid name")
+        void testInvalidName() {
+            assertThrows(UnsupportedOperationException.class, () -> RegistryKey.HKEY_CURRENT_USER.renameTo("\\foo"));
+        }
+    }
+
     @Test
     @DisplayName("delete")
     void testDelete() {

@@ -28,7 +28,6 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import com.sun.jna.platform.win32.Advapi32;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -41,12 +40,12 @@ abstract class RegistryKeyTestBase {
 
     @BeforeEach
     void setup() {
-        RegistryKey.api = mock(Advapi32.class);
+        RegistryKey.api = mock(Advapi32Extended.class);
     }
 
     @AfterEach
     void teardown() {
-        RegistryKey.api = Advapi32.INSTANCE;
+        RegistryKey.api = Advapi32Extended.INSTANCE;
     }
 
     static HKEY newHKEY() {
@@ -75,6 +74,10 @@ abstract class RegistryKeyTestBase {
         });
 
         return result;
+    }
+
+    static void mockOpenFailure(HKEY hKey, String path, int result) {
+        when(RegistryKey.api.RegOpenKeyEx(eq(hKey), eq(path), anyInt(), anyInt(), any())).thenReturn(result);
     }
 
     static HKEY mockConnectAndClose(HKEY hKey, String machineName) {
