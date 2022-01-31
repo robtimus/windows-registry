@@ -23,6 +23,8 @@ import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
@@ -300,6 +302,124 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             return handle.findValue(name, valueType);
         }
     }
+
+    /**
+     * Returns a registry value as a string.
+     * This method is shorthand for calling {@code getValue(name, StringValue.class).value()}.
+     *
+     * @param name The name of the registry value to return.
+     * @return The registry value with the given name as a string.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws NoSuchRegistryValueException If there is no such registry value.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name is not a string.
+     * @see #getValue(String, Class)
+     * @see StringValue#value()
+     */
+    public String getStringValue(String name) {
+        return getValue(name, StringValue.class).value();
+    }
+
+    /**
+     * Tries to return a registry value as a string.
+     * This method is shorthand for calling {@code getValue(name, StringValue.class).map(StringValue::value)}.
+     *
+     * @param name The name of the registry value to return.
+     * @return An {@link Optional} with the registry value with the given name as a string,
+     *         or {@link Optional#empty()} if there is no such registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name is not a string.
+     * @see #findValue(String, Class)
+     * @see StringValue#value()
+     */
+    public Optional<String> findStringValue(String name) {
+        return findValue(name, StringValue.class).map(StringValue::value);
+    }
+
+    /**
+     * Returns a registry value as a DWORD.
+     * This method is shorthand for calling {@code getValue(name, DWordValue.class).value()}.
+     *
+     * @param name The name of the registry value to return.
+     * @return The registry value with the given name as a DWORD.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws NoSuchRegistryValueException If there is no such registry value.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name is not a DWORD.
+     * @see #getValue(String, Class)
+     * @see DWordValue#value()
+     */
+    public int getDWordValue(String name) {
+        return getValue(name, DWordValue.class).value();
+    }
+
+    /**
+     * Tries to return a registry value as a DWORD.
+     * This method is shorthand for calling {@code findValue(name, DWordValue.class).mapToInt(DWordValue::value)}, if {@link Optional} had a method
+     * {@code mapToInt}.
+     *
+     * @param name The name of the registry value to return.
+     * @return An {@link Optional} with the registry value with the given name as a DWORD,
+     *         or {@link Optional#empty()} if there is no such registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name is not a DWORD.
+     * @see #findValue(String, Class)
+     * @see DWordValue#value()
+     */
+    public OptionalInt findDWordValue(String name) {
+        Optional<DWordValue> value = findValue(name, DWordValue.class);
+        return value.isPresent() ? OptionalInt.of(value.get().value()) : OptionalInt.empty();
+    }
+
+    /**
+     * Returns a registry value as a QWORD.
+     * This method is shorthand for calling {@code getValue(name, QWordValue.class).value()}.
+     *
+     * @param name The name of the registry value to return.
+     * @return The registry value with the given name as a QWORD.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws NoSuchRegistryValueException If there is no such registry value.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name is not a QWORD.
+     * @see #getValue(String, Class)
+     * @see QWordValue#value()
+     */
+    public long getQWordValue(String name) {
+        return getValue(name, QWordValue.class).value();
+    }
+
+    /**
+     * Tries to return a registry value as a QWORD.
+     * This method is shorthand for calling {@code findValue(name, QWordValue.class).mapToLong(QWordValue::value)}, if {@link Optional} had a method
+     * {@code mapToLong}.
+     *
+     * @param name The name of the registry value to return.
+     * @return An {@link Optional} with the registry value with the given name as a QWORD,
+     *         or {@link Optional#empty()} if there is no such registry value.
+     * @throws NullPointerException If the given name is {@code null}.
+     * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+     * @throws RegistryException If the value cannot be returned for another reason.
+     * @throws ClassCastException If the registry value with the given name is not a QWORD.
+     * @see #findValue(String, Class)
+     * @see QWordValue#value()
+     */
+    public OptionalLong findQWordValue(String name) {
+        Optional<QWordValue> value = findValue(name, QWordValue.class);
+        return value.isPresent() ? OptionalLong.of(value.get().value()) : OptionalLong.empty();
+    }
+
+    // Purposefully omitted:
+    // - getExpandedStringValue / findExpandedStringValue
+    // - getBinaryValue / findBinaryValue
+    // - getBinaryValueAsStream / findBinaryValueAsStream
+    // - getMultiStringValue / findMultiStringValue
 
     /**
      * Sets a registry value.
@@ -708,6 +828,124 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             }
             throw RegistryException.of(code, path(), name);
         }
+
+        /**
+         * Returns a registry value as a string.
+         * This method is shorthand for calling {@code getValue(name, StringValue.class).value()}.
+         *
+         * @param name The name of the registry value to return.
+         * @return The registry value with the given name as a string.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+         * @throws NoSuchRegistryValueException If there is no such registry value.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name is not a string.
+         * @see #getValue(String, Class)
+         * @see StringValue#value()
+         */
+        public String getStringValue(String name) {
+            return getValue(name, StringValue.class).value();
+        }
+
+        /**
+         * Tries to return a registry value as a string.
+         * This method is shorthand for calling {@code getValue(name, StringValue.class).map(StringValue::value)}.
+         *
+         * @param name The name of the registry value to return.
+         * @return An {@link Optional} with the registry value with the given name as a string,
+         *         or {@link Optional#empty()} if there is no such registry value.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name is not a string.
+         * @see #findValue(String, Class)
+         * @see StringValue#value()
+         */
+        public Optional<String> findStringValue(String name) {
+            return findValue(name, StringValue.class).map(StringValue::value);
+        }
+
+        /**
+         * Returns a registry value as a DWORD.
+         * This method is shorthand for calling {@code getValue(name, DWordValue.class).value()}.
+         *
+         * @param name The name of the registry value to return.
+         * @return The registry value with the given name as a DWORD.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+         * @throws NoSuchRegistryValueException If there is no such registry value.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name is not a DWORD.
+         * @see #getValue(String, Class)
+         * @see DWordValue#value()
+         */
+        public int getDWordValue(String name) {
+            return getValue(name, DWordValue.class).value();
+        }
+
+        /**
+         * Tries to return a registry value as a DWORD.
+         * This method is shorthand for calling {@code findValue(name, DWordValue.class).mapToInt(DWordValue::value)}, if {@link Optional} had a
+         * method {@code mapToInt}.
+         *
+         * @param name The name of the registry value to return.
+         * @return An {@link Optional} with the registry value with the given name as a DWORD,
+         *         or {@link Optional#empty()} if there is no such registry value.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name is not a DWORD.
+         * @see #findValue(String, Class)
+         * @see DWordValue#value()
+         */
+        public OptionalInt findDWordValue(String name) {
+            Optional<DWordValue> value = findValue(name, DWordValue.class);
+            return value.isPresent() ? OptionalInt.of(value.get().value()) : OptionalInt.empty();
+        }
+
+        /**
+         * Returns a registry value as a QWORD.
+         * This method is shorthand for calling {@code getValue(name, QWordValue.class).value()}.
+         *
+         * @param name The name of the registry value to return.
+         * @return The registry value with the given name as a QWORD.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+         * @throws NoSuchRegistryValueException If there is no such registry value.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name is not a QWORD.
+         * @see #getValue(String, Class)
+         * @see QWordValue#value()
+         */
+        public long getQWordValue(String name) {
+            return getValue(name, QWordValue.class).value();
+        }
+
+        /**
+         * Tries to return a registry value as a QWORD.
+         * This method is shorthand for calling {@code findValue(name, QWordValue.class).mapToLong(QWordValue::value)}, if {@link Optional} had a
+         * method {@code mapToLong}.
+         *
+         * @param name The name of the registry value to return.
+         * @return An {@link Optional} with the registry value with the given name as a QWORD,
+         *         or {@link Optional#empty()} if there is no such registry value.
+         * @throws NullPointerException If the given name is {@code null}.
+         * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
+         * @throws RegistryException If the value cannot be returned for another reason.
+         * @throws ClassCastException If the registry value with the given name is not a QWORD.
+         * @see #findValue(String, Class)
+         * @see QWordValue#value()
+         */
+        public OptionalLong findQWordValue(String name) {
+            Optional<QWordValue> value = findValue(name, QWordValue.class);
+            return value.isPresent() ? OptionalLong.of(value.get().value()) : OptionalLong.empty();
+        }
+
+        // Purposefully omitted:
+        // - getExpandedStringValue / findExpandedStringValue
+        // - getBinaryValue / findBinaryValue
+        // - getBinaryValueAsStream / findBinaryValueAsStream
+        // - getMultiStringValue / findMultiStringValue
 
         /**
          * Sets a registry value.

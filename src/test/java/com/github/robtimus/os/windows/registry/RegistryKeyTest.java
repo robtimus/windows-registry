@@ -1,6 +1,6 @@
 /*
  * RegistryKeyTest.java
- * Copyright 2021 Rob Spoor
+ * Copyright 2022 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,176 +17,678 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import java.util.Arrays;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import com.sun.jna.platform.win32.Advapi32;
+import java.util.Optional;
+import java.util.OptionalInt;
+import java.util.OptionalLong;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg;
-import com.sun.jna.platform.win32.WinReg.HKEY;
-import com.sun.jna.platform.win32.WinReg.HKEYByReference;
-import com.sun.jna.ptr.IntByReference;
 
-abstract class RegistryKeyTest {
+@SuppressWarnings("nls")
+class RegistryKeyTest extends RegistryKeyTestBase {
 
-    private static int hKeyValue = 0;
+    // Use RootKey for these tests
 
-    @BeforeEach
-    void setup() {
-        RegistryKey.api = mock(Advapi32.class);
+    @Nested
+    @DisplayName("getStringValue")
+    class GetStringValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            StringValue stringValue = StringValue.of("string", "value");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            String value = registryKey.getStringValue("string");
+            assertEquals(stringValue.value(), value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getStringValue("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+            assertEquals("string", exception.name());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getStringValue("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            DWordValue dwordValue = DWordValue.of("dword", 13);
+
+            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.getStringValue("dword"));
+        }
     }
 
-    @AfterEach
-    void teardown() {
-        RegistryKey.api = Advapi32.INSTANCE;
+    @Nested
+    @DisplayName("findStringValue")
+    class FindStringValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            StringValue stringValue = StringValue.of("string", "value");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            Optional<String> value = registryKey.findStringValue("string");
+            assertEquals(Optional.of(stringValue.value()), value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            Optional<String> value = registryKey.findStringValue("string");
+            assertEquals(Optional.empty(), value);
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                    () -> registryKey.findStringValue("string"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            DWordValue dwordValue = DWordValue.of("dword", 13);
+
+            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.findStringValue("dword"));
+        }
     }
 
-    static HKEY newHKEY() {
-        HKEY hKey = new HKEY(++hKeyValue);
-        assertNotEquals(WinReg.HKEY_CLASSES_ROOT, hKey);
-        assertNotEquals(WinReg.HKEY_CURRENT_USER, hKey);
-        assertNotEquals(WinReg.HKEY_LOCAL_MACHINE, hKey);
-        assertNotEquals(WinReg.HKEY_USERS, hKey);
-        assertNotEquals(WinReg.HKEY_CURRENT_CONFIG, hKey);
-        return hKey;
+    @Nested
+    @DisplayName("getDWordValue")
+    class GetDWordValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            DWordValue dwordValue = DWordValue.of("dword", 13);
+
+            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            int value = registryKey.getDWordValue("dword");
+            assertEquals(dwordValue.value(), value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getDWordValue("dword"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+            assertEquals("dword", exception.name());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getDWordValue("dword"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = StringValue.of("string", "test");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.getDWordValue("string"));
+        }
     }
 
-    static HKEY mockOpenAndClose(HKEY hKey, String path) {
-        HKEY result = mockOpen(hKey, path);
-        mockClose(hKey);
-        return result;
+    @Nested
+    @DisplayName("findDWordValue")
+    class FindDWordValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            DWordValue dwordValue = DWordValue.of("dword", 13);
+
+            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            OptionalInt value = registryKey.findDWordValue("dword");
+            assertEquals(OptionalInt.of(dwordValue.value()), value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            OptionalInt value = registryKey.findDWordValue("dword");
+            assertEquals(OptionalInt.empty(), value);
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findDWordValue("dword"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = StringValue.of("string", "test");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.findDWordValue("string"));
+        }
     }
 
-    static HKEY mockOpen(HKEY hKey, String path) {
-        HKEY result = newHKEY();
+    @Nested
+    @DisplayName("getQWordValue")
+    class GetQWordValue {
 
-        when(RegistryKey.api.RegOpenKeyEx(eq(hKey), eq(path), anyInt(), anyInt(), any())).thenAnswer(i -> {
-            i.getArgument(4, HKEYByReference.class).setValue(result);
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            QWordValue qwordValue = QWordValue.of("qword", 13L);
 
-            return WinError.ERROR_SUCCESS;
-        });
+            mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
 
-        return result;
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            long value = registryKey.getQWordValue("qword");
+            assertEquals(qwordValue.value(), value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getQWordValue("qword"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+            assertEquals("qword", exception.name());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getQWordValue("qword"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = StringValue.of("string", "test");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.getQWordValue("string"));
+        }
     }
 
-    static HKEY mockConnectAndClose(HKEY hKey, String machineName) {
-        HKEY result = mockConnect(hKey, machineName);
-        mockClose(hKey);
-        return result;
+    @Nested
+    @DisplayName("findQWordValue")
+    class FindQWordValue {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            QWordValue qwordValue = QWordValue.of("qword", 13L);
+
+            mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            OptionalLong value = registryKey.findQWordValue("qword");
+            assertEquals(OptionalLong.of(qwordValue.value()), value);
+        }
+
+        @Test
+        @DisplayName("non-existing value")
+        void testNonExistingValue() {
+            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            OptionalLong value = registryKey.findQWordValue("qword");
+            assertEquals(OptionalLong.empty(), value);
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findQWordValue("qword"));
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+
+        @Test
+        @DisplayName("wrong value type")
+        void testWrongValueType() {
+            StringValue stringValue = StringValue.of("string", "test");
+
+            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertThrows(ClassCastException.class, () -> registryKey.findQWordValue("string"));
+        }
     }
 
-    static HKEY mockConnect(HKEY hKey, String machineName) {
-        HKEY result = newHKEY();
+    @Nested
+    @DisplayName("Handle")
+    class Handle {
 
-        when(RegistryKey.api.RegConnectRegistry(eq(machineName), eq(hKey), any())).thenAnswer(i -> {
-            i.getArgument(2, HKEYByReference.class).setValue(result);
+        @Nested
+        @DisplayName("getStringValue")
+        class GetStringValue {
 
-            return WinError.ERROR_SUCCESS;
-        });
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                StringValue stringValue = StringValue.of("string", "value");
 
-        return result;
-    }
+                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
-    static void mockClose(HKEY hKey) {
-        mockClose(hKey, WinError.ERROR_SUCCESS);
-    }
-
-    static void mockClose(HKEY hKey, int result) {
-        when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(result);
-    }
-
-    static void mockSubKeys(HKEY hKey, String... names) {
-        int maxLength = Arrays.stream(names)
-                .mapToInt(String::length)
-                .max()
-                .orElse(0);
-
-        when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), notNull(), any(), any(), any(), any(), any(), any()))
-                .thenAnswer(i -> {
-                    i.getArgument(5, IntByReference.class).setValue(maxLength);
-                    return WinError.ERROR_SUCCESS;
-                });
-        when(RegistryKey.api.RegEnumKeyEx(eq(hKey), anyInt(), any(), any(), any(), any(), any(), any())).thenAnswer(i -> {
-            int index = i.getArgument(1, Integer.class);
-            if (index >= names.length) {
-                return WinError.ERROR_NO_MORE_ITEMS;
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    String value = handle.getStringValue("string");
+                    assertEquals(stringValue.value(), value);
+                }
             }
-            String name = names[index];
 
-            char[] lpName = i.getArgument(2, char[].class);
-            Arrays.fill(lpName, '\0');
-            name.getChars(0, name.length(), lpName, 0);
+            @Test
+            @DisplayName("non-existing value")
+            void testNonExistingValue() {
+                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            return WinError.ERROR_SUCCESS;
-        });
-    }
-
-    static void mockValues(HKEY hKey, SettableRegistryValue... values) {
-        int maxNameLength = Arrays.stream(values)
-                .map(RegistryValue::name)
-                .mapToInt(String::length)
-                .max()
-                .orElseThrow();
-        byte[][] datas = Arrays.stream(values)
-                .map(SettableRegistryValue::rawData)
-                .toArray(byte[][]::new);
-        int maxValueLength = Arrays.stream(datas)
-                .mapToInt(d -> d.length)
-                .max()
-                .orElseThrow();
-
-        when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), notNull(), notNull(), any(), any()))
-                .thenAnswer(i -> {
-                    i.getArgument(8, IntByReference.class).setValue(maxNameLength);
-                    i.getArgument(9, IntByReference.class).setValue(maxValueLength);
-                    return WinError.ERROR_SUCCESS;
-                });
-        when(RegistryKey.api.RegEnumValue(eq(hKey), anyInt(), any(), any(), any(), any(), any(byte[].class), any())).thenAnswer(i -> {
-            int index = i.getArgument(1, Integer.class);
-            if (index >= values.length) {
-                return WinError.ERROR_NO_MORE_ITEMS;
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> handle.getStringValue("string"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                    assertEquals("string", exception.name());
+                }
             }
-            String name = values[index].name();
-            byte[] data = datas[index];
 
-            char[] lpValueName = i.getArgument(2, char[].class);
-            Arrays.fill(lpValueName, '\0');
-            name.getChars(0, name.length(), lpValueName, 0);
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
-            i.getArgument(5, IntByReference.class).setValue(values[index].type());
-            System.arraycopy(data, 0, i.getArgument(6, byte[].class), 0, data.length);
-            i.getArgument(7, IntByReference.class).setValue(data.length);
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                            () -> handle.getStringValue("string"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
 
-            return WinError.ERROR_SUCCESS;
-        });
-    }
+            @Test
+            @DisplayName("wrong value type")
+            void testWrongValueType() {
+                DWordValue dwordValue = DWordValue.of("dword", 13);
 
-    static void mockValue(HKEY hKey, SettableRegistryValue value) {
-        mockValue(hKey, value, WinError.ERROR_SUCCESS);
-    }
+                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
 
-    static void mockValue(HKEY hKey, SettableRegistryValue value, int returnCode) {
-        byte[] data = value.rawData();
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertThrows(ClassCastException.class, () -> handle.getStringValue("dword"));
+                }
+            }
+        }
 
-        when(RegistryKey.api.RegQueryValueEx(eq(hKey), eq(value.name()), anyInt(), any(), (byte[]) isNull(), any())).thenAnswer(i -> {
-            i.getArgument(3, IntByReference.class).setValue(value.type());
-            i.getArgument(5, IntByReference.class).setValue(data.length);
+        @Nested
+        @DisplayName("findStringValue")
+        class FindStringValue {
 
-            return WinError.ERROR_MORE_DATA;
-        });
-        when(RegistryKey.api.RegQueryValueEx(eq(hKey), eq(value.name()), anyInt(), isNull(), any(byte[].class), any())).thenAnswer(i -> {
-            System.arraycopy(data, 0, i.getArgument(4, byte[].class), 0, data.length);
-            i.getArgument(5, IntByReference.class).setValue(data.length);
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                StringValue stringValue = StringValue.of("string", "value");
 
-            return returnCode;
-        });
+                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    Optional<String> value = handle.findStringValue("string");
+                    assertEquals(Optional.of(stringValue.value()), value);
+                }
+            }
+
+            @Test
+            @DisplayName("non-existing value")
+            void testNonExistingValue() {
+                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    Optional<String> value = handle.findStringValue("string");
+                    assertEquals(Optional.empty(), value);
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                            () -> handle.findStringValue("string"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+
+            @Test
+            @DisplayName("wrong value type")
+            void testWrongValueType() {
+                DWordValue dwordValue = DWordValue.of("dword", 13);
+
+                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertThrows(ClassCastException.class, () -> handle.findStringValue("dword"));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("getDWordValue")
+        class GetDWordValue {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                DWordValue dwordValue = DWordValue.of("dword", 13);
+
+                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    int value = handle.getDWordValue("dword");
+                    assertEquals(dwordValue.value(), value);
+                }
+            }
+
+            @Test
+            @DisplayName("non-existing value")
+            void testNonExistingValue() {
+                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> handle.getDWordValue("dword"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                    assertEquals("dword", exception.name());
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                            () -> handle.getDWordValue("dword"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+
+            @Test
+            @DisplayName("wrong value type")
+            void testWrongValueType() {
+                StringValue stringValue = StringValue.of("string", "test");
+
+                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertThrows(ClassCastException.class, () -> handle.getDWordValue("string"));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("findDWordValue")
+        class FindDWordValue {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                DWordValue dwordValue = DWordValue.of("dword", 13);
+
+                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    OptionalInt value = handle.findDWordValue("dword");
+                    assertEquals(OptionalInt.of(dwordValue.value()), value);
+                }
+            }
+
+            @Test
+            @DisplayName("non-existing value")
+            void testNonExistingValue() {
+                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    OptionalInt value = handle.findDWordValue("dword");
+                    assertEquals(OptionalInt.empty(), value);
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                            () -> handle.findDWordValue("dword"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+
+            @Test
+            @DisplayName("wrong value type")
+            void testWrongValueType() {
+                StringValue stringValue = StringValue.of("string", "test");
+
+                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertThrows(ClassCastException.class, () -> handle.findDWordValue("string"));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("getQWordValue")
+        class GetQWordValue {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                QWordValue qwordValue = QWordValue.of("qword", 13L);
+
+                mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    long value = handle.getQWordValue("qword");
+                    assertEquals(qwordValue.value(), value);
+                }
+            }
+
+            @Test
+            @DisplayName("non-existing value")
+            void testNonExistingValue() {
+                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> handle.getQWordValue("qword"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                    assertEquals("qword", exception.name());
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                            () -> handle.getQWordValue("qword"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+
+            @Test
+            @DisplayName("wrong value type")
+            void testWrongValueType() {
+                StringValue stringValue = StringValue.of("string", "test");
+
+                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertThrows(ClassCastException.class, () -> handle.getQWordValue("string"));
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("findQWordValue")
+        class FindQWordValue {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                QWordValue qwordValue = QWordValue.of("qword", 13L);
+
+                mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    OptionalLong value = handle.findQWordValue("qword");
+                    assertEquals(OptionalLong.of(qwordValue.value()), value);
+                }
+            }
+
+            @Test
+            @DisplayName("non-existing value")
+            void testNonExistingValue() {
+                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    OptionalLong value = handle.findQWordValue("qword");
+                    assertEquals(OptionalLong.empty(), value);
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
+                            () -> handle.findQWordValue("qword"));
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+
+            @Test
+            @DisplayName("wrong value type")
+            void testWrongValueType() {
+                StringValue stringValue = StringValue.of("string", "test");
+
+                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertThrows(ClassCastException.class, () -> handle.findQWordValue("string"));
+                }
+            }
+        }
     }
 }

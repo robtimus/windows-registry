@@ -35,7 +35,7 @@ import com.sun.jna.platform.win32.WinReg.HKEY;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
-class RemoteRegistryKeyTest extends RegistryKeyTest {
+class RemoteRegistryKeyTest extends RegistryKeyTestBase {
 
     @Nested
     @DisplayName("Connector")

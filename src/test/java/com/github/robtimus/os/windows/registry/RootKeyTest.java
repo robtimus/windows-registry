@@ -53,7 +53,7 @@ import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg;
 
 @SuppressWarnings("nls")
-class RootKeyTest extends RegistryKeyTest {
+class RootKeyTest extends RegistryKeyTestBase {
 
     @Override
     @AfterEach

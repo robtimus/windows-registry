@@ -58,7 +58,7 @@ import com.sun.jna.platform.win32.WinReg.HKEYByReference;
 import com.sun.jna.ptr.IntByReference;
 
 @SuppressWarnings("nls")
-class SubKeyTest extends RegistryKeyTest {
+class SubKeyTest extends RegistryKeyTestBase {
 
     @Nested
     @DisplayName("resolved")

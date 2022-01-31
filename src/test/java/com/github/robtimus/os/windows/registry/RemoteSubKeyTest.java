@@ -63,7 +63,7 @@ import com.sun.jna.ptr.IntByReference;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
-class RemoteSubKeyTest extends RegistryKeyTest {
+class RemoteSubKeyTest extends RegistryKeyTestBase {
 
     private RemoteRegistryKey remoteRoot;
     private HKEY rootHKey;

@@ -59,7 +59,7 @@ import com.sun.jna.platform.win32.WinReg.HKEY;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
-class RemoteRootKeyTest extends RegistryKeyTest {
+class RemoteRootKeyTest extends RegistryKeyTestBase {
 
     private RemoteRegistryKey remoteRoot;
     private HKEY rootHKey;
