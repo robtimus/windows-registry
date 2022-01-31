@@ -147,36 +147,6 @@ final class SubKey extends RegistryKey {
     }
 
     @Override
-    public boolean createAll() {
-        return createAll(root.hKey);
-    }
-
-    boolean createAll(HKEY rootHKey) {
-        HKEYByReference phkResult = new HKEYByReference();
-        IntByReference lpdwDisposition = new IntByReference();
-
-        StringBuilder pathBuilder = new StringBuilder();
-        for (String pathPart : pathParts) {
-            if (pathBuilder.length() > 0) {
-                pathBuilder.append(SEPARATOR);
-            }
-            pathBuilder.append(pathPart);
-
-            int code = api.RegCreateKeyEx(rootHKey, pathBuilder.toString(), 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult,
-                    lpdwDisposition);
-            if (code == WinError.ERROR_SUCCESS) {
-                closeKey(phkResult.getValue());
-            } else {
-                throw RegistryException.of(code, path());
-            }
-        }
-
-        // Only the result of the last path part matters
-        // There is always at least one path part so RegCreateKeyEx has been called at least once
-        return lpdwDisposition.getValue() == WinNT.REG_CREATED_NEW_KEY;
-    }
-
-    @Override
     public void delete() {
         delete(root.hKey);
     }

@@ -90,11 +90,6 @@ final class RemoteSubKey extends RegistryKey {
     }
 
     @Override
-    public boolean createAll() {
-        return local.createAll(root.hKey);
-    }
-
-    @Override
     public void delete() {
         local.delete(root.hKey);
     }

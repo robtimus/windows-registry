@@ -133,11 +133,6 @@ final class RootKey extends RegistryKey {
     }
 
     @Override
-    public boolean createAll() {
-        return false;
-    }
-
-    @Override
     public void delete() {
         throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path()));
     }

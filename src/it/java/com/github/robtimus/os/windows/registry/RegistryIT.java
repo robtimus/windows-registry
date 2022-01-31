@@ -95,14 +95,14 @@ class RegistryIT {
         @Test
         @DisplayName("registry")
         void testRegistry() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry");
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\registry");
 
             // Assert that it doesn't exist; queryKey will throw an exception
             assertFalse(registryKey.exists());
             assertThrows(ProcessExecutionException.class, () -> queryKey(registryKey));
 
             // Create and verify that it now exists
-            assertTrue(registryKey.createAll());
+            assertTrue(registryKey.createIfNotExists());
             assertTrue(registryKey.exists());
 
             // Verify that there are no values or sub keys
@@ -244,6 +244,41 @@ class RegistryIT {
 
             try (RegistryKey.Handle handle = registryKey.handle()) {
                 assertThrows(RegistryAccessDeniedException.class, () -> handle.setValue(binaryValue));
+            }
+        }
+
+        @Nested
+        @DisplayName("invalid handle states")
+        class InvalidHandleStates {
+
+            @Test
+            @DisplayName("use after closing")
+            @SuppressWarnings("resource")
+            void testUseAfterClosing() {
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\invalid-handle-states");
+                registryKey.createIfNotExists();
+
+                RegistryKey.Handle handle;
+                try (RegistryKey.Handle h = registryKey.handle()) {
+                    handle = h;
+                }
+
+                assertThrows(InvalidRegistryHandleException.class, () -> handle.findValue("non-existing", RegistryValue.class));
+            }
+
+            @Test
+            @DisplayName("delete key during use")
+            void testDeleteKeyDuringUse() {
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\invalid-handle-states");
+                registryKey.createIfNotExists();
+
+                try (RegistryKey.Handle handle = registryKey.handle(HandleOption.MANAGE_VALUES)) {
+                    handle.setValue(StringValue.of("string", "test"));
+
+                    registryKey.delete();
+
+                    assertThrows(NoSuchRegistryKeyException.class, () -> handle.findStringValue("string"));
+                }
             }
         }
     }

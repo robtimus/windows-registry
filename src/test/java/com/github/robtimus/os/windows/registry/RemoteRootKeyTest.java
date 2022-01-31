@@ -612,12 +612,6 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     }
 
     @Test
-    @DisplayName("createAll")
-    void testCreateAll() {
-        assertFalse(remoteRoot::createAll);
-    }
-
-    @Test
     @DisplayName("delete")
     void testDelete() {
         assertThrows(UnsupportedOperationException.class, remoteRoot::delete);

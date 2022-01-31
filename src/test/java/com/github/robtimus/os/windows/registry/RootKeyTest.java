@@ -571,12 +571,6 @@ class RootKeyTest extends RegistryKeyTestBase {
     }
 
     @Test
-    @DisplayName("createAll")
-    void testCreateAll() {
-        assertFalse(RegistryKey.HKEY_CURRENT_USER::createAll);
-    }
-
-    @Test
     @DisplayName("delete")
     void testDelete() {
         assertThrows(UnsupportedOperationException.class, RegistryKey.HKEY_CURRENT_USER::delete);
