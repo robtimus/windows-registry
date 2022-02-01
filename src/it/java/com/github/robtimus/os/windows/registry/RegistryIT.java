@@ -196,6 +196,7 @@ class RegistryIT {
             DWordValue leDWordValue = DWordValue.littleEndianOf("le-dword-value", 26);
             QWordValue qwordValue = QWordValue.of("qword-value", 481);
             BinaryValue binaryValue = BinaryValue.of("binary-value", "Hello World".getBytes());
+            StringValue defaultValue = StringValue.of(RegistryValue.DEFAULT, "default");
 
             registryKey.setValue(stringValue);
             registryKey.setValue(multiStringValue);
@@ -205,6 +206,7 @@ class RegistryIT {
             registryKey.setValue(leDWordValue);
             registryKey.setValue(qwordValue);
             registryKey.setValue(binaryValue);
+            registryKey.setValue(defaultValue);
 
             assertEquals(stringValue, registryKey.getValue("string-value", RegistryValue.class));
             assertEquals(multiStringValue, registryKey.getValue("multi-string-value", RegistryValue.class));
@@ -214,6 +216,7 @@ class RegistryIT {
             assertEquals(leDWordValue, registryKey.getValue("le-dword-value", RegistryValue.class));
             assertEquals(qwordValue, registryKey.getValue("qword-value", RegistryValue.class));
             assertEquals(binaryValue, registryKey.getValue("binary-value", RegistryValue.class));
+            assertEquals(defaultValue, registryKey.getValue(RegistryValue.DEFAULT, RegistryValue.class));
 
             assertEquals(Optional.of(stringValue), registryKey.findValue("string-value", RegistryValue.class));
             assertEquals(Optional.of(multiStringValue), registryKey.findValue("multi-string-value", RegistryValue.class));
@@ -223,6 +226,7 @@ class RegistryIT {
             assertEquals(Optional.of(leDWordValue), registryKey.findValue("le-dword-value", RegistryValue.class));
             assertEquals(Optional.of(qwordValue), registryKey.findValue("qword-value", RegistryValue.class));
             assertEquals(Optional.of(binaryValue), registryKey.findValue("binary-value", RegistryValue.class));
+            assertEquals(Optional.of(defaultValue), registryKey.findValue(RegistryValue.DEFAULT, RegistryValue.class));
 
             assertEquals(Optional.of(stringValue), registryKey.values().filter(v -> "string-value".equals(v.name())).findAny());
             assertEquals(Optional.of(multiStringValue), registryKey.values().filter(v -> "multi-string-value".equals(v.name())).findAny());
@@ -232,18 +236,19 @@ class RegistryIT {
             assertEquals(Optional.of(leDWordValue), registryKey.values().filter(v -> "le-dword-value".equals(v.name())).findAny());
             assertEquals(Optional.of(qwordValue), registryKey.values().filter(v -> "qword-value".equals(v.name())).findAny());
             assertEquals(Optional.of(binaryValue), registryKey.values().filter(v -> "binary-value".equals(v.name())).findAny());
+            assertEquals(Optional.of(defaultValue), registryKey.values().filter(v -> RegistryValue.DEFAULT.equals(v.name())).findAny());
 
-            assertEquals(Set.of(stringValue, multiStringValue, expandableStringValue),
+            assertEquals(Set.of(stringValue, multiStringValue, expandableStringValue, defaultValue),
                     registryKey.values(RegistryValue.filter().strings()).collect(Collectors.toSet()));
             assertEquals(Set.of(dwordValue, beDWordValue, leDWordValue, qwordValue),
                     registryKey.values(RegistryValue.filter().words()).collect(Collectors.toSet()));
 
             queryKey(registryKey).assertValues(stringValue, multiStringValue, expandableStringValue, dwordValue, beDWordValue, leDWordValue,
-                    qwordValue, binaryValue);
+                    qwordValue, binaryValue, defaultValue);
 
             registryKey.deleteValue("binary-value");
             queryKey(registryKey).assertValues(stringValue, multiStringValue, expandableStringValue, dwordValue, beDWordValue, leDWordValue,
-                    qwordValue);
+                    qwordValue, defaultValue);
             assertFalse(registryKey.deleteValueIfExists("binary-value"));
             assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("binary-value"));
 
@@ -425,9 +430,13 @@ class RegistryIT {
         private ValueInfo(String line) {
             Matcher matcher = VALUE_PATTERN.matcher(line);
             assertTrue(matcher.matches());
-            name = matcher.group(1);
+            name = fixName(matcher.group(1));
             type = ValueType.valueOf(matcher.group(2));
             value = matcher.group(3);
+        }
+
+        private String fixName(String matchedName) {
+            return "(Default)".equals(matchedName) ? RegistryValue.DEFAULT : matchedName;
         }
     }
 

@@ -31,6 +31,9 @@ import com.sun.jna.platform.win32.WinNT;
  */
 public abstract class RegistryValue {
 
+    /** The name of the default value of registry keys. */
+    public static final String DEFAULT = ""; //$NON-NLS-1$
+
     private final String name;
     private final int type;
 
