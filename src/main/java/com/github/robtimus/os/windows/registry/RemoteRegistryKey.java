@@ -52,7 +52,7 @@ public abstract class RemoteRegistryKey extends RegistryKey implements Closeable
          * The returned registry key needs to be closed when it is no longer needed. There is no need to close any registry keys retrieved from it,
          * e.g. using {@link RegistryKey#subKeys()} or {@link RegistryKey#resolve(String)}.
          *
-         * @param machineName The machine name.
+         * @param machineName The machine name. This cannot be an IP address but must be a resolvable host name.
          * @return A reference to the registry on the given remote machine.
          * @throws RegistryException If the connection failed.
          */

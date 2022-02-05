@@ -77,8 +77,36 @@ class RegistryIT {
             assertEquals(expected, buildNumber);
         }
 
+        @Nested
+        @DisplayName("remote")
+        class Remote {
+
+            @Test
+            @DisplayName("Windows build")
+            void testWindowsBuild() {
+                String hostName = readHostName();
+                try (RemoteRegistryKey remoteRegistryKey = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at(hostName)) {
+                    RegistryKey registryKey = remoteRegistryKey.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+                    RegistryValue registryValue = registryKey.getValue("CurrentBuild", RegistryValue.class);
+                    String buildNumber = assertInstanceOf(StringValue.class, registryValue).value();
+                    String expected = readBuildNumber();
+                    assertEquals(expected, buildNumber);
+                }
+            }
+
+            private String readHostName() {
+                String output = executeProcess("cmd", "/C", "ipconfig", "/all");
+
+                return Pattern.compile("\\r?\\n").splitAsStream(output)
+                        .filter(line -> line.contains("Host Name"))
+                        .map(line -> line.substring(line.indexOf(':') + 1).trim())
+                        .findAny()
+                        .orElseThrow(() -> new IllegalStateException("Could not read host name from output: " + output));
+            }
+        }
+
         private String readBuildNumber() {
-            String output = executeProcess(new ProcessBuilder("cmd", "/C", "ver"));
+            String output = executeProcess("cmd", "/C", "ver");
 
             // The build number is the 3rd part, e.g. 19042 in "Microsoft Windows [Version 10.0.19042.1469]"
             Pattern versionPattern = Pattern.compile("Microsoft Windows \\[Version \\d+\\.\\d+\\.(\\d+)\\.\\d+\\]");
