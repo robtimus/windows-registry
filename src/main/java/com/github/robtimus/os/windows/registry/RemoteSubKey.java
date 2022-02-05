@@ -140,7 +140,7 @@ final class RemoteSubKey extends RegistryKey {
         return local.toString() + "@" + root.machineName;
     }
 
-    final class Handle extends RegistryKey.Handle {
+    private final class Handle extends RegistryKey.Handle {
 
         private boolean closed;
 

@@ -253,7 +253,7 @@ final class SubKey extends RegistryKey {
         throw RegistryException.of(code, path());
     }
 
-    final class Handle extends RegistryKey.Handle {
+    private final class Handle extends RegistryKey.Handle {
 
         private boolean closed;
 
