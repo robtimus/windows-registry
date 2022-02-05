@@ -17,7 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import java.io.Closeable;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg.HKEYByReference;
 
@@ -26,7 +25,7 @@ import com.sun.jna.platform.win32.WinReg.HKEYByReference;
  *
  * @author Rob Spoor
  */
-public abstract class RemoteRegistryKey extends RegistryKey implements Closeable {
+public abstract class RemoteRegistryKey extends RegistryKey implements AutoCloseable {
 
     /** A connector for connecting to the HKEY_LOCAL_MACHINE root key on a remote machine. */
     public static final Connector HKEY_LOCAL_MACHINE = new Connector(RootKey.HKEY_LOCAL_MACHINE);
@@ -69,6 +68,11 @@ public abstract class RemoteRegistryKey extends RegistryKey implements Closeable
     RemoteRegistryKey() {
     }
 
+    /**
+     * Closes the connection to the remote registry key.
+     *
+     * @throws RegistryException If the remote registry key could not be closed.
+     */
     @Override
     public abstract void close();
 }

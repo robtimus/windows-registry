@@ -1018,6 +1018,11 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         // other
 
+        /**
+         * Closes this registry handle.
+         *
+         * @throws RegistryException If the registry handle could not be closed.
+         */
         @Override
         public abstract void close();
 
