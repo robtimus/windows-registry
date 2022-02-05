@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -1339,6 +1340,17 @@ class SubKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegRenameKey(WinReg.HKEY_CURRENT_USER, "path\\existing", "foo");
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("function not available")
+        void testFunctionNotAvailable() {
+            when(RegistryKey.api.RegRenameKey(WinReg.HKEY_CURRENT_USER, "path\\existing", "foo"))
+                    .thenThrow(new UnsatisfiedLinkError("Error looking up function 'RegRenameKey': The specified procedure could not be found."));
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            UnsupportedOperationException exception = assertThrows(UnsupportedOperationException.class, () -> registryKey.renameTo("foo"));
+            assertInstanceOf(UnsatisfiedLinkError.class, exception.getCause());
         }
 
         @Test

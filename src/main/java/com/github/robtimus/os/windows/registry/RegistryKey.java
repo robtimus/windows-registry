@@ -503,7 +503,8 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      *
      * @param newName The new registry key name.
      * @return A new registry key object representing the renamed registry key.
-     * @throws UnsupportedOperationException If trying to rename one of the root keys.
+     * @throws UnsupportedOperationException If trying to rename one of the root keys,
+     *                                           or if the current Windows version does not support renaming registry keys.
      * @throws NullPointerException If the given name is {@code null}.
      * @throws IllegalArgumentException If the given name contains a backslash ({@code \}).
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.

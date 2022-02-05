@@ -161,7 +161,13 @@ final class SubKey extends RegistryKey {
         newPathParts.addLast(newName);
         SubKey renamed = new SubKey(root, newPathParts);
 
-        int code = api.RegRenameKey(rootHKey, path, newName);
+        int code;
+        try {
+            code = api.RegRenameKey(rootHKey, path, newName);
+        } catch (UnsatisfiedLinkError e) {
+            // The RegRenameKey function does not exist; the current Windows version is too old
+            throw new UnsupportedOperationException(e.getMessage(), e);
+        }
         if (code == WinError.ERROR_SUCCESS) {
             return renamed;
         }

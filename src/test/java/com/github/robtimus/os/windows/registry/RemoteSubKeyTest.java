@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -1266,6 +1267,21 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
+
+            verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
+            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("function not available")
+        void testFunctionNotAvailable() {
+            when(RegistryKey.api.RegRenameKey(rootHKey, "path\\existing", "foo"))
+                    .thenThrow(new UnsatisfiedLinkError("Error looking up function 'RegRenameKey': The specified procedure could not be found."));
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+            UnsupportedOperationException exception = assertThrows(UnsupportedOperationException.class, () -> registryKey.renameTo("foo"));
+            assertInstanceOf(UnsatisfiedLinkError.class, exception.getCause());
 
             verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
