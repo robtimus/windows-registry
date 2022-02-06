@@ -292,7 +292,7 @@
             <configuration>
               <!-- Allow JUnit to access the test classes -->
               <argLine>--add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED</argLine>
-              <testSourceDirectory>${basedir}/src/test/java</testSourceDirectory>
+              <testSourceDirectory>${basedir}/src/it/java</testSourceDirectory>
             </configuration>
             <executions>
               <execution>
