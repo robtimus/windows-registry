@@ -677,39 +677,86 @@ class SubKeyTest extends RegistryKeyTestBase {
         @DisplayName("query failure")
         class QueryFailure {
 
-            @Test
-            @DisplayName("with successful close")
-            void testSuccessfulClose() {
-                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            @Nested
+            @DisplayName("without filter")
+            class WithoutFilter {
 
-                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                @Test
+                @DisplayName("with successful close")
+                void testSuccessfulClose() {
+                    HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-                NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
-                assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
+                    assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+
+                    verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                    verify(RegistryKey.api).RegCloseKey(hKey);
+                }
+
+                @Test
+                @DisplayName("with close failure")
+                void testCloseFailure() {
+                    HKEY hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+
+                    mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+
+                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
+                    assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+                    assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
+
+                    verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                    verify(RegistryKey.api).RegCloseKey(hKey);
+                }
             }
 
-            @Test
-            @DisplayName("with close failure")
-            void testCloseFailure() {
-                HKEY hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            @Nested
+            @DisplayName("with filter")
+            class WithFilter {
 
-                mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                @Test
+                @DisplayName("with successful close")
+                void testSuccessfulClose() {
+                    HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
 
-                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-                NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
-                assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
-                assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
+                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+                    NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
+                    assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                    verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                    verify(RegistryKey.api).RegCloseKey(hKey);
+                }
+
+                @Test
+                @DisplayName("with close failure")
+                void testCloseFailure() {
+                    HKEY hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+
+                    mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+
+                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+
+                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    RegistryValue.Filter filter = RegistryValue.filter().strings();
+                    NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
+                    assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+                    assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
+
+                    verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                    verify(RegistryKey.api).RegCloseKey(hKey);
+                }
             }
         }
 

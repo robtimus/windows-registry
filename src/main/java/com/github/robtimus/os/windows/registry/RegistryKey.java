@@ -255,8 +255,13 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     @SuppressWarnings("resource")
     public Stream<RegistryValue> values(RegistryValue.Filter filter) {
         Handle handle = handle(WinNT.KEY_READ);
-        return handle.values(filter)
-                .onClose(handle::close);
+        try {
+            return handle.values(filter)
+                    .onClose(handle::close);
+        } catch (RuntimeException e) {
+            handle.close(e);
+            throw e;
+        }
     }
 
     /**
