@@ -849,6 +849,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @param name The name of the registry value to return.
          * @return The registry value with the given name as a string.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
          * @throws NoSuchRegistryValueException If there is no such registry value.
          * @throws RegistryException If the value cannot be returned for another reason.
@@ -868,6 +869,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @return An {@link Optional} with the registry value with the given name as a string,
          *         or {@link Optional#empty()} if there is no such registry value.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
          * @throws RegistryException If the value cannot be returned for another reason.
          * @throws ClassCastException If the registry value with the given name is not a string.
@@ -885,6 +887,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @param name The name of the registry value to return.
          * @return The registry value with the given name as a DWORD.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
          * @throws NoSuchRegistryValueException If there is no such registry value.
          * @throws RegistryException If the value cannot be returned for another reason.
@@ -905,6 +908,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @return An {@link Optional} with the registry value with the given name as a DWORD,
          *         or {@link Optional#empty()} if there is no such registry value.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
          * @throws RegistryException If the value cannot be returned for another reason.
          * @throws ClassCastException If the registry value with the given name is not a DWORD.
@@ -923,6 +927,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @param name The name of the registry value to return.
          * @return The registry value with the given name as a QWORD.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
          * @throws NoSuchRegistryValueException If there is no such registry value.
          * @throws RegistryException If the value cannot be returned for another reason.
@@ -943,6 +948,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          * @return An {@link Optional} with the registry value with the given name as a QWORD,
          *         or {@link Optional#empty()} if there is no such registry value.
          * @throws NullPointerException If the given name is {@code null}.
+         * @throws InvalidRegistryHandleException If this handle is no longer valid.
          * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
          * @throws RegistryException If the value cannot be returned for another reason.
          * @throws ClassCastException If the registry value with the given name is not a QWORD.
