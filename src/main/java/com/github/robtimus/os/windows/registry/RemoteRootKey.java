@@ -98,17 +98,17 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public RegistryKey renameTo(String newName) {
-        throw new UnsupportedOperationException(Messages.RegistryKey.cannotRenameRoot.get(path()));
+        throw new UnsupportedOperationException(Messages.RegistryKey.cannotRenameRoot(path()));
     }
 
     @Override
     public void delete() {
-        throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path()));
+        throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot(path()));
     }
 
     @Override
     public boolean deleteIfExists() {
-        throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot.get(path()));
+        throw new UnsupportedOperationException(Messages.RegistryKey.cannotDeleteRoot(path()));
     }
 
     // handles

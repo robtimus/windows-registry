@@ -97,7 +97,7 @@ public abstract class RegistryValue {
             case WinNT.REG_QWORD_LITTLE_ENDIAN:
                 return new QWordValue(name, data);
             default:
-                throw new IllegalStateException(Messages.RegistryValue.unsupportedType.get(type));
+                throw new IllegalStateException(Messages.RegistryValue.unsupportedType(type));
         }
     }
 

@@ -92,7 +92,7 @@ public final class DWordValue extends SettableRegistryValue {
             case WinNT.REG_DWORD_LITTLE_ENDIAN:
                 return ByteOrder.LITTLE_ENDIAN;
             default:
-                throw new IllegalArgumentException(Messages.RegistryValue.unsupportedType.get(type));
+                throw new IllegalArgumentException(Messages.RegistryValue.unsupportedType(type));
         }
     }
 

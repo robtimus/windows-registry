@@ -96,7 +96,7 @@ public final class StringValue extends SettableRegistryValue {
         if (isExpandable()) {
             return Kernel32Util.expandEnvironmentStrings(value);
         }
-        throw new IllegalStateException(Messages.StringValue.notExpandable.get());
+        throw new IllegalStateException(Messages.StringValue.notExpandable());
     }
 
     @Override

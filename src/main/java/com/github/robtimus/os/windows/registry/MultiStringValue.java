@@ -73,7 +73,7 @@ public final class MultiStringValue extends SettableRegistryValue {
         List<String> result = new ArrayList<>(values.size());
         for (String value : values) {
             if (value.isEmpty()) {
-                throw new IllegalArgumentException(Messages.MultiStringValue.emptyValue.get());
+                throw new IllegalArgumentException(Messages.MultiStringValue.emptyValue());
             }
             result.add(value);
         }

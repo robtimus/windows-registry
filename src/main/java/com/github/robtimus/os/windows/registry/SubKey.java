@@ -153,7 +153,7 @@ final class SubKey extends RegistryKey {
 
     SubKey renameTo(HKEY rootHKey, String newName) {
         if (newName.contains(SEPARATOR)) {
-            throw new IllegalArgumentException(Messages.RegistryKey.nameContainsBackslash.get(newName));
+            throw new IllegalArgumentException(Messages.RegistryKey.nameContainsBackslash(newName));
         }
 
         Deque<String> newPathParts = new ArrayDeque<>(pathParts);
