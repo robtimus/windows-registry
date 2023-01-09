@@ -68,6 +68,8 @@
 
     <version.plugin.javadoc>3.4.0</version.plugin.javadoc>
     <version.plugin.site>3.12.0</version.plugin.site>
+
+    <argLine />
   </properties>
 
   <dependencies>
@@ -201,7 +203,10 @@
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
           <!-- Allow JUnit to access the test classes -->
-          <argLine>--add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED</argLine>
+          <argLine>
+            @{argLine}
+            --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
+          </argLine>
         </configuration>
       </plugin>
 
