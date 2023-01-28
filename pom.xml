@@ -22,7 +22,7 @@
   <parent>
     <groupId>com.github.robtimus</groupId>
     <artifactId>robtimus-parent</artifactId>
-    <version>1.6</version>
+    <version>1.8</version>
     <relativePath />
   </parent>
 
@@ -65,11 +65,6 @@
     <version.java>11</version.java>
 
     <version.jna>5.10.0</version.jna>
-
-    <version.plugin.javadoc>3.4.0</version.plugin.javadoc>
-    <version.plugin.site>3.12.0</version.plugin.site>
-
-    <argLine />
   </properties>
 
   <dependencies>
@@ -105,20 +100,6 @@
   </dependencies>
 
   <build>
-    <resources>
-      <!-- add LICENSE.txt to META-INF besides the main resources -->
-      <resource>
-        <directory>src/main/resources</directory>
-      </resource>
-      <resource>
-        <directory>${project.basedir}</directory>
-        <targetPath>META-INF</targetPath>
-        <includes>
-          <include>LICENSE.txt</include>
-        </includes>
-      </resource>
-    </resources>
-
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
@@ -178,8 +159,8 @@
       </plugin>
 
       <plugin>
-        <groupId>org.apache.maven.plugins</groupId>
-        <artifactId>maven-antrun-plugin</artifactId>
+        <groupId>com.github.robtimus</groupId>
+        <artifactId>build-helper-maven-plugin</artifactId>
       </plugin>
 
       <plugin>
@@ -299,7 +280,10 @@
             <version>${version.plugin.surefire}</version>
             <configuration>
               <!-- Allow JUnit to access the test classes -->
-              <argLine>--add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED</argLine>
+              <argLine>
+                @{argLine}
+                --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
+              </argLine>
               <testSourceDirectory>${basedir}/src/it/java</testSourceDirectory>
             </configuration>
             <executions>
