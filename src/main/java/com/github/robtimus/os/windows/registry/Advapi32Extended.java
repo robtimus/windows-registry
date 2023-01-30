@@ -25,5 +25,5 @@ import com.sun.jna.win32.W32APIOptions;
 interface Advapi32Extended extends Advapi32 {
     Advapi32Extended INSTANCE = Native.load("Advapi32", Advapi32Extended.class, W32APIOptions.DEFAULT_OPTIONS); //$NON-NLS-1$
 
-    int RegRenameKey(HKEY hKey, String lpSubKeyName, String lpNewKeyName);
+    int RegRenameKey(HKEY hKey, String lpSubKeyName, String lpNewKeyName); // NOSONAR: name must match the native call exactly
 }
