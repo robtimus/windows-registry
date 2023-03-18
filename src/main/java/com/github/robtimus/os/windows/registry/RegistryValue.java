@@ -122,6 +122,9 @@ public abstract class RegistryValue {
         private Predicate<? super String> namePredicate;
         private Set<Class<? extends RegistryValue>> valueClasses;
 
+        private Filter() {
+        }
+
         private static Class<? extends RegistryValue>[] registryClasses() {
             @SuppressWarnings("unchecked")
             Class<? extends RegistryValue>[] classes = new Class[WinNT.REG_QWORD_LITTLE_ENDIAN + 1];
@@ -138,9 +141,6 @@ public abstract class RegistryValue {
             classes[WinNT.REG_RESOURCE_REQUIREMENTS_LIST] = ResourceRequirementsListValue.class;
             classes[WinNT.REG_QWORD_LITTLE_ENDIAN] = QWordValue.class;
             return classes;
-        }
-
-        private Filter() {
         }
 
         /**
