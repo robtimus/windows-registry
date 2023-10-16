@@ -17,8 +17,8 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.sun.jna.platform.win32.Kernel32Util;
-import com.sun.jna.platform.win32.WinError;
+import com.github.robtimus.os.windows.registry.foreign.Kernel32Utils;
+import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 /**
  * Thrown when an error occurred while trying to access or modify the Windows registry.
@@ -65,7 +65,7 @@ public class RegistryException extends RuntimeException {
             sb.append('@').append(machineName);
         }
         sb.append(": ");
-        sb.append(Kernel32Util.formatMessage(errorCode));
+        sb.append(Kernel32Utils.formatMessage(errorCode));
         return sb.toString();
     }
 
@@ -99,8 +99,7 @@ public class RegistryException extends RuntimeException {
 
     static RegistryException forKey(int errorCode, String path, String machineName) {
         switch (errorCode) {
-            case WinError.ERROR_KEY_DELETED:
-            case WinError.ERROR_FILE_NOT_FOUND:
+            case WinError.ERROR_KEY_DELETED, WinError.ERROR_FILE_NOT_FOUND:
                 return new NoSuchRegistryKeyException(errorCode, path, machineName);
             case WinError.ERROR_ACCESS_DENIED:
                 return new RegistryAccessDeniedException(path, machineName);
