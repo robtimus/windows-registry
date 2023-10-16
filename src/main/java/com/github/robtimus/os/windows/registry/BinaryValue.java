@@ -21,8 +21,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.foreign.SegmentAllocator;
 import java.util.Arrays;
-import com.sun.jna.platform.win32.WinNT;
+import java.util.HexFormat;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of binary registry values.
@@ -32,11 +35,13 @@ import com.sun.jna.platform.win32.WinNT;
  */
 public final class BinaryValue extends SettableRegistryValue {
 
+    static final HexFormat HEX_FORMAT = HexFormat.of();
+
     private final byte[] data;
 
-    BinaryValue(String name, byte[] data, int dataLength) {
+    BinaryValue(String name, BytePointer data, int dataLength) {
         super(name, WinNT.REG_BINARY);
-        this.data = Arrays.copyOf(data, dataLength);
+        this.data = data.toByteArray(dataLength);
     }
 
     private BinaryValue(String name, byte[] data) {
@@ -90,8 +95,8 @@ public final class BinaryValue extends SettableRegistryValue {
     }
 
     @Override
-    byte[] rawData() {
-        return data;
+    BytePointer rawData(SegmentAllocator allocator) {
+        return BytePointer.withBytes(data, allocator);
     }
 
     @Override
@@ -144,6 +149,6 @@ public final class BinaryValue extends SettableRegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + StringUtils.toHexString(data);
+        return name() + "=0x" + HEX_FORMAT.formatHex(data);
     }
 }

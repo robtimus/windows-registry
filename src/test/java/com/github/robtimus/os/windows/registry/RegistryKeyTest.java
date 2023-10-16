@@ -20,9 +20,10 @@ package com.github.robtimus.os.windows.registry;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -36,12 +37,12 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import com.github.robtimus.os.windows.registry.foreign.IntPointer;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
+import com.github.robtimus.os.windows.registry.foreign.WinError;
+import com.github.robtimus.os.windows.registry.foreign.WinReg;
 import com.sun.jna.platform.win32.Kernel32;
-import com.sun.jna.platform.win32.WinBase.FILETIME;
 import com.sun.jna.platform.win32.WinBase.SYSTEMTIME;
-import com.sun.jna.platform.win32.WinError;
-import com.sun.jna.platform.win32.WinReg;
-import com.sun.jna.ptr.IntByReference;
 
 @SuppressWarnings("nls")
 class RegistryKeyTest extends RegistryKeyTestBase {
@@ -62,8 +63,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenAnswer(i -> {
                         FILETIME fileTime = i.getArgument(11, FILETIME.class);
-                        SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
-                        Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+                        copyInstantToFileTime(instant, fileTime);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -75,14 +75,13 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("negative file time")
         void testNegativeFileTime() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenAnswer(i -> {
-                        FILETIME fileTime = i.getArgument(11, FILETIME.class);
-                        fileTime.dwHighDateTime = -1;
-                        fileTime.dwLowDateTime = 0;
+            doAnswer(i -> {
+                FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                fileTime.dwHighDateTime(-1);
+                fileTime.dwLowDateTime(0);
 
-                        return WinError.ERROR_SUCCESS;
-                    });
+                return WinError.ERROR_SUCCESS;
+            }).when(RegistryKey.api).RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             assertEquals(RegistryKey.FILETIME_BASE, registryKey.lastWriteTime());
@@ -91,8 +90,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
+                    .RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::lastWriteTime);
@@ -111,12 +110,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                     .thenAnswer(i -> {
-                        i.getArgument(4, IntByReference.class).setValue(10);
-                        i.getArgument(7, IntByReference.class).setValue(20);
+                        i.getArgument(4, IntPointer.class).value(10);
+                        i.getArgument(7, IntPointer.class).value(20);
 
                         FILETIME fileTime = i.getArgument(11, FILETIME.class);
-                        SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
-                        Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+                        copyInstantToFileTime(instant, fileTime);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -132,8 +130,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
+                    .RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::attributes);
@@ -160,8 +158,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getStringValue("string"));
@@ -210,8 +208,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             Optional<String> value = registryKey.findStringValue("string");
@@ -260,8 +258,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getDWordValue("dword"));
@@ -310,8 +308,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             OptionalInt value = registryKey.findDWordValue("dword");
@@ -359,8 +357,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getQWordValue("qword"));
@@ -409,8 +407,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             OptionalLong value = registryKey.findQWordValue("qword");
@@ -457,8 +455,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
                 when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                         .thenAnswer(i -> {
                             FILETIME fileTime = i.getArgument(11, FILETIME.class);
-                            SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
-                            Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+                            copyInstantToFileTime(instant, fileTime);
 
                             return WinError.ERROR_SUCCESS;
                         });
@@ -472,14 +469,13 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("negative file time")
             void testNegativeFileTime() {
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                        .thenAnswer(i -> {
-                            FILETIME fileTime = i.getArgument(11, FILETIME.class);
-                            fileTime.dwHighDateTime = -1;
-                            fileTime.dwLowDateTime = 0;
+                doAnswer(i -> {
+                    FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                    fileTime.dwHighDateTime(-1);
+                    fileTime.dwLowDateTime(0);
 
-                            return WinError.ERROR_SUCCESS;
-                        });
+                    return WinError.ERROR_SUCCESS;
+                }).when(RegistryKey.api).RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -490,8 +486,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
+                        .RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -512,12 +508,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
                 when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                         .thenAnswer(i -> {
-                            i.getArgument(4, IntByReference.class).setValue(10);
-                            i.getArgument(7, IntByReference.class).setValue(20);
+                            i.getArgument(4, IntPointer.class).value(10);
+                            i.getArgument(7, IntPointer.class).value(20);
 
                             FILETIME fileTime = i.getArgument(11, FILETIME.class);
-                            SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
-                            Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+                            copyInstantToFileTime(instant, fileTime);
 
                             return WinError.ERROR_SUCCESS;
                         });
@@ -535,8 +530,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
-                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
+                        .RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -567,8 +562,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                        .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -626,8 +621,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                        .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -684,8 +679,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                        .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -743,8 +738,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                        .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -801,8 +796,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                        .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -860,8 +855,8 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                when(RegistryKey.api.RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), anyInt(), any(), (byte[]) isNull(), any()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                        .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -896,5 +891,16 @@ class RegistryKeyTest extends RegistryKeyTestBase {
                 }
             }
         }
+    }
+
+    private void copyInstantToFileTime(Instant instant, FILETIME fileTime) {
+        com.sun.jna.platform.win32.WinBase.FILETIME jnaFileTime = new com.sun.jna.platform.win32.WinBase.FILETIME();
+        jnaFileTime.dwLowDateTime = fileTime.dwLowDateTime();
+        jnaFileTime.dwHighDateTime = fileTime.dwHighDateTime();
+
+        SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
+        Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, jnaFileTime);
+
+        fileTime.dwLowDateTime(jnaFileTime.dwLowDateTime).dwHighDateTime(jnaFileTime.dwHighDateTime);
     }
 }
