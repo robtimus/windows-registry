@@ -1,6 +1,6 @@
 /*
- * Advapi32Extended.java
- * Copyright 2021 Rob Spoor
+ * ForeignUtils.java
+ * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,15 +15,14 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry;
+package com.github.robtimus.os.windows.registry.foreign;
 
-import com.sun.jna.Native;
-import com.sun.jna.platform.win32.Advapi32;
-import com.sun.jna.platform.win32.WinReg.HKEY;
-import com.sun.jna.win32.W32APIOptions;
+import java.lang.foreign.Arena;
 
-interface Advapi32Extended extends Advapi32 {
-    Advapi32Extended INSTANCE = Native.load("Advapi32", Advapi32Extended.class, W32APIOptions.DEFAULT_OPTIONS); //$NON-NLS-1$
+final class ForeignUtils {
 
-    int RegRenameKey(HKEY hKey, String lpSubKeyName, String lpNewKeyName);
+    static final Arena ARENA = Arena.ofAuto();
+
+    private ForeignUtils() {
+    }
 }

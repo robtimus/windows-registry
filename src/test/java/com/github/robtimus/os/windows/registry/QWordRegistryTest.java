@@ -17,7 +17,9 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytePointer;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -27,6 +29,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class QWordRegistryTest {
@@ -44,10 +47,10 @@ class QWordRegistryTest {
         }
 
         @Test
-        @DisplayName("from bytes")
+        @DisplayName("from byte pointer")
         void testFromBytes() {
-            byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
-            QWordValue value = new QWordValue("test", bytes);
+            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            QWordValue value = new QWordValue("test", data);
 
             assertEquals(578437695752307201L, value.value());
         }
@@ -60,19 +63,19 @@ class QWordRegistryTest {
         @Test
         @DisplayName("from long")
         void testFromLong() {
-            byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
+            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
             QWordValue value = QWordValue.of("test", 578437695752307201L);
 
-            assertArrayEquals(bytes, value.rawData());
+            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
         }
 
         @Test
-        @DisplayName("from bytes")
+        @DisplayName("from byte pointer")
         void testFromBytes() {
-            byte[] bytes = { 1, 2, 3, 4, 5, 6, 7, 8, };
-            QWordValue value = new QWordValue("test", bytes);
+            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            QWordValue value = new QWordValue("test", data);
 
-            assertArrayEquals(bytes, value.rawData());
+            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
         }
     }
 
@@ -138,8 +141,8 @@ class QWordRegistryTest {
     }
 
     static Arguments[] equalsArguments() {
-        byte[] data = { 1, 2, 3, 4, 5, 6, 7, 8, };
-        byte[] otherData = { 1, 2, 3, 4, 5, 6, 7, 0, };
+        BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+        BytePointer otherData = bytePointer(1, 2, 3, 4, 5, 6, 7, 0);
         QWordValue value = new QWordValue("test", data);
 
         return new Arguments[] {

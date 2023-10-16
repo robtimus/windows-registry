@@ -17,8 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
 import java.util.Arrays;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * Represents registry values with no defined value types.
@@ -29,9 +31,9 @@ public final class NoneValue extends RegistryValue {
 
     private final byte[] data;
 
-    NoneValue(String name, byte[] data, int dataLength) {
+    NoneValue(String name, BytePointer data, int dataLength) {
         super(name, WinNT.REG_NONE);
-        this.data = Arrays.copyOfRange(data, 0, dataLength);
+        this.data = data.toByteArray(dataLength);
     }
 
     @Override
@@ -56,6 +58,6 @@ public final class NoneValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + StringUtils.toHexString(data);
+        return name() + "=0x" + HEX_FORMAT.formatHex(data);
     }
 }

@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.sun.jna.platform.win32.WinError;
+import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 /**
  * Thrown when an attempt is made to access a registry key that does not exist.

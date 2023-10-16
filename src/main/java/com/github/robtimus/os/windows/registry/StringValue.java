@@ -17,9 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.SegmentAllocator;
 import java.util.Objects;
-import com.sun.jna.platform.win32.Kernel32Util;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.Kernel32Utils;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of string registry values.
@@ -31,9 +33,9 @@ public final class StringValue extends SettableRegistryValue {
 
     private final String value;
 
-    StringValue(String name, int type, byte[] data, int dataLength) {
+    StringValue(String name, int type, BytePointer data, int dataLength) {
         super(name, type);
-        value = StringUtils.toString(data, dataLength);
+        value = data.toString(dataLength);
     }
 
     private StringValue(String name, int type, String value) {
@@ -94,14 +96,14 @@ public final class StringValue extends SettableRegistryValue {
      */
     public String expandedValue() {
         if (isExpandable()) {
-            return Kernel32Util.expandEnvironmentStrings(value);
+            return Kernel32Utils.expandEnvironmentStrings(value);
         }
         throw new IllegalStateException(Messages.StringValue.notExpandable());
     }
 
     @Override
-    byte[] rawData() {
-        return StringUtils.fromString(value);
+    BytePointer rawData(SegmentAllocator allocator) {
+        return BytePointer.withString(value, allocator);
     }
 
     @Override

@@ -17,15 +17,16 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDataBytePointer;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class FullResourceDescriptorValueTest {
@@ -38,15 +39,15 @@ class FullResourceDescriptorValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        byte[] data = randomData();
-        FullResourceDescriptorValue value = new FullResourceDescriptorValue("test", data, data.length);
+        BytePointer data = randomDataBytePointer();
+        FullResourceDescriptorValue value = new FullResourceDescriptorValue("test", data, data.size());
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new FullResourceDescriptorValue("test", data, data.length), true),
-                arguments(value, new FullResourceDescriptorValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, new FullResourceDescriptorValue("test2", data, data.length), false),
-                arguments(value, new FullResourceDescriptorValue("test", data, data.length - 1), false),
+                arguments(value, new FullResourceDescriptorValue("test", data, data.size()), true),
+                arguments(value, new FullResourceDescriptorValue("test", resized(data, data.size() + 10), data.size()), true),
+                arguments(value, new FullResourceDescriptorValue("test2", data, data.size()), false),
+                arguments(value, new FullResourceDescriptorValue("test", data, data.size() - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -55,10 +56,10 @@ class FullResourceDescriptorValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        byte[] data = randomData();
-        FullResourceDescriptorValue value = new FullResourceDescriptorValue("test", data, data.length);
+        BytePointer data = randomDataBytePointer();
+        FullResourceDescriptorValue value = new FullResourceDescriptorValue("test", data, data.size());
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new FullResourceDescriptorValue("test", data, data.length).hashCode());
+        assertEquals(value.hashCode(), new FullResourceDescriptorValue("test", data, data.size()).hashCode());
     }
 }

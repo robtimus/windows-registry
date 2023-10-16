@@ -17,8 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytes;
-import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytePointer;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class MultiStringValueTest {
@@ -51,10 +54,10 @@ class MultiStringValueTest {
         }
 
         @Test
-        @DisplayName("from bytes")
-        void testFromBytes() {
-            byte[] bytes = textAsBytes(VALUE1, VALUE2, VALUE3);
-            MultiStringValue value = new MultiStringValue("test", bytes, bytes.length);
+        @DisplayName("from byte pointer")
+        void testFromBytePointer() {
+            BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = new MultiStringValue("test", data, data.size());
 
             assertEquals(Arrays.asList(VALUE1, VALUE2, VALUE3), value.values());
         }
@@ -69,16 +72,16 @@ class MultiStringValueTest {
         void testFromString() {
             MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
-            assertArrayEquals(textAsBytes(VALUE1, VALUE2, VALUE3), value.rawData());
+            assertBytePointerEquals(textAsBytePointer(VALUE1, VALUE2, VALUE3), value.rawData(ALLOCATOR));
         }
 
         @Test
-        @DisplayName("from bytes")
+        @DisplayName("from byte pointer")
         void testFromBytes() {
-            byte[] bytes = textAsBytes(VALUE1, VALUE2, VALUE3);
-            MultiStringValue value = new MultiStringValue("test", bytes, bytes.length);
+            BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = new MultiStringValue("test", data, data.size());
 
-            assertArrayEquals(bytes, value.rawData());
+            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
         }
     }
 
@@ -152,17 +155,16 @@ class MultiStringValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        byte[] data = textAsBytes(VALUE1, VALUE2, VALUE3);
+        BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
         MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, MultiStringValue.of("test", VALUE1, VALUE2, VALUE3), true),
-                arguments(value, new MultiStringValue("test", data, data.length), true),
-                arguments(value, new MultiStringValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
+                arguments(value, new MultiStringValue("test", data, data.size()), true),
+                arguments(value, new MultiStringValue("test", resized(data, data.size() + 10), data.size()), true),
                 arguments(value, MultiStringValue.of("test2", VALUE1, VALUE2, VALUE3), false),
                 arguments(value, MultiStringValue.of("test", VALUE1, VALUE2), false),
-                arguments(value, new MultiStringValue("test", data, data.length - 10), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };

@@ -17,11 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.Arena;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.sun.jna.platform.win32.WinError;
-import com.sun.jna.platform.win32.WinReg.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 final class RemoteRootKey extends RemoteRegistryKey {
 
@@ -31,12 +32,12 @@ final class RemoteRootKey extends RemoteRegistryKey {
     private final Handle handle;
     private final Cleaner.Cleanable cleanable;
 
-    RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey) {
+    RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey, Arena allocator) {
         this.machineName = machineName;
         this.rootKey = rootKey;
         this.hKey = hKey;
         this.handle = new Handle();
-        this.cleanable = closeOnClean(this, hKey, rootKey.name(), machineName);
+        this.cleanable = closeOnClean(this, hKey, allocator, rootKey.name(), machineName);
     }
 
     HKEY hKey() {

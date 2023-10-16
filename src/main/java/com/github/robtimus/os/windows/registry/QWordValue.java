@@ -17,9 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import java.nio.ByteBuffer;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of QWORD registry values.
@@ -29,14 +31,14 @@ import com.sun.jna.platform.win32.WinNT;
  */
 public final class QWordValue extends SettableRegistryValue {
 
+    private static final ValueLayout.OfLong LAYOUT = ValueLayout.JAVA_LONG.withOrder(ByteOrder.LITTLE_ENDIAN);
+
     private final long value;
 
-    QWordValue(String name, byte[] data) {
+    QWordValue(String name, BytePointer data) {
         super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
 
-        ByteBuffer buffer = ByteBuffer.wrap(data);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        this.value = buffer.getLong();
+        this.value = data.toLong(LAYOUT);
     }
 
     private QWordValue(String name, long value) {
@@ -66,12 +68,8 @@ public final class QWordValue extends SettableRegistryValue {
     }
 
     @Override
-    byte[] rawData() {
-        byte[] data = new byte[Long.SIZE / Byte.SIZE];
-        ByteBuffer buffer = ByteBuffer.wrap(data);
-        buffer.order(ByteOrder.LITTLE_ENDIAN);
-        buffer.putLong(value);
-        return data;
+    BytePointer rawData(SegmentAllocator allocator) {
+        return BytePointer.withLong(value, LAYOUT, allocator);
     }
 
     @Override

@@ -62,7 +62,7 @@
   </issueManagement>
 
   <properties>
-    <version.java>11</version.java>
+    <version.java>21</version.java>
 
     <version.jna>5.13.0</version.jna>
   </properties>
@@ -72,12 +72,14 @@
       <groupId>net.java.dev.jna</groupId>
       <artifactId>jna-jpms</artifactId>
       <version>${version.jna}</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
       <groupId>net.java.dev.jna</groupId>
       <artifactId>jna-platform-jpms</artifactId>
       <version>${version.jna}</version>
+      <scope>test</scope>
     </dependency>
 
     <dependency>
@@ -100,10 +102,27 @@
   </dependencies>
 
   <build>
+    <pluginManagement>
+      <plugins>
+        <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+          <artifactId>maven-javadoc-plugin</artifactId>
+          <configuration>
+            <excludePackageNames>com.github.robtimus.os.windows.registry.foreign</excludePackageNames>
+          </configuration>
+        </plugin>
+      </plugins>
+    </pluginManagement>
+
     <plugins>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArgs>
+            <arg>--enable-preview</arg>
+          </compilerArgs>
+        </configuration>
       </plugin>
 
       <plugin>
@@ -162,6 +181,21 @@
               <suppressWarnings>nls</suppressWarnings>
             </configuration>
           </execution>
+          <execution>
+            <id>generate-foreign-messages</id>
+            <goals>
+              <goal>generate</goal>
+            </goals>
+            <configuration>
+              <bundleName>com.github.robtimus.os.windows.registry.windows-registry-foreign</bundleName>
+              <className>com.github.robtimus.os.windows.registry.foreign.Messages</className>
+              <licenseText>Apache-2.0</licenseText>
+              <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
+              <licenseCopyrightYear>2023</licenseCopyrightYear>
+              <publicVisibility>false</publicVisibility>
+              <suppressWarnings>nls</suppressWarnings>
+            </configuration>
+          </execution>
         </executions>
       </plugin>
 
@@ -195,6 +229,7 @@
             -javaagent:${org.mockito:mockito-core:jar}
             <!-- Allow JUnit to access the test classes -->
             --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
+            --enable-preview
           </argLine>
         </configuration>
       </plugin>
@@ -292,6 +327,7 @@
               <argLine>
                 @{argLine}
                 --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
+                --enable-preview
               </argLine>
               <testSourceDirectory>${basedir}/src/it/java</testSourceDirectory>
             </configuration>
