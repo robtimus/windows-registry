@@ -17,8 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
 import java.util.Arrays;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of resource list registry values.
@@ -29,9 +31,9 @@ public final class ResourceListValue extends RegistryValue {
 
     private final byte[] data;
 
-    ResourceListValue(String name, byte[] data, int dataLength) {
+    ResourceListValue(String name, BytePointer data, int dataLength) {
         super(name, WinNT.REG_RESOURCE_LIST);
-        this.data = Arrays.copyOfRange(data, 0, dataLength);
+        this.data = data.toByteArray(dataLength);
     }
 
     @Override
@@ -56,6 +58,6 @@ public final class ResourceListValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + StringUtils.toHexString(data);
+        return name() + "=0x" + HEX_FORMAT.formatHex(data);
     }
 }

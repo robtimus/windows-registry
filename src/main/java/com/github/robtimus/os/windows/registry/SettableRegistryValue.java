@@ -17,6 +17,9 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.SegmentAllocator;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+
 /**
  * A representation of registry values that can be set.
  * This includes string values, numeric values and binary values, but excludes values like links or resource lists.
@@ -29,7 +32,7 @@ public abstract class SettableRegistryValue extends RegistryValue {
         super(name, type);
     }
 
-    abstract byte[] rawData();
+    abstract BytePointer rawData(SegmentAllocator allocator);
 
     /**
      * Returns a registry value with the same value as this registry value but a different name.

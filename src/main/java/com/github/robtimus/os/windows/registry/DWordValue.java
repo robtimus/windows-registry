@@ -17,10 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import java.nio.ByteBuffer;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Objects;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of DWORD registry values.
@@ -30,22 +32,23 @@ import com.sun.jna.platform.win32.WinNT;
  */
 public final class DWordValue extends SettableRegistryValue {
 
-    private final int value;
-    private final ByteOrder byteOrder;
+    private static final ValueLayout.OfInt LAYOUT_LITTLE_ENDIAN = ValueLayout.JAVA_INT.withOrder(ByteOrder.LITTLE_ENDIAN);
+    private static final ValueLayout.OfInt LAYOUT_BIG_ENDIAN = ValueLayout.JAVA_INT.withOrder(ByteOrder.BIG_ENDIAN);
 
-    DWordValue(String name, int type, byte[] data) {
+    private final int value;
+    private final ValueLayout.OfInt layout;
+
+    DWordValue(String name, int type, BytePointer data) {
         super(name, type);
 
-        byteOrder = getByteOrder(type);
-        ByteBuffer buffer = ByteBuffer.wrap(data);
-        buffer.order(byteOrder);
-        this.value = buffer.getInt();
+        this.layout = getLayout(type);
+        this.value = data.toInt(layout);
     }
 
-    private DWordValue(String name, int type, int value, ByteOrder byteOrder) {
+    private DWordValue(String name, int type, int value, ValueLayout.OfInt layout) {
         super(name, type);
         this.value = value;
-        this.byteOrder = Objects.requireNonNull(byteOrder);
+        this.layout = Objects.requireNonNull(layout);
     }
 
     /**
@@ -70,7 +73,7 @@ public final class DWordValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name is {@code null}.
      */
     public static DWordValue littleEndianOf(String name, int value) {
-        return new DWordValue(name, WinNT.REG_DWORD_LITTLE_ENDIAN, value, ByteOrder.LITTLE_ENDIAN);
+        return new DWordValue(name, WinNT.REG_DWORD_LITTLE_ENDIAN, value, LAYOUT_LITTLE_ENDIAN);
     }
 
     /**
@@ -82,15 +85,15 @@ public final class DWordValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name is {@code null}.
      */
     public static DWordValue bigEndianOf(String name, int value) {
-        return new DWordValue(name, WinNT.REG_DWORD_BIG_ENDIAN, value, ByteOrder.BIG_ENDIAN);
+        return new DWordValue(name, WinNT.REG_DWORD_BIG_ENDIAN, value, LAYOUT_BIG_ENDIAN);
     }
 
-    private static ByteOrder getByteOrder(int type) {
+    private static ValueLayout.OfInt getLayout(int type) {
         switch (type) {
             case WinNT.REG_DWORD_BIG_ENDIAN:
-                return ByteOrder.BIG_ENDIAN;
+                return LAYOUT_BIG_ENDIAN;
             case WinNT.REG_DWORD_LITTLE_ENDIAN:
-                return ByteOrder.LITTLE_ENDIAN;
+                return LAYOUT_LITTLE_ENDIAN;
             default:
                 throw new IllegalArgumentException(Messages.RegistryValue.unsupportedType(type));
         }
@@ -106,17 +109,13 @@ public final class DWordValue extends SettableRegistryValue {
     }
 
     @Override
-    byte[] rawData() {
-        byte[] data = new byte[Integer.SIZE / Byte.SIZE];
-        ByteBuffer buffer = ByteBuffer.wrap(data);
-        buffer.order(byteOrder);
-        buffer.putInt(value);
-        return data;
+    BytePointer rawData(SegmentAllocator allocator) {
+        return BytePointer.withInt(value, layout, allocator);
     }
 
     @Override
     public DWordValue withName(String name) {
-        return new DWordValue(name, type(), value, byteOrder);
+        return new DWordValue(name, type(), value, layout);
     }
 
     /**
@@ -126,7 +125,7 @@ public final class DWordValue extends SettableRegistryValue {
      * @return A registry value with the same name as this registry value and the given value.
      */
     public DWordValue withValue(int value) {
-        return new DWordValue(name(), type(), value, byteOrder);
+        return new DWordValue(name(), type(), value, layout);
     }
 
     /**
