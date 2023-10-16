@@ -24,8 +24,8 @@ import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
-import com.sun.jna.platform.win32.WinReg;
-import com.sun.jna.platform.win32.WinReg.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 final class RootKey extends RegistryKey {
 

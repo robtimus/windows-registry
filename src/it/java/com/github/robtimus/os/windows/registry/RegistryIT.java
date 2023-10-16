@@ -51,7 +51,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import com.github.robtimus.os.windows.registry.RegistryKey.HandleOption;
 import com.github.robtimus.os.windows.registry.RegistryKey.TraverseOption;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
 class RegistryIT {

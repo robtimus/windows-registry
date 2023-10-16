@@ -22,7 +22,8 @@ import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of registry values.
@@ -72,17 +73,15 @@ public abstract class RegistryValue {
         return hash;
     }
 
-    static RegistryValue of(String name, int type, byte[] data, int dataLength) {
+    static RegistryValue of(String name, int type, BytePointer data, int dataLength) {
         switch (type) {
             case WinNT.REG_NONE:
                 return new NoneValue(name, data, dataLength);
-            case WinNT.REG_SZ:
-            case WinNT.REG_EXPAND_SZ:
+            case WinNT.REG_SZ, WinNT.REG_EXPAND_SZ:
                 return new StringValue(name, type, data, dataLength);
             case WinNT.REG_BINARY:
                 return new BinaryValue(name, data, dataLength);
-            case WinNT.REG_DWORD_LITTLE_ENDIAN:
-            case WinNT.REG_DWORD_BIG_ENDIAN:
+            case WinNT.REG_DWORD_LITTLE_ENDIAN, WinNT.REG_DWORD_BIG_ENDIAN:
                 return new DWordValue(name, type, data);
             case WinNT.REG_LINK:
                 return new LinkValue(name, data, dataLength);

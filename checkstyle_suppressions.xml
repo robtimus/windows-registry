@@ -3,6 +3,7 @@
 <!DOCTYPE suppressions PUBLIC "-//Checkstyle//DTD SuppressionFilter Configuration 1.1//EN" "https://checkstyle.org/dtds/suppressions_1_1.dtd">
 
 <suppressions>
-  <suppress files=".*\.java" checks="IllegalImport" />
-  <suppress files=".*Advapi32Extended\.java" checks="MethodName|JavadocVariable" />
+  <suppress files=".*[\\/]foreign[\\/].*.java" checks="TypeName|MethodName|ParameterName|MissingJavadocType|MissingJavadocMethod|JavadocVariable" />
+
+  <suppress files="src[\\/]test[\\/]java[\\/].*" checks="IllegalImport" />
 </suppressions>
