@@ -17,8 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.sun.jna.platform.win32.WinError;
-import com.sun.jna.platform.win32.WinReg.HKEYByReference;
+import java.lang.foreign.Arena;
+import com.github.robtimus.os.windows.registry.foreign.StringPointer;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 /**
  * A representation of registry keys on a remote machine.
@@ -56,12 +58,21 @@ public abstract class RemoteRegistryKey extends RegistryKey implements AutoClose
          * @throws RegistryException If the connection failed.
          */
         public RemoteRegistryKey at(String machineName) {
-            HKEYByReference phkResult = new HKEYByReference();
-            int code = api.RegConnectRegistry(machineName, rootKey.hKey(), phkResult);
-            if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.forKey(code, rootKey.path(), machineName);
+            @SuppressWarnings("resource")
+            Arena hKeyAllocator = Arena.ofShared();
+            try (Arena allocator = Arena.ofConfined()) {
+                StringPointer lpMachineName = StringPointer.withValue(machineName, allocator);
+                HKEY.Reference phkResult = HKEY.uninitializedReference(hKeyAllocator);
+
+                int code = api.RegConnectRegistry(lpMachineName, rootKey.hKey(), phkResult);
+                if (code != WinError.ERROR_SUCCESS) {
+                    throw RegistryException.forKey(code, rootKey.path(), machineName);
+                }
+                return new RemoteRootKey(machineName, rootKey, phkResult.value(), hKeyAllocator);
+            } catch (RuntimeException e) {
+                hKeyAllocator.close();
+                throw e;
             }
-            return new RemoteRootKey(machineName, rootKey, phkResult.getValue());
         }
     }
 

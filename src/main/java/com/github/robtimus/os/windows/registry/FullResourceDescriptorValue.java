@@ -17,8 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
 import java.util.Arrays;
-import com.sun.jna.platform.win32.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of full resource descriptor registry values.
@@ -29,9 +31,9 @@ public final class FullResourceDescriptorValue extends RegistryValue {
 
     private final byte[] data;
 
-    FullResourceDescriptorValue(String name, byte[] data, int dataLength) {
+    FullResourceDescriptorValue(String name, BytePointer data, int dataLength) {
         super(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR);
-        this.data = Arrays.copyOfRange(data, 0, dataLength);
+        this.data = data.toByteArray(dataLength);
     }
 
     @Override
@@ -56,6 +58,6 @@ public final class FullResourceDescriptorValue extends RegistryValue {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return name() + "=" + StringUtils.toHexString(data);
+        return name() + "=0x" + HEX_FORMAT.formatHex(data);
     }
 }
