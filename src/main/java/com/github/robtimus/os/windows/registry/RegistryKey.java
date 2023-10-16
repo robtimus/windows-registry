@@ -17,6 +17,9 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
@@ -31,6 +34,7 @@ import java.util.Spliterators;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.sun.jna.Native;
+import com.sun.jna.platform.win32.WinBase.FILETIME;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -63,6 +67,8 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     // Non-private non-final to allow replacing for testing
     static Advapi32Extended api = Advapi32Extended.INSTANCE;
 
+    static final Instant FILETIME_BASE = ZonedDateTime.of(1601, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant();
+
     RegistryKey() {
     }
 
@@ -81,6 +87,32 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * @return The full path to the registry key.
      */
     public abstract String path();
+
+    // informational
+
+    /**
+     * Returns the instant when this registry key was last written to.
+     *
+     * @return The instant when this registry key was last written to.
+     * @since 1.1
+     */
+    public Instant lastWriteTime() {
+        try (Handle handle = handle(WinNT.KEY_READ)) {
+            return handle.lastWriteTime();
+        }
+    }
+
+    /**
+     * Returns attributes for this registry key.
+     *
+     * @return Attributes for this registry key.
+     * @since 1.1
+     */
+    public Attributes attributes() {
+        try (Handle handle = handle(WinNT.KEY_READ)) {
+            return handle.attributes();
+        }
+    }
 
     // traversal
 
@@ -615,6 +647,52 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     }
 
     /**
+     * Attributes associated with a registry key.
+     *
+     * @author Rob Spoor
+     * @since 1.1
+     */
+    public static final class Attributes {
+
+        private final int subKeyCount;
+        private final int valueCount;
+        private final Instant lastWriteTime;
+
+        private Attributes(int subKeyCount, int valueCount, Instant lastWriteTime) {
+            this.subKeyCount = subKeyCount;
+            this.valueCount = valueCount;
+            this.lastWriteTime = lastWriteTime;
+        }
+
+        /**
+         * Returns the number of sub keys of the registry key.
+         *
+         * @return The number of sub keys of the registry key.
+         */
+        public int subKeyCount() {
+            return subKeyCount;
+        }
+
+        /**
+         * Returns the number of values of the registry key.
+         *
+         * @return The number of values of the registry key.
+         */
+        public int valueCount() {
+            return valueCount;
+        }
+
+        /**
+         * Returns the instant when the registry key was last written to.
+         *
+         * @return The instant when the registry key was last written to.
+         */
+        public Instant lastWriteTime() {
+            return lastWriteTime;
+        }
+    }
+
+    /**
      * A handle to a registry key. This offers mostly the same functionality as {@link RegistryKey} itself. However, it reuses the same link to the
      * Windows registry instead of creating a new one every time. That makes it more efficient if multiple operations on the same registry key are
      * needed. Handle instances should be closed when they are no longer needed to release the link to the Windows registry.
@@ -630,6 +708,54 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         Handle(HKEY hKey) {
             this.hKey = hKey;
+        }
+
+        // informational
+
+        /**
+         * Returns the instant when the registry key from which this handle was retrieved was last written to.
+         *
+         * @return The instant when the registry key from which this handle was retrieved was last written to.
+         * @since 1.1
+         */
+        public Instant lastWriteTime() {
+            FILETIME lpftLastWriteTime = new FILETIME();
+            int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, lpftLastWriteTime);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path());
+            }
+            return toInstant(lpftLastWriteTime);
+        }
+
+        /**
+         * Returns attributes for the registry key from which this handle was retrieved.
+         *
+         * @return Attributes for the registry key from which this handle was retrieved.
+         * @since 1.1
+         */
+        public Attributes attributes() {
+            IntByReference lpcSubKeys = new IntByReference();
+            IntByReference lpcValues = new IntByReference();
+            FILETIME lpftLastWriteTime = new FILETIME();
+            int code = api.RegQueryInfoKey(hKey, null, null, null, lpcSubKeys, null, null, lpcValues, null, null, null, lpftLastWriteTime);
+            if (code != WinError.ERROR_SUCCESS) {
+                throw RegistryException.of(code, path());
+            }
+            return new Attributes(lpcSubKeys.getValue(), lpcValues.getValue(), toInstant(lpftLastWriteTime));
+        }
+
+        private Instant toInstant(FILETIME lpFileTime) {
+            // FILETIME "Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC)."
+            long intervals = ((long) lpFileTime.dwHighDateTime << 32L) | (lpFileTime.dwLowDateTime & 0xFFFF_FFFFL);
+            if (intervals <= 0) {
+                // Conversion using Kernel32's FileTimeToSystemTime does not support this, which means we cannot test against this
+                // This is very unlikely though, as the time would be before the year 1601
+                return FILETIME_BASE;
+            }
+            // Ideally we would convert intervals to nanos by multiplying by 100, but that can easily overflow
+            long millis = intervals / 10_000L;
+            long nanos = (intervals % 10_000L) * 100;
+            return FILETIME_BASE.plusMillis(millis).plusNanos(nanos);
         }
 
         // traversal

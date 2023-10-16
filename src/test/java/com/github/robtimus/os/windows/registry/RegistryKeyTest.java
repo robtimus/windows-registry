@@ -24,19 +24,122 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
+import java.time.temporal.ChronoField;
+import java.util.GregorianCalendar;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import com.sun.jna.platform.win32.Kernel32;
+import com.sun.jna.platform.win32.WinBase.FILETIME;
+import com.sun.jna.platform.win32.WinBase.SYSTEMTIME;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg;
+import com.sun.jna.ptr.IntByReference;
 
 @SuppressWarnings("nls")
 class RegistryKeyTest extends RegistryKeyTestBase {
 
     // Use RootKey for these tests
+
+    @Nested
+    @DisplayName("lastWriteTime")
+    class LastWriteTime {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            Instant instant = Instant.now().with(ChronoField.NANO_OF_SECOND, TimeUnit.MILLISECONDS.toNanos(100))
+                    .atOffset(ZoneOffset.UTC)
+                    .toInstant();
+
+            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                        SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
+                        Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertEquals(instant, registryKey.lastWriteTime());
+        }
+
+        @Test
+        @DisplayName("negative file time")
+        void testNegativeFileTime() {
+            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                        fileTime.dwHighDateTime = -1;
+                        fileTime.dwLowDateTime = 0;
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            assertEquals(RegistryKey.FILETIME_BASE, registryKey.lastWriteTime());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::lastWriteTime);
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+    }
+
+    @Nested
+    @DisplayName("attributes")
+    class Attributes {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            Instant instant = Instant.now().with(ChronoField.NANO_OF_SECOND, TimeUnit.MILLISECONDS.toNanos(100));
+
+            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenAnswer(i -> {
+                        i.getArgument(4, IntByReference.class).setValue(10);
+                        i.getArgument(7, IntByReference.class).setValue(20);
+
+                        FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                        SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
+                        Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey.Attributes attributes = registryKey.attributes();
+
+            assertEquals(10, attributes.subKeyCount());
+            assertEquals(20, attributes.valueCount());
+            assertEquals(instant, attributes.lastWriteTime());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::attributes);
+            assertEquals("HKEY_CURRENT_USER", exception.path());
+        }
+    }
 
     @Nested
     @DisplayName("getStringValue")
@@ -339,6 +442,109 @@ class RegistryKeyTest extends RegistryKeyTestBase {
     @Nested
     @DisplayName("Handle")
     class Handle {
+
+        // Use RootKey for these tests
+
+        @Nested
+        @DisplayName("lastWriteTime")
+        class LastWriteTime {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                Instant instant = Instant.now().with(ChronoField.NANO_OF_SECOND, TimeUnit.MILLISECONDS.toNanos(100));
+
+                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                        .thenAnswer(i -> {
+                            FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                            SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
+                            Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+
+                            return WinError.ERROR_SUCCESS;
+                        });
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertEquals(instant, handle.lastWriteTime());
+                }
+            }
+
+            @Test
+            @DisplayName("negative file time")
+            void testNegativeFileTime() {
+                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                        .thenAnswer(i -> {
+                            FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                            fileTime.dwHighDateTime = -1;
+                            fileTime.dwLowDateTime = 0;
+
+                            return WinError.ERROR_SUCCESS;
+                        });
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    assertEquals(RegistryKey.FILETIME_BASE, registryKey.lastWriteTime());
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, handle::lastWriteTime);
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+        }
+
+        @Nested
+        @DisplayName("attributes")
+        class Attributes {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                Instant instant = Instant.now().with(ChronoField.NANO_OF_SECOND, TimeUnit.MILLISECONDS.toNanos(100));
+
+                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                        .thenAnswer(i -> {
+                            i.getArgument(4, IntByReference.class).setValue(10);
+                            i.getArgument(7, IntByReference.class).setValue(20);
+
+                            FILETIME fileTime = i.getArgument(11, FILETIME.class);
+                            SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
+                            Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, fileTime);
+
+                            return WinError.ERROR_SUCCESS;
+                        });
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    RegistryKey.Attributes attributes = handle.attributes();
+
+                    assertEquals(10, attributes.subKeyCount());
+                    assertEquals(20, attributes.valueCount());
+                    assertEquals(instant, attributes.lastWriteTime());
+                }
+            }
+
+            @Test
+            @DisplayName("failure")
+            void testFailure() {
+                when(RegistryKey.api.RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                try (RegistryKey.Handle handle = registryKey.handle()) {
+                    InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, handle::attributes);
+                    assertEquals("HKEY_CURRENT_USER", exception.path());
+                }
+            }
+        }
 
         @Nested
         @DisplayName("getStringValue")
