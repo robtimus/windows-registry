@@ -26,10 +26,12 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.sun.jna.platform.win32.WinError;
+import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 @SuppressWarnings("nls")
 class RegistryExceptionTest {
+
+    private static final int OTHER_ERROR = com.sun.jna.platform.win32.WinError.ERROR_REGISTRY_CORRUPT;
 
     @Test
     @DisplayName("RegistryExistsException(int, String)")
@@ -98,9 +100,9 @@ class RegistryExceptionTest {
         @ValueSource(strings = "machine")
         @NullSource
         void testOther(String machineName) {
-            RegistryException exception = RegistryException.forKey(WinError.ERROR_REGISTRY_CORRUPT, "path", machineName);
+            RegistryException exception = RegistryException.forKey(OTHER_ERROR, "path", machineName);
             assertEquals(RegistryException.class, exception.getClass());
-            assertEquals(WinError.ERROR_REGISTRY_CORRUPT, exception.errorCode());
+            assertEquals(OTHER_ERROR, exception.errorCode());
             assertEquals("path", exception.path());
             assertEquals(machineName, exception.machineName());
         }
@@ -164,9 +166,9 @@ class RegistryExceptionTest {
         @ValueSource(strings = "machine")
         @NullSource
         void testOther(String machineName) {
-            RegistryException exception = RegistryException.forValue(WinError.ERROR_REGISTRY_CORRUPT, "path", machineName, "name");
+            RegistryException exception = RegistryException.forValue(OTHER_ERROR, "path", machineName, "name");
             assertEquals(RegistryException.class, exception.getClass());
-            assertEquals(WinError.ERROR_REGISTRY_CORRUPT, exception.errorCode());
+            assertEquals(OTHER_ERROR, exception.errorCode());
             assertEquals("path", exception.path());
             assertEquals(machineName, exception.machineName());
         }

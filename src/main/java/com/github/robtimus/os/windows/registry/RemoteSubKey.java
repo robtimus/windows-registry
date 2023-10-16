@@ -17,10 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.Arena;
+import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.sun.jna.platform.win32.WinReg.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
 final class RemoteSubKey extends RegistryKey {
 
@@ -83,61 +85,89 @@ final class RemoteSubKey extends RegistryKey {
 
     @Override
     public boolean exists() {
-        return local.exists(root.hKey(), machineName());
+        try (Arena allocator = Arena.ofConfined()) {
+            return local.exists(root.hKey(), allocator, machineName());
+        }
     }
 
     @Override
     public boolean isAccessible() {
-        return local.isAccessible(root.hKey(), machineName());
+        try (Arena allocator = Arena.ofConfined()) {
+            return local.isAccessible(root.hKey(), allocator, machineName());
+        }
     }
 
     @Override
     public void create() {
-        local.create(root.hKey(), machineName());
+        try (Arena allocator = Arena.ofConfined()) {
+            local.create(root.hKey(), allocator, machineName());
+        }
     }
 
     @Override
     public boolean createIfNotExists() {
-        return local.createIfNotExists(root.hKey(), machineName());
+        try (Arena allocator = Arena.ofConfined()) {
+            return local.createIfNotExists(root.hKey(), allocator, machineName());
+        }
     }
 
     @Override
     public RegistryKey renameTo(String newName) {
-        SubKey renamed = local.renameTo(root.hKey(), newName, machineName());
-        return new RemoteSubKey(root, renamed);
+        try (Arena allocator = Arena.ofConfined()) {
+            SubKey renamed = local.renameTo(root.hKey(), newName, allocator, machineName());
+            return new RemoteSubKey(root, renamed);
+        }
     }
 
     @Override
     public void delete() {
-        local.delete(root.hKey(), machineName());
+        try (Arena allocator = Arena.ofConfined()) {
+            local.delete(root.hKey(), allocator, machineName());
+        }
     }
 
     @Override
     public boolean deleteIfExists() {
-        return local.deleteIfExists(root.hKey(), machineName());
+        try (Arena allocator = Arena.ofConfined()) {
+            return local.deleteIfExists(root.hKey(), allocator, machineName());
+        }
     }
 
     // handles
 
     @Override
-    RegistryKey.Handle handle(int samDesired, boolean create) {
-        HKEY hKey = hKey(samDesired, create);
-        return new Handle(hKey);
+    Handle handle(int samDesired, boolean create) {
+        @SuppressWarnings("resource")
+        Arena hKeyAllocator = Arena.ofShared();
+        try (Arena allocator = Arena.ofConfined()) {
+            HKEY hKey = hKey(samDesired, create, allocator, hKeyAllocator);
+            return new Handle(hKey, hKeyAllocator);
+        } catch (RuntimeException e) {
+            hKeyAllocator.close();
+            throw e;
+        }
     }
 
     @Override
     Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
-        HKEY hKey = hKey(samDesired, ignoreError);
-        return Optional.ofNullable(hKey)
-                .map(Handle::new);
+        @SuppressWarnings("resource")
+        Arena hKeyAllocator = Arena.ofShared();
+        try (Arena allocator = Arena.ofConfined()) {
+            HKEY hKey = hKey(samDesired, ignoreError, allocator, hKeyAllocator);
+            return Optional.ofNullable(hKey)
+                    .map(hk -> new Handle(hk, hKeyAllocator));
+        } catch (RuntimeException e) {
+            hKeyAllocator.close();
+            throw e;
+        }
     }
 
-    private HKEY hKey(int samDesired, boolean create) {
-        return local.hKey(root.hKey(), samDesired, create, machineName());
+    private HKEY hKey(int samDesired, boolean create, SegmentAllocator allocator, SegmentAllocator hKeyAllocator) {
+        return local.hKey(root.hKey(), samDesired, create, allocator, hKeyAllocator, machineName());
     }
 
-    private HKEY hKey(int samDesired, IntPredicate ignoreError) {
-        return local.hKey(root.hKey(), samDesired, ignoreError, machineName());
+    private HKEY hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, SegmentAllocator hKeyAllocator) {
+        return local.hKey(root.hKey(), samDesired, ignoreError, allocator, hKeyAllocator, machineName());
     }
 
     // Comparable / Object
@@ -172,9 +202,9 @@ final class RemoteSubKey extends RegistryKey {
 
         private final Cleaner.Cleanable cleanable;
 
-        private Handle(HKEY hKey) {
+        private Handle(HKEY hKey, Arena allocator) {
             super(hKey);
-            this.cleanable = closeOnClean(this, hKey, path(), machineName());
+            this.cleanable = closeOnClean(this, hKey, allocator, path(), machineName());
         }
 
         @Override
