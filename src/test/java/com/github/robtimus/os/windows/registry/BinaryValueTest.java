@@ -17,7 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDataBytePointer;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -33,6 +37,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class BinaryValueTest {
@@ -60,12 +65,12 @@ class BinaryValueTest {
         }
 
         @Test
-        @DisplayName("from bytes with length")
+        @DisplayName("from byte pointer")
         void testFromBytesWithLength() {
-            byte[] data = randomData();
-            BinaryValue value = new BinaryValue("test", data, data.length - 10);
+            BytePointer data = randomDataBytePointer();
+            BinaryValue value = new BinaryValue("test", data, data.size() - 10);
 
-            assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.data());
+            assertArrayEquals(data.toByteArray(data.size() - 10), value.data());
         }
     }
 
@@ -79,7 +84,8 @@ class BinaryValueTest {
             byte[] data = randomData();
             BinaryValue value = BinaryValue.of("test", data);
 
-            assertArrayEquals(data, value.rawData());
+            BytePointer rawData = value.rawData(ALLOCATOR);
+            assertArrayEquals(data, rawData.toByteArray());
         }
 
         @Test
@@ -88,26 +94,29 @@ class BinaryValueTest {
             byte[] data = randomData();
             BinaryValue value = assertDoesNotThrow(() -> BinaryValue.of("test", new ByteArrayInputStream(data)));
 
-            assertArrayEquals(data, value.rawData());
+            BytePointer rawData = value.rawData(ALLOCATOR);
+            assertArrayEquals(data, rawData.toByteArray());
         }
 
         @Test
-        @DisplayName("from bytes with length")
+        @DisplayName("from byte pointer")
         void testFromBytesWithLength() {
-            byte[] data = randomData();
-            BinaryValue value = new BinaryValue("test", data, data.length - 10);
+            BytePointer data = randomDataBytePointer();
+            BinaryValue value = new BinaryValue("test", data, data.size() - 10);
 
-            assertArrayEquals(Arrays.copyOf(data, data.length - 10), value.rawData());
+            BytePointer rawData = value.rawData(ALLOCATOR);
+            assertBytePointerEquals(data, rawData, data.size() - 10);
+            assertEquals(data.size() - 10, rawData.size());
         }
     }
 
     @Test
     @DisplayName("inputStream")
     void testInputStream() throws IOException {
-        byte[] data = randomData();
-        BinaryValue value = new BinaryValue("test", data, data.length - 10);
+        BytePointer data = randomDataBytePointer();
+        BinaryValue value = new BinaryValue("test", data, data.size() - 10);
 
-        byte[] content = new byte[data.length - 10];
+        byte[] content = new byte[data.size() - 10];
         try (InputStream inputStream = value.inputStream()) {
             int offset = 0;
             int remaining = content.length;
@@ -115,7 +124,7 @@ class BinaryValueTest {
                 // Nothing to do
             }
         }
-        assertArrayEquals(Arrays.copyOf(data, data.length - 10), content);
+        assertArrayEquals(data.toByteArray(data.size() - 10), content);
     }
 
     @Nested
@@ -197,16 +206,17 @@ class BinaryValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        byte[] data = randomData();
-        BinaryValue value = BinaryValue.of("test", data);
+        BytePointer data = randomDataBytePointer();
+        byte[] dataBytes = data.toByteArray();
+        BinaryValue value = BinaryValue.of("test", dataBytes);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, BinaryValue.of("test", data), true),
-                arguments(value, new BinaryValue("test", data, data.length), true),
-                arguments(value, new BinaryValue("test", Arrays.copyOf(data, data.length + 10), data.length), true),
-                arguments(value, BinaryValue.of("test2", data), false),
-                arguments(value, new BinaryValue("test", data, data.length - 1), false),
+                arguments(value, BinaryValue.of("test", dataBytes), true),
+                arguments(value, new BinaryValue("test", data, data.size()), true),
+                arguments(value, new BinaryValue("test", resized(data, data.size() + 10), data.size()), true),
+                arguments(value, BinaryValue.of("test2", dataBytes), false),
+                arguments(value, new BinaryValue("test", data, data.size() - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
