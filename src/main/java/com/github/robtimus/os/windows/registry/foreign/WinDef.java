@@ -45,12 +45,6 @@ public final class WinDef {
             return new Reference(segment);
         }
 
-        @Override
-        @SuppressWarnings("nls")
-        public String toString() {
-            return "HKEY@0x%x".formatted(segment().address());
-        }
-
         public static final class Reference extends Pointer {
 
             static final AddressLayout LAYOUT = ValueLayout.ADDRESS.withTargetLayout(HKEY.LAYOUT);
@@ -66,12 +60,6 @@ public final class WinDef {
 
             void value(HKEY value) {
                 segment().set(HKEY.LAYOUT, 0, value.segment());
-            }
-
-            @Override
-            @SuppressWarnings("nls")
-            public String toString() {
-                return "HKEY*@0x%x".formatted(segment().address());
             }
         }
     }

@@ -1,5 +1,5 @@
 /*
- * WinBase.java
+ * NullPointer.java
  * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,13 +17,12 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import java.lang.foreign.MemorySegment;
+
 @SuppressWarnings("javadoc")
-public final class WinBase {
+public final class NullPointer extends Pointer {
 
-    public static final int FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x100;
-    public static final int FORMAT_MESSAGE_IGNORE_INSERTS = 0x200;
-    public static final int FORMAT_MESSAGE_FROM_SYSTEM = 0x1000;
-
-    private WinBase() {
+    private NullPointer() {
+        super(MemorySegment.NULL);
     }
 }
