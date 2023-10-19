@@ -55,12 +55,6 @@ public final class StringPointer extends Pointer {
         return this;
     }
 
-    @Override
-    @SuppressWarnings("nls")
-    public String toString() {
-        return "String@0x%x (value: %s)".formatted(segment().address(), value());
-    }
-
     public static final class Reference extends Pointer {
 
         static final AddressLayout LAYOUT = ValueLayout.ADDRESS.withTargetLayout(ValueLayout.ADDRESS);
@@ -73,12 +67,6 @@ public final class StringPointer extends Pointer {
             MemorySegment segment = segment().get(ValueLayout.ADDRESS, 0);
             segment = segment.reinterpret(StringUtils.CHAR_SIZE * (length + 1L));
             return new StringPointer(segment);
-        }
-
-        @Override
-        @SuppressWarnings("nls")
-        public String toString() {
-            return "String*@0x%x".formatted(segment().address());
         }
     }
 }

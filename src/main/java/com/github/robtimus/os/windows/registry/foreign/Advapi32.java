@@ -17,7 +17,6 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import com.github.robtimus.os.windows.registry.foreign.WinBase.SECURITY_ATTRIBUTES;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
@@ -41,7 +40,7 @@ public interface Advapi32 {
             StringPointer lpClass,
             int dwOptions,
             int samDesired,
-            SECURITY_ATTRIBUTES lpSecurityAttributes,
+            NullPointer /* SECURITY_ATTRIBUTES */ lpSecurityAttributes, // no need to implement SECURITY_ATTRIBUTES as they are never used
             HKEY.Reference phkResult,
             IntPointer lpdwDisposition);
 
@@ -58,7 +57,7 @@ public interface Advapi32 {
             int dwIndex,
             StringPointer lpName,
             IntPointer lpcchName,
-            IntPointer lpReserved,
+            NullPointer /* IntPointer */ lpReserved, // force to be null
             StringPointer lpClass,
             IntPointer lpcchClass,
             FILETIME lpftLastWriteTime);
@@ -68,7 +67,7 @@ public interface Advapi32 {
             int dwIndex,
             StringPointer lpValueName,
             IntPointer lpcchValueName,
-            IntPointer lpReserved,
+            NullPointer /* IntPointer */ lpReserved, // force to be null
             IntPointer lpType,
             BytePointer lpData,
             IntPointer lpcbData);
@@ -84,7 +83,7 @@ public interface Advapi32 {
             HKEY hKey,
             StringPointer lpClass,
             IntPointer lpcClass,
-            IntPointer lpReserved,
+            NullPointer /* IntPointer */ lpReserved, // force to be null
             IntPointer lpcSubKeys,
             IntPointer lpcMaxSubKeyLen,
             IntPointer lpcMaxClassLen,
@@ -97,7 +96,7 @@ public interface Advapi32 {
     int RegQueryValueEx(// NOSONAR
             HKEY hKey,
             StringPointer lpValueName,
-            IntPointer lpReserved,
+            NullPointer /* IntPointer */ lpReserved, // force to be null
             IntPointer lpType,
             BytePointer lpData,
             IntPointer lpcbData);

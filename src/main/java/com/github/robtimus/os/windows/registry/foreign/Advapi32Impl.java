@@ -22,7 +22,6 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
-import com.github.robtimus.os.windows.registry.foreign.WinBase.SECURITY_ATTRIBUTES;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
@@ -172,7 +171,7 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             StringPointer lpClass,
             int dwOptions,
             int samDesired,
-            SECURITY_ATTRIBUTES lpSecurityAttributes,
+            NullPointer lpSecurityAttributes,
             HKEY.Reference phkResult,
             IntPointer lpdwDisposition) {
 
@@ -226,7 +225,7 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             int dwIndex,
             StringPointer lpName,
             IntPointer lpcchName,
-            IntPointer lpReserved,
+            NullPointer lpReserved,
             StringPointer lpClass,
             IntPointer lpcchClass,
             FILETIME lpftLastWriteTime) {
@@ -252,7 +251,7 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             int dwIndex,
             StringPointer lpValueName,
             IntPointer lpcchValueName,
-            IntPointer lpReserved,
+            NullPointer lpReserved,
             IntPointer lpType,
             BytePointer lpData,
             IntPointer lpcbData) {
@@ -297,7 +296,7 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             HKEY hKey,
             StringPointer lpClass,
             IntPointer lpcClass,
-            IntPointer lpReserved,
+            NullPointer lpReserved,
             IntPointer lpcSubKeys,
             IntPointer lpcMaxSubKeyLen,
             IntPointer lpcMaxClassLen,
@@ -330,7 +329,7 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
     public int RegQueryValueEx(
             HKEY hKey,
             StringPointer lpValueName,
-            IntPointer lpReserved,
+            NullPointer lpReserved,
             IntPointer lpType,
             BytePointer lpData,
             IntPointer lpcbData) {
