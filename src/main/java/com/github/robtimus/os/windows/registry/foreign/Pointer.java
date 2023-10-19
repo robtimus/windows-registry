@@ -39,10 +39,4 @@ public class Pointer {
     public void clear() {
         segment().fill((byte) 0);
     }
-
-    @Override
-    @SuppressWarnings("nls")
-    public String toString() {
-        return "void@0x%x".formatted(segment().address());
-    }
 }

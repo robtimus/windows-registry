@@ -86,10 +86,4 @@ public final class BytePointer extends Pointer {
     public byte[] toByteArray(int length) {
         return segment().asSlice(0, length).toArray(ValueLayout.JAVA_BYTE);
     }
-
-    @Override
-    @SuppressWarnings("nls")
-    public String toString() {
-        return "byte@0x%x (length: %d)".formatted(segment().address(), segment().byteSize());
-    }
 }
