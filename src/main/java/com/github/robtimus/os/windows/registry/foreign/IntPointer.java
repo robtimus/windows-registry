@@ -48,10 +48,4 @@ public final class IntPointer extends Pointer {
         segment().set(LAYOUT, 0, value);
         return this;
     }
-
-    @Override
-    @SuppressWarnings("nls")
-    public String toString() {
-        return "int@0x%x (value: %d)".formatted(segment().address(), value());
-    }
 }
