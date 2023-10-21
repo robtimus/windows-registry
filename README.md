@@ -27,8 +27,8 @@ Using class [RemoteRegistryKey](https://robtimus.github.io/windows-registry/apid
 
 ## Implementation details
 
-Interaction with the Windows registry is done through [JNA](https://github.com/java-native-access/jna). This has some benefits:
+Interaction with the Windows registry is done through the [Foreign Function and Memory (FFM) API](https://docs.oracle.com/en/java/javase/21/core/foreign-function-and-memory-api.html). This has some benefits:
 
 * Native interaction with the Windows registry instead of using commands like `REG QUERY` provides better performance.
 * Native interaction with the Windows registry instead of piggybacking on Java internal classes like `java.util.Preferences` provides greater compatibility between Java versions.
-* JNA is bundled with its libraries for interacting with the Windows platform. There is no need to install any libraries manually.
+* FFM is part of the Java code libraries. There is no need to install any libraries manually. There is not even need to install any runtime dependencies.
