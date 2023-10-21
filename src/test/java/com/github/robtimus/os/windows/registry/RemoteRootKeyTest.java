@@ -1130,8 +1130,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     @DisplayName("equals")
     void testEquals(RemoteRootKey value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
-        if (other instanceof AutoCloseable) {
-            autoCloseables.add((AutoCloseable) other);
+        if (other instanceof AutoCloseable closeable) {
+            autoCloseables.add(closeable);
         }
     }
 
