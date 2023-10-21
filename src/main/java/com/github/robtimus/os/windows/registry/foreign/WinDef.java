@@ -94,11 +94,5 @@ public final class WinDef {
             DW_HIGH_DATE_TIME.set(segment(), value);
             return this;
         }
-
-        @Override
-        @SuppressWarnings("nls")
-        public String toString() {
-            return "FILETIME@0x%x (dwLowDateTime = %d, dwHighDateTime = %d)".formatted(segment().address(), dwLowDateTime(), dwHighDateTime());
-        }
     }
 }
