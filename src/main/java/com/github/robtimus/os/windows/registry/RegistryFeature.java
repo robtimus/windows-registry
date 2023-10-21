@@ -27,7 +27,7 @@ import com.github.robtimus.os.windows.registry.foreign.Advapi32;
  */
 public enum RegistryFeature {
 
-    /** {@link RegistryKey#renameTo(String) renaming} registry keys. */
+    /** {@link RegistryKey#renameTo(String) Renaming} registry keys. */
     RENAME_KEY(Advapi32.INSTANCE.isRegRenameKeyEnabled()),
     ;
 
