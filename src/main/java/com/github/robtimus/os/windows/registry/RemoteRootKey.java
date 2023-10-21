@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.ref.Cleaner;
 import java.util.Optional;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -27,14 +28,14 @@ final class RemoteRootKey extends RemoteRegistryKey {
     final HKEY hKey;
     private final RootKey rootKey;
     private final Handle handle;
-    private boolean closed;
+    private final Cleaner.Cleanable cleanable;
 
     RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey) {
         this.machineName = machineName;
         this.rootKey = rootKey;
         this.hKey = hKey;
         this.handle = new Handle();
-        this.closed = false;
+        this.cleanable = closeOnClean(this, hKey, rootKey.name());
     }
 
     // structural
@@ -148,10 +149,7 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public void close() {
-        if (!closed) {
-            closeKey(hKey);
-            closed = true;
-        }
+        cleanable.clean();
     }
 
     private final class Handle extends RegistryKey.Handle {

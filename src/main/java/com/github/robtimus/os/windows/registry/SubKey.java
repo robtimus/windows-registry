@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.ref.Cleaner;
 import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
@@ -105,7 +106,7 @@ final class SubKey extends RegistryKey {
         HKEYByReference phkResult = new HKEYByReference();
         int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue());
+            closeKey(phkResult.getValue(), path());
             return true;
         }
         if (code == WinError.ERROR_FILE_NOT_FOUND) {
@@ -140,7 +141,7 @@ final class SubKey extends RegistryKey {
 
         int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue());
+            closeKey(phkResult.getValue(), path());
             return lpdwDisposition.getValue();
         }
         throw RegistryException.of(code, path());
@@ -209,7 +210,10 @@ final class SubKey extends RegistryKey {
 
     @Override
     Handle handle(int samDesired, boolean create) {
-        return new Handle(samDesired, create);
+        HKEY hKey = create
+                ? createOrOpenKey(root.hKey, samDesired)
+                : openKey(root.hKey, samDesired);
+        return new Handle(hKey);
     }
 
     // Comparable / Object
@@ -255,29 +259,24 @@ final class SubKey extends RegistryKey {
 
     private final class Handle extends RegistryKey.Handle {
 
-        private boolean closed;
+        private final Cleaner.Cleanable cleanable;
 
-        private Handle(int samDesired, boolean create) {
-            super(create ? createOrOpenKey(root.hKey, samDesired) : openKey(root.hKey, samDesired));
-            this.closed = false;
+        private Handle(HKEY hKey) {
+            super(hKey);
+            this.cleanable = closeOnClean(this, hKey, path());
         }
 
         @Override
         public void close() {
-            if (!closed) {
-                closeKey(hKey);
-                closed = true;
-            }
+            cleanable.clean();
         }
 
         @Override
         void close(RuntimeException exception) {
-            // No need to check the current state; this method is only called for non-exposed handles
-            int code = api.RegCloseKey(hKey);
-            if (code == WinError.ERROR_SUCCESS) {
-                closed = true;
-            } else {
-                exception.addSuppressed(RegistryException.of(code, path()));
+            try {
+                cleanable.clean();
+            } catch (RuntimeException e) {
+                exception.addSuppressed(e);
             }
         }
     }

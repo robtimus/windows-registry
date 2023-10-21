@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.ref.Cleaner;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -66,6 +67,8 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     // Non-private non-final to allow replacing for testing
     static Advapi32Extended api = Advapi32Extended.INSTANCE;
+
+    private static final Cleaner CLEANER = Cleaner.create();
 
     static final Instant FILETIME_BASE = ZonedDateTime.of(1601, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant();
 
@@ -639,12 +642,20 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     // utility
 
-    void closeKey(HKEY hKey) {
+    static void closeKey(HKEY hKey, String path) {
         int code = api.RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path());
+            throw RegistryException.of(code, path);
         }
     }
+
+    static Cleaner.Cleanable closeOnClean(Object object, HKEY hKey, String path) {
+        // Since this method is static, using a lambda does not capture any state except what's used inside it,
+        // and therefore it's safe to use as action
+        return CLEANER.register(object, () -> closeKey(hKey, path));
+    }
+
+    // nested classes
 
     /**
      * Attributes associated with a registry key.

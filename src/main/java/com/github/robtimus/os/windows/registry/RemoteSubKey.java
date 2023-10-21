@@ -17,8 +17,9 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.ref.Cleaner;
 import java.util.Optional;
-import com.sun.jna.platform.win32.WinError;
+import com.sun.jna.platform.win32.WinReg.HKEY;
 
 final class RemoteSubKey extends RegistryKey {
 
@@ -109,7 +110,10 @@ final class RemoteSubKey extends RegistryKey {
 
     @Override
     Handle handle(int samDesired, boolean create) {
-        return new Handle(samDesired, create);
+        HKEY hKey = create
+                ? local.createOrOpenKey(root.hKey, samDesired)
+                : local.openKey(root.hKey, samDesired);
+        return new Handle(hKey);
     }
 
     // Comparable / Object
@@ -142,29 +146,24 @@ final class RemoteSubKey extends RegistryKey {
 
     private final class Handle extends RegistryKey.Handle {
 
-        private boolean closed;
+        private final Cleaner.Cleanable cleanable;
 
-        private Handle(int samDesired, boolean create) {
-            super(create ? local.createOrOpenKey(root.hKey, samDesired) : local.openKey(root.hKey, samDesired));
-            this.closed = false;
+        private Handle(HKEY hKey) {
+            super(hKey);
+            this.cleanable = closeOnClean(this, hKey, path());
         }
 
         @Override
         public void close() {
-            if (!closed) {
-                closeKey(hKey);
-                closed = true;
-            }
+            cleanable.clean();
         }
 
         @Override
         void close(RuntimeException exception) {
-            // No need to check the current state; this method is only called for non-exposed handles
-            int code = api.RegCloseKey(hKey);
-            if (code == WinError.ERROR_SUCCESS) {
-                closed = true;
-            } else {
-                exception.addSuppressed(RegistryException.of(code, path()));
+            try {
+                cleanable.clean();
+            } catch (RuntimeException e) {
+                exception.addSuppressed(e);
             }
         }
     }

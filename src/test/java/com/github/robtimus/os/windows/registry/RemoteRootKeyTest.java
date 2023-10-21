@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -64,6 +65,11 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     private RemoteRegistryKey remoteRoot;
     private HKEY rootHKey;
 
+    // Using autoCloseArguments = true will attempt to close arguments after teardown() is called, which means that the actual native API is used.
+    // Not closing arguments means they get closed at a later time, which interferes with other tests.
+    // Therefore, manually keep a list of AutoCloseable objects that are closed afterwards.
+    private final List<AutoCloseable> autoCloseables = new ArrayList<>();
+
     @Override
     @BeforeEach
     void setup() {
@@ -72,11 +78,15 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         rootHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
 
         remoteRoot = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine");
+
+        autoCloseables.clear();
     }
 
     @Override
     @AfterEach
     void teardown() {
+        // close twice
+        remoteRoot.close();
         remoteRoot.close();
 
         verify(RegistryKey.api).RegConnectRegistry(eq("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), any());
@@ -85,6 +95,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
         verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
         verify(RegistryKey.api, never()).RegCloseKey(not(eq(rootHKey)));
+
+        autoCloseables.forEach(c -> assertDoesNotThrow(c::close));
 
         super.teardown();
     }
@@ -705,6 +717,9 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     @DisplayName("equals")
     void testEquals(RemoteRootKey value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
+        if (other instanceof AutoCloseable) {
+            autoCloseables.add((AutoCloseable) other);
+        }
     }
 
     @SuppressWarnings("resource")
