@@ -82,14 +82,14 @@ public interface Advapi32 {
     int RegQueryInfoKey/* NOSONAR */(
             HKEY hKey,
             StringPointer lpClass,
-            IntPointer lpcClass,
+            IntPointer lpcchClass,
             NullPointer /* IntPointer */ lpReserved, // force to be null
             IntPointer lpcSubKeys,
-            IntPointer lpcMaxSubKeyLen,
-            IntPointer lpcMaxClassLen,
+            IntPointer lpcbMaxSubKeyLen,
+            IntPointer lpcbMaxClassLen,
             IntPointer lpcValues,
-            IntPointer lpcMaxValueNameLen,
-            IntPointer lpcMaxValueLen,
+            IntPointer lpcbMaxValueNameLen,
+            IntPointer lpcbMaxValueLen,
             IntPointer lpcbSecurityDescriptor,
             FILETIME lpftLastWriteTime);
 

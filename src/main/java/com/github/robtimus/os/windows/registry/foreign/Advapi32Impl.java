@@ -103,14 +103,14 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
         regQueryInfoKey = functionMethodHandle(linker, symbolLookup, "RegQueryInfoKeyW", ValueLayout.JAVA_INT,
                         ValueLayout.ADDRESS, // hKey
                         ValueLayout.ADDRESS, // lpClass
-                        ValueLayout.ADDRESS, // lpcClass
+                        ValueLayout.ADDRESS, // lpcchClass
                         ValueLayout.ADDRESS, // lpReserved
                         ValueLayout.ADDRESS, // lpcSubKeys
-                        ValueLayout.ADDRESS, // lpcMaxSubKeyLen
-                        ValueLayout.ADDRESS, // lpcMaxClassLen
+                        ValueLayout.ADDRESS, // lpcbMaxSubKeyLen
+                        ValueLayout.ADDRESS, // lpcbMaxClassLen
                         ValueLayout.ADDRESS, // lpcValues
-                        ValueLayout.ADDRESS, // lpcMaxValueNameLen
-                        ValueLayout.ADDRESS, // lpcMaxValueLen
+                        ValueLayout.ADDRESS, // lpcbMaxValueNameLen
+                        ValueLayout.ADDRESS, // lpcbMaxValueLen
                         ValueLayout.ADDRESS, // lpcbSecurityDescriptor
                         ValueLayout.ADDRESS); // lpftLastWriteTime
 
@@ -297,14 +297,14 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
     public int RegQueryInfoKey(
             HKEY hKey,
             StringPointer lpClass,
-            IntPointer lpcClass,
+            IntPointer lpcchClass,
             NullPointer lpReserved,
             IntPointer lpcSubKeys,
-            IntPointer lpcMaxSubKeyLen,
-            IntPointer lpcMaxClassLen,
+            IntPointer lpcbMaxSubKeyLen,
+            IntPointer lpcbMaxClassLen,
             IntPointer lpcValues,
-            IntPointer lpcMaxValueNameLen,
-            IntPointer lpcMaxValueLen,
+            IntPointer lpcbMaxValueNameLen,
+            IntPointer lpcbMaxValueLen,
             IntPointer lpcbSecurityDescriptor,
             FILETIME lpftLastWriteTime) {
 
@@ -312,14 +312,14 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             return (int) regQueryInfoKey.invokeExact(
                     hKey.segment(),
                     segment(lpClass),
-                    segment(lpcClass),
+                    segment(lpcchClass),
                     segment(lpReserved),
                     segment(lpcSubKeys),
-                    segment(lpcMaxSubKeyLen),
-                    segment(lpcMaxClassLen),
+                    segment(lpcbMaxSubKeyLen),
+                    segment(lpcbMaxClassLen),
                     segment(lpcValues),
-                    segment(lpcMaxValueNameLen),
-                    segment(lpcMaxValueLen),
+                    segment(lpcbMaxValueNameLen),
+                    segment(lpcbMaxValueLen),
                     segment(lpcbSecurityDescriptor),
                     segment(lpftLastWriteTime));
         } catch (Throwable e) {
