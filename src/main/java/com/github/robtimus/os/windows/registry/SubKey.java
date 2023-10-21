@@ -209,13 +209,7 @@ final class SubKey extends RegistryKey {
         StringPointer lpSubKeyName = StringPointer.withValue(path, allocator);
         StringPointer lpNewKeyName = StringPointer.withValue(newName, allocator);
 
-        int code;
-        try {
-            code = api.RegRenameKey(rootHKey, lpSubKeyName, lpNewKeyName);
-        } catch (UnsatisfiedLinkError e) {
-            // The RegRenameKey function does not exist; the current Windows version is too old
-            throw new UnsupportedOperationException(e.getMessage(), e);
-        }
+        int code = api.RegRenameKey(rootHKey, lpSubKeyName, lpNewKeyName);
         if (code == WinError.ERROR_SUCCESS) {
             return renamed;
         }

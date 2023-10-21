@@ -106,6 +106,8 @@ public interface Advapi32 {
             StringPointer lpSubKeyName,
             StringPointer lpNewKeyName);
 
+    boolean isRegRenameKeyEnabled();
+
     int RegSetValueEx/* NOSONAR */(
             HKEY hKey,
             StringPointer lpValueName,

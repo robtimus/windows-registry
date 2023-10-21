@@ -28,7 +28,6 @@ import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.instanceOf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -39,7 +38,6 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -1747,16 +1745,8 @@ class SubKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api, never()).RegCloseKey(any());
         }
 
-        @Test
-        @DisplayName("function not available")
-        void testFunctionNotAvailable() {
-            doThrow(new UnsatisfiedLinkError("Error looking up function 'RegRenameKey': The specified procedure could not be found."))
-                    .when(RegistryKey.api).RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo"));
-
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
-            UnsupportedOperationException exception = assertThrows(UnsupportedOperationException.class, () -> registryKey.renameTo("foo"));
-            assertInstanceOf(UnsatisfiedLinkError.class, exception.getCause());
-        }
+        // Cannot test function not available, as this is now caught early on when creating Advapi32Impl instances
+        // This will lookup the actual Windows calls already at startup time
 
         @Test
         @DisplayName("invalid name")

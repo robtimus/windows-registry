@@ -23,6 +23,7 @@ import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
+import java.util.Optional;
 
 abstract class ApiImpl {
 
@@ -32,9 +33,15 @@ abstract class ApiImpl {
     static MethodHandle functionMethodHandle(Linker linker, SymbolLookup symbolLookup,
             String name, MemoryLayout returnLayout, MemoryLayout... argumentLayouts) {
 
-        return linker.downcallHandle(
-                symbolLookup.find(name).orElseThrow(),
-                FunctionDescriptor.of(returnLayout, argumentLayouts));
+        return optionalFunctionMethodHandle(linker, symbolLookup, name, returnLayout, argumentLayouts)
+                .orElseThrow(() -> new IllegalStateException(Messages.ApiImpl.functionNotFound(name)));
+    }
+
+    static Optional<MethodHandle> optionalFunctionMethodHandle(Linker linker, SymbolLookup symbolLookup,
+            String name, MemoryLayout returnLayout, MemoryLayout... argumentLayouts) {
+
+        return symbolLookup.find(name)
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(returnLayout, argumentLayouts)));
     }
 
     static MemorySegment segment(Pointer pointer) {

@@ -22,6 +22,7 @@ import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import java.util.Optional;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
@@ -37,7 +38,7 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
     private final MethodHandle regOpenKeyEx;
     private final MethodHandle regQueryInfoKey;
     private final MethodHandle regQueryValueEx;
-    private final MethodHandle regRenameKey;
+    private final Optional<MethodHandle> regRenameKey;
     private final MethodHandle regSetValueEx;
 
     @SuppressWarnings("nls")
@@ -121,7 +122,8 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
                         ValueLayout.ADDRESS, // lpData
                         ValueLayout.ADDRESS); // lpcbData
 
-        regRenameKey = functionMethodHandle(linker, symbolLookup, "RegRenameKey", ValueLayout.JAVA_INT,
+        // RegRenameKey does not work before Windows Vista / Windows Server 2008
+        regRenameKey = optionalFunctionMethodHandle(linker, symbolLookup, "RegRenameKey", ValueLayout.JAVA_INT,
                         ValueLayout.ADDRESS, // hKey
                         ValueLayout.ADDRESS, // lpSubKeyName
                         ValueLayout.ADDRESS); // lpNewKeyName
@@ -354,13 +356,18 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             StringPointer lpNewKeyName) {
 
         try {
-            return (int) regRenameKey.invokeExact(
+            return (int) regRenameKey.orElseThrow(UnsupportedOperationException::new).invokeExact(
                     hKey.segment(),
                     segment(lpSubKeyName),
                     lpNewKeyName.segment());
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Override
+    public boolean isRegRenameKeyEnabled() {
+        return regRenameKey.isPresent();
     }
 
     @Override

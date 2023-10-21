@@ -684,6 +684,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * @throws NoSuchRegistryKeyException If this registry key does not {@link #exists() exist}.
      * @throws RegistryKeyAlreadyExistsException If this registry key's parent key already contains a sub key with the given name.
      * @throws RegistryException If this registry key could not be renamed for another reason.
+     * @see RegistryFeature#RENAME_KEY
      */
     public abstract RegistryKey renameTo(String newName);
 
