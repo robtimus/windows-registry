@@ -26,7 +26,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        java: [11, 17]
+        java: [11, 17, 21]
       fail-fast: false
     steps:
       - uses: actions/checkout@v4
