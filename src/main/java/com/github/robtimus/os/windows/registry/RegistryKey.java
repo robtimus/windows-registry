@@ -91,6 +91,8 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      */
     public abstract String path();
 
+    abstract String machineName();
+
     // informational
 
     /**
@@ -642,17 +644,17 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     // utility
 
-    static void closeKey(HKEY hKey, String path) {
+    static void closeKey(HKEY hKey, String path, String machineName) {
         int code = api.RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path);
+            throw RegistryException.forKey(code, path, machineName);
         }
     }
 
-    static Cleaner.Cleanable closeOnClean(Object object, HKEY hKey, String path) {
+    static Cleaner.Cleanable closeOnClean(Object object, HKEY hKey, String path, String machineName) {
         // Since this method is static, using a lambda does not capture any state except what's used inside it,
         // and therefore it's safe to use as action
-        return CLEANER.register(object, () -> closeKey(hKey, path));
+        return CLEANER.register(object, () -> closeKey(hKey, path, machineName));
     }
 
     // nested classes
@@ -733,7 +735,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             FILETIME lpftLastWriteTime = new FILETIME();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, lpftLastWriteTime);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
+                throw RegistryException.forKey(code, path(), machineName());
             }
             return toInstant(lpftLastWriteTime);
         }
@@ -750,7 +752,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             FILETIME lpftLastWriteTime = new FILETIME();
             int code = api.RegQueryInfoKey(hKey, null, null, null, lpcSubKeys, null, null, lpcValues, null, null, null, lpftLastWriteTime);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
+                throw RegistryException.forKey(code, path(), machineName());
             }
             return new Attributes(lpcSubKeys.getValue(), lpcValues.getValue(), toInstant(lpftLastWriteTime));
         }
@@ -794,7 +796,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             IntByReference lpcMaxSubKeyLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, lpcMaxSubKeyLen, null, null, null, null, null, null);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
+                throw RegistryException.forKey(code, path(), machineName());
             }
 
             char[] lpName = new char[lpcMaxSubKeyLen.getValue() + 1];
@@ -816,7 +818,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                     if (code == WinError.ERROR_NO_MORE_ITEMS) {
                         return null;
                     }
-                    throw RegistryException.of(code, path());
+                    throw RegistryException.forKey(code, path(), machineName());
                 }
             };
         }
@@ -866,7 +868,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             IntByReference lpcMaxValueLen = new IntByReference();
             int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path());
+                throw RegistryException.forKey(code, path(), machineName());
             }
 
             char[] lpValueName = new char[lpcMaxValueNameLen.getValue() + 1];
@@ -902,7 +904,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                         if (code == WinError.ERROR_NO_MORE_ITEMS) {
                             return null;
                         }
-                        throw RegistryException.of(code, path());
+                        throw RegistryException.forKey(code, path(), machineName());
                     }
                 }
             };
@@ -939,7 +941,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                     return valueType.cast(RegistryValue.of(name, lpType.getValue(), byteData, lpcbData.getValue()));
                 }
             }
-            throw RegistryException.of(code, path(), name);
+            throw RegistryException.forValue(code, path(), machineName(), name);
         }
 
         /**
@@ -976,7 +978,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                     return Optional.of(valueType.cast(value));
                 }
             }
-            throw RegistryException.of(code, path(), name);
+            throw RegistryException.forValue(code, path(), machineName(), name);
         }
 
         /**
@@ -1118,7 +1120,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             byte[] data = value.rawData();
             int code = api.RegSetValueEx(hKey, value.name(), 0, value.type(), data, data.length);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path(), value.name());
+                throw RegistryException.forValue(code, path(), machineName(), value.name());
             }
         }
 
@@ -1137,7 +1139,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
             int code = api.RegDeleteValue(hKey, name);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, path(), name);
+                throw RegistryException.forValue(code, path(), machineName(), name);
             }
         }
 
@@ -1161,7 +1163,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             if (code == WinError.ERROR_FILE_NOT_FOUND) {
                 return false;
             }
-            throw RegistryException.of(code, path(), name);
+            throw RegistryException.forValue(code, path(), machineName(), name);
         }
 
         // other

@@ -54,6 +54,11 @@ final class SubKey extends RegistryKey {
         return root.name() + SEPARATOR + path;
     }
 
+    @Override
+    String machineName() {
+        return null;
+    }
+
     // traversal
 
     @Override
@@ -99,36 +104,36 @@ final class SubKey extends RegistryKey {
 
     @Override
     public boolean exists() {
-        return exists(root.hKey);
+        return exists(root.hKey());
     }
 
     boolean exists(HKEY rootHKey) {
         HKEYByReference phkResult = new HKEYByReference();
         int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue(), path());
+            closeKey(phkResult.getValue(), path(), machineName());
             return true;
         }
         if (code == WinError.ERROR_FILE_NOT_FOUND) {
             return false;
         }
-        throw RegistryException.of(code, path());
+        throw RegistryException.forKey(code, path(), machineName());
     }
 
     @Override
     public void create() {
-        create(root.hKey);
+        create(root.hKey());
     }
 
     void create(HKEY rootHKey) {
         if (createOrOpen(rootHKey) == WinNT.REG_OPENED_EXISTING_KEY) {
-            throw new RegistryKeyAlreadyExistsException(path());
+            throw new RegistryKeyAlreadyExistsException(path(), machineName());
         }
     }
 
     @Override
     public boolean createIfNotExists() {
-        return createIfNotExists(root.hKey);
+        return createIfNotExists(root.hKey());
     }
 
     boolean createIfNotExists(HKEY rootHKey) {
@@ -141,15 +146,15 @@ final class SubKey extends RegistryKey {
 
         int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue(), path());
+            closeKey(phkResult.getValue(), path(), machineName());
             return lpdwDisposition.getValue();
         }
-        throw RegistryException.of(code, path());
+        throw RegistryException.forKey(code, path(), machineName());
     }
 
     @Override
     public RegistryKey renameTo(String newName) {
-        return renameTo(root.hKey, newName);
+        return renameTo(root.hKey(), newName);
     }
 
     SubKey renameTo(HKEY rootHKey, String newName) {
@@ -173,26 +178,26 @@ final class SubKey extends RegistryKey {
             return renamed;
         }
         if (code == WinError.ERROR_ACCESS_DENIED && renamed.exists(rootHKey)) {
-            throw new RegistryKeyAlreadyExistsException(renamed.path());
+            throw new RegistryKeyAlreadyExistsException(renamed.path(), machineName());
         }
-        throw RegistryException.of(code, path());
+        throw RegistryException.forKey(code, path(), machineName());
     }
 
     @Override
     public void delete() {
-        delete(root.hKey);
+        delete(root.hKey());
     }
 
     void delete(HKEY rootHKey) {
         int code = api.RegDeleteKey(rootHKey, path);
         if (code != WinError.ERROR_SUCCESS) {
-            throw RegistryException.of(code, path());
+            throw RegistryException.forKey(code, path(), machineName());
         }
     }
 
     @Override
     public boolean deleteIfExists() {
-        return deleteIfExists(root.hKey);
+        return deleteIfExists(root.hKey());
     }
 
     boolean deleteIfExists(HKEY rootHKey) {
@@ -203,7 +208,7 @@ final class SubKey extends RegistryKey {
         if (code == WinError.ERROR_FILE_NOT_FOUND) {
             return false;
         }
-        throw RegistryException.of(code, path());
+        throw RegistryException.forKey(code, path(), machineName());
     }
 
     // handles
@@ -211,8 +216,8 @@ final class SubKey extends RegistryKey {
     @Override
     Handle handle(int samDesired, boolean create) {
         HKEY hKey = create
-                ? createOrOpenKey(root.hKey, samDesired)
-                : openKey(root.hKey, samDesired);
+                ? createOrOpenKey(root.hKey(), samDesired)
+                : openKey(root.hKey(), samDesired);
         return new Handle(hKey);
     }
 
@@ -244,7 +249,7 @@ final class SubKey extends RegistryKey {
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.getValue();
         }
-        throw RegistryException.of(code, path());
+        throw RegistryException.forKey(code, path(), machineName());
     }
 
     HKEY createOrOpenKey(HKEY rootHKey, int samDesired) {
@@ -254,7 +259,7 @@ final class SubKey extends RegistryKey {
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.getValue();
         }
-        throw RegistryException.of(code, path());
+        throw RegistryException.forKey(code, path(), machineName());
     }
 
     private final class Handle extends RegistryKey.Handle {
@@ -263,7 +268,7 @@ final class SubKey extends RegistryKey {
 
         private Handle(HKEY hKey) {
             super(hKey);
-            this.cleanable = closeOnClean(this, hKey, path());
+            this.cleanable = closeOnClean(this, hKey, path(), machineName());
         }
 
         @Override

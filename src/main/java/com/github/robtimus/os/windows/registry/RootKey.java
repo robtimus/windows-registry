@@ -40,7 +40,7 @@ final class RootKey extends RegistryKey {
 
     private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 
-    final HKEY hKey;
+    private final HKEY hKey;
     private final String name;
     private final Handle handle;
 
@@ -48,6 +48,10 @@ final class RootKey extends RegistryKey {
         this.hKey = hKey;
         this.name = name;
         this.handle = new Handle();
+    }
+
+    HKEY hKey() {
+        return hKey;
     }
 
     // structural
@@ -60,6 +64,11 @@ final class RootKey extends RegistryKey {
     @Override
     public String path() {
         return name();
+    }
+
+    @Override
+    String machineName() {
+        return null;
     }
 
     // traversal

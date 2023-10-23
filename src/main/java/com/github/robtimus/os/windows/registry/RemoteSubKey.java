@@ -43,6 +43,11 @@ final class RemoteSubKey extends RegistryKey {
         return local.path();
     }
 
+    @Override
+    String machineName() {
+        return root.machineName();
+    }
+
     // traversal
 
     @Override
@@ -77,33 +82,33 @@ final class RemoteSubKey extends RegistryKey {
 
     @Override
     public boolean exists() {
-        return local.exists(root.hKey);
+        return local.exists(root.hKey());
     }
 
     @Override
     public void create() {
-        local.create(root.hKey);
+        local.create(root.hKey());
     }
 
     @Override
     public boolean createIfNotExists() {
-        return local.createIfNotExists(root.hKey);
+        return local.createIfNotExists(root.hKey());
     }
 
     @Override
     public RegistryKey renameTo(String newName) {
-        SubKey renamed = local.renameTo(root.hKey, newName);
+        SubKey renamed = local.renameTo(root.hKey(), newName);
         return new RemoteSubKey(root, renamed);
     }
 
     @Override
     public void delete() {
-        local.delete(root.hKey);
+        local.delete(root.hKey());
     }
 
     @Override
     public boolean deleteIfExists() {
-        return local.deleteIfExists(root.hKey);
+        return local.deleteIfExists(root.hKey());
     }
 
     // handles
@@ -111,8 +116,8 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     Handle handle(int samDesired, boolean create) {
         HKEY hKey = create
-                ? local.createOrOpenKey(root.hKey, samDesired)
-                : local.openKey(root.hKey, samDesired);
+                ? local.createOrOpenKey(root.hKey(), samDesired)
+                : local.openKey(root.hKey(), samDesired);
         return new Handle(hKey);
     }
 
@@ -141,7 +146,7 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return local.toString() + "@" + root.machineName;
+        return local.toString() + "@" + root.machineName();
     }
 
     private final class Handle extends RegistryKey.Handle {
@@ -150,7 +155,7 @@ final class RemoteSubKey extends RegistryKey {
 
         private Handle(HKEY hKey) {
             super(hKey);
-            this.cleanable = closeOnClean(this, hKey, path());
+            this.cleanable = closeOnClean(this, hKey, path(), machineName());
         }
 
         @Override

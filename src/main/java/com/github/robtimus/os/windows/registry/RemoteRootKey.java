@@ -24,9 +24,9 @@ import com.sun.jna.platform.win32.WinReg.HKEY;
 
 final class RemoteRootKey extends RemoteRegistryKey {
 
-    final String machineName;
-    final HKEY hKey;
+    private final String machineName;
     private final RootKey rootKey;
+    private final HKEY hKey;
     private final Handle handle;
     private final Cleaner.Cleanable cleanable;
 
@@ -35,7 +35,11 @@ final class RemoteRootKey extends RemoteRegistryKey {
         this.rootKey = rootKey;
         this.hKey = hKey;
         this.handle = new Handle();
-        this.cleanable = closeOnClean(this, hKey, rootKey.name());
+        this.cleanable = closeOnClean(this, hKey, rootKey.name(), machineName);
+    }
+
+    HKEY hKey() {
+        return hKey;
     }
 
     // structural
@@ -48,6 +52,11 @@ final class RemoteRootKey extends RemoteRegistryKey {
     @Override
     public String path() {
         return rootKey.path();
+    }
+
+    @Override
+    String machineName() {
+        return machineName;
     }
 
     // traversal
@@ -89,7 +98,7 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public void create() {
-        throw new RegistryKeyAlreadyExistsException(path());
+        throw new RegistryKeyAlreadyExistsException(path(), machineName);
     }
 
     @Override

@@ -33,6 +33,17 @@ public class RegistryKeyAlreadyExistsException extends RegistryException {
      * @param path The path that was used to create the existing registry key.
      */
     public RegistryKeyAlreadyExistsException(String path) {
-        super(WinError.ERROR_ALREADY_EXISTS, path);
+        this(path, null);
+    }
+
+    /**
+     * Creates a new exception.
+     *
+     * @param path The path that was used to create the existing registry key.
+     * @param machineName The remote machine of the registry key that was attempted to be created, or {@code null} for the local machine.
+     * @since 1.1
+     */
+    public RegistryKeyAlreadyExistsException(String path, String machineName) {
+        super(WinError.ERROR_ALREADY_EXISTS, path, machineName);
     }
 }

@@ -30,6 +30,7 @@ public class RegistryException extends RuntimeException {
 
     private final int errorCode;
     private final String path;
+    private final String machineName;
 
     /**
      * Creates a new exception.
@@ -38,9 +39,34 @@ public class RegistryException extends RuntimeException {
      * @param path The path of the registry key for which this exception was thrown.
      */
     public RegistryException(int errorCode, String path) {
-        super(Kernel32Util.formatMessage(errorCode));
+        this(errorCode, path, null);
+    }
+
+    /**
+     * Creates a new exception.
+     *
+     * @param errorCode The error code that was returned from the Windows API.
+     * @param path The path of the registry key for which this exception was thrown.
+     * @param machineName The remote machine of the registry key for which this exception was thrown, or {@code null} for the local machine.
+     * @since 1.1
+     */
+    public RegistryException(int errorCode, String path, String machineName) {
+        super(createMessage(errorCode, path, machineName));
         this.errorCode = errorCode;
         this.path = path;
+        this.machineName = machineName;
+    }
+
+    @SuppressWarnings("nls")
+    private static String createMessage(int errorCode, String path, String machineName) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(path);
+        if (machineName != null) {
+            sb.append('@').append(machineName);
+        }
+        sb.append(": ");
+        sb.append(Kernel32Util.formatMessage(errorCode));
+        return sb.toString();
     }
 
     /**
@@ -61,32 +87,42 @@ public class RegistryException extends RuntimeException {
         return path;
     }
 
-    static RegistryException of(int errorCode, String path) {
+    /**
+     * Returns the remote machine of the registry key for which this exception was thrown.
+     *
+     * @return The remote machine of the registry key for which this exception was thrown, or {@code null} for the local machine.
+     * @since 1.1
+     */
+    public String machineName() {
+        return machineName;
+    }
+
+    static RegistryException forKey(int errorCode, String path, String machineName) {
         switch (errorCode) {
             case WinError.ERROR_KEY_DELETED:
             case WinError.ERROR_FILE_NOT_FOUND:
-                return new NoSuchRegistryKeyException(errorCode, path);
+                return new NoSuchRegistryKeyException(errorCode, path, machineName);
             case WinError.ERROR_ACCESS_DENIED:
-                return new RegistryAccessDeniedException(path);
+                return new RegistryAccessDeniedException(path, machineName);
             case WinError.ERROR_INVALID_HANDLE:
-                return new InvalidRegistryHandleException(path);
+                return new InvalidRegistryHandleException(path, machineName);
             default:
-                return new RegistryException(errorCode, path);
+                return new RegistryException(errorCode, path, machineName);
         }
     }
 
-    static RegistryException of(int errorCode, String path, String name) {
+    static RegistryException forValue(int errorCode, String path, String machineName, String name) {
         switch (errorCode) {
             case WinError.ERROR_KEY_DELETED:
-                return new NoSuchRegistryKeyException(errorCode, path);
+                return new NoSuchRegistryKeyException(errorCode, path, machineName);
             case WinError.ERROR_FILE_NOT_FOUND:
-                return new NoSuchRegistryValueException(path, name);
+                return new NoSuchRegistryValueException(path, machineName, name);
             case WinError.ERROR_ACCESS_DENIED:
-                return new RegistryAccessDeniedException(path);
+                return new RegistryAccessDeniedException(path, machineName);
             case WinError.ERROR_INVALID_HANDLE:
-                return new InvalidRegistryHandleException(path);
+                return new InvalidRegistryHandleException(path, machineName);
             default:
-                return new RegistryException(errorCode, path);
+                return new RegistryException(errorCode, path, machineName);
         }
     }
 }

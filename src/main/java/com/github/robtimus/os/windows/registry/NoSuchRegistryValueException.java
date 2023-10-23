@@ -36,7 +36,20 @@ public class NoSuchRegistryValueException extends RegistryException {
      * @param name The name of the non-existing registry value.
      */
     public NoSuchRegistryValueException(String path, String name) {
-        super(WinError.ERROR_FILE_NOT_FOUND, path);
+        this(path, null, name);
+    }
+
+    /**
+     * Creates a new exception.
+     *
+     * @param path The path to the registry key for which the non-existing registry value was attempted to be accessed.
+     * @param machineName The remote machine of the registry key for which the non-existing registry value was attempted to be accessed,
+     *                        or {@code null} for the local machine.
+     * @param name The name of the non-existing registry value.
+     * @since 1.1
+     */
+    public NoSuchRegistryValueException(String path, String machineName, String name) {
+        super(WinError.ERROR_FILE_NOT_FOUND, path, machineName);
         this.name = name;
     }
 

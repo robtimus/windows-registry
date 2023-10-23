@@ -19,115 +19,156 @@ package com.github.robtimus.os.windows.registry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import com.sun.jna.platform.win32.WinError;
 
 @SuppressWarnings("nls")
-final class RegistryExceptionTest {
+class RegistryExceptionTest {
 
-    private RegistryExceptionTest() {
+    @Test
+    @DisplayName("RegistryExistsException(int, String)")
+    void testConstructorWithoutMachineName() {
+        RegistryException exception = new RegistryException(WinError.ERROR_ALREADY_EXISTS, "path");
+
+        assertEquals(WinError.ERROR_ALREADY_EXISTS, exception.errorCode());
+        assertEquals("path", exception.path());
+        assertNull(exception.machineName());
     }
 
     @Nested
-    @DisplayName("of(int, String)")
-    class OfForKey {
+    @DisplayName("forKey")
+    class ForKey {
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_KEY_DELETED")
-        void testKeyDeleted() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_KEY_DELETED, "path");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testKeyDeleted(String machineName) {
+            RegistryException exception = RegistryException.forKey(WinError.ERROR_KEY_DELETED, "path", machineName);
             assertInstanceOf(NoSuchRegistryKeyException.class, exception);
             assertEquals(WinError.ERROR_KEY_DELETED, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_FILE_NOT_FOUND")
-        void testFileNotFound() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_FILE_NOT_FOUND, "path");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testFileNotFound(String machineName) {
+            RegistryException exception = RegistryException.forKey(WinError.ERROR_FILE_NOT_FOUND, "path", machineName);
             assertInstanceOf(NoSuchRegistryKeyException.class, exception);
             assertEquals(WinError.ERROR_FILE_NOT_FOUND, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_ACCESS_DENIED")
-        void testAccessDenied() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_ACCESS_DENIED, "path");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testAccessDenied(String machineName) {
+            RegistryException exception = RegistryException.forKey(WinError.ERROR_ACCESS_DENIED, "path", machineName);
             assertInstanceOf(RegistryAccessDeniedException.class, exception);
             assertEquals(WinError.ERROR_ACCESS_DENIED, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_INVALID_HANDLE")
-        void testInvalidHandle() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_INVALID_HANDLE, "path");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testInvalidHandle(String machineName) {
+            RegistryException exception = RegistryException.forKey(WinError.ERROR_INVALID_HANDLE, "path", machineName);
             assertInstanceOf(InvalidRegistryHandleException.class, exception);
             assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("other")
-        void testOther() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_REGISTRY_CORRUPT, "path");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testOther(String machineName) {
+            RegistryException exception = RegistryException.forKey(WinError.ERROR_REGISTRY_CORRUPT, "path", machineName);
             assertEquals(RegistryException.class, exception.getClass());
             assertEquals(WinError.ERROR_REGISTRY_CORRUPT, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
     }
 
     @Nested
-    @DisplayName("of(int, String, String)")
-    class OfForValue {
+    @DisplayName("forValue")
+    class ForValue {
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_KEY_DELETED")
-        void testKeyDeleted() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_KEY_DELETED, "path", "name");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testKeyDeleted(String machineName) {
+            RegistryException exception = RegistryException.forValue(WinError.ERROR_KEY_DELETED, "path", machineName, "name");
             assertInstanceOf(NoSuchRegistryKeyException.class, exception);
             assertEquals(WinError.ERROR_KEY_DELETED, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_FILE_NOT_FOUND")
-        void testFileNotFound() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_FILE_NOT_FOUND, "path", "name");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testFileNotFound(String machineName) {
+            RegistryException exception = RegistryException.forValue(WinError.ERROR_FILE_NOT_FOUND, "path", machineName, "name");
             NoSuchRegistryValueException valueException = assertInstanceOf(NoSuchRegistryValueException.class, exception);
             assertEquals(WinError.ERROR_FILE_NOT_FOUND, valueException.errorCode());
             assertEquals("path", valueException.path());
+            assertEquals(machineName, exception.machineName());
             assertEquals("name", valueException.name());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_ACCESS_DENIED")
-        void testAccessDenied() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_ACCESS_DENIED, "path", "name");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testAccessDenied(String machineName) {
+            RegistryException exception = RegistryException.forValue(WinError.ERROR_ACCESS_DENIED, "path", machineName, "name");
             assertInstanceOf(RegistryAccessDeniedException.class, exception);
             assertEquals(WinError.ERROR_ACCESS_DENIED, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("ERROR_INVALID_HANDLE")
-        void testInvalidHandle() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_INVALID_HANDLE, "path", "name");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testInvalidHandle(String machineName) {
+            RegistryException exception = RegistryException.forValue(WinError.ERROR_INVALID_HANDLE, "path", machineName, "name");
             assertInstanceOf(InvalidRegistryHandleException.class, exception);
             assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
 
-        @Test
+        @ParameterizedTest(name = "machineName = {0}")
         @DisplayName("other")
-        void testOther() {
-            RegistryException exception = RegistryException.of(WinError.ERROR_REGISTRY_CORRUPT, "path", "name");
+        @ValueSource(strings = "machine")
+        @NullSource
+        void testOther(String machineName) {
+            RegistryException exception = RegistryException.forValue(WinError.ERROR_REGISTRY_CORRUPT, "path", machineName, "name");
             assertEquals(RegistryException.class, exception.getClass());
             assertEquals(WinError.ERROR_REGISTRY_CORRUPT, exception.errorCode());
             assertEquals("path", exception.path());
+            assertEquals(machineName, exception.machineName());
         }
     }
 }

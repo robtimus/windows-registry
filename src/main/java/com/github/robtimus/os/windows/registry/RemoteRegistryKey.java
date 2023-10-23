@@ -57,9 +57,9 @@ public abstract class RemoteRegistryKey extends RegistryKey implements AutoClose
          */
         public RemoteRegistryKey at(String machineName) {
             HKEYByReference phkResult = new HKEYByReference();
-            int code = api.RegConnectRegistry(machineName, rootKey.hKey, phkResult);
+            int code = api.RegConnectRegistry(machineName, rootKey.hKey(), phkResult);
             if (code != WinError.ERROR_SUCCESS) {
-                throw RegistryException.of(code, rootKey.path());
+                throw RegistryException.forKey(code, rootKey.path(), machineName);
             }
             return new RemoteRootKey(machineName, rootKey, phkResult.getValue());
         }

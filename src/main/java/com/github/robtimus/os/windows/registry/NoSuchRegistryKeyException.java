@@ -33,10 +33,22 @@ public class NoSuchRegistryKeyException extends RegistryException {
      * @param path The path that was used to access the non-existing registry key.
      */
     public NoSuchRegistryKeyException(String path) {
-        this(WinError.ERROR_FILE_NOT_FOUND, path);
+        this(path, null);
     }
 
-    NoSuchRegistryKeyException(int errorCode, String path) {
-        super(errorCode, path);
+    /**
+     * Creates a new exception.
+     *
+     * @param path The path that was used to access the non-existing registry key.
+     * @param machineName The remote machine on which the non-existing registry key was attempted to be accessed,
+     *                        or {@code null} for the local machine.
+     * @since 1.1
+     */
+    public NoSuchRegistryKeyException(String path, String machineName) {
+        this(WinError.ERROR_FILE_NOT_FOUND, path, machineName);
+    }
+
+    NoSuchRegistryKeyException(int errorCode, String path, String machineName) {
+        super(errorCode, path, machineName);
     }
 }

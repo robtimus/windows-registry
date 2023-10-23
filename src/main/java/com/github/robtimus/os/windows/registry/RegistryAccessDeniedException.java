@@ -33,6 +33,17 @@ public class RegistryAccessDeniedException extends RegistryException {
      * @param path The path of the registry key for which access was denied.
      */
     public RegistryAccessDeniedException(String path) {
-        super(WinError.ERROR_ACCESS_DENIED, path);
+        this(path, null);
+    }
+
+    /**
+     * Creates a new exception.
+     *
+     * @param path The path of the registry key for which access was denied.
+     * @param machineName The remote machine of the registry key for which access was denied, or {@code null} for the local machine.
+     * @since 1.1
+     */
+    public RegistryAccessDeniedException(String path, String machineName) {
+        super(WinError.ERROR_ACCESS_DENIED, path, machineName);
     }
 }
