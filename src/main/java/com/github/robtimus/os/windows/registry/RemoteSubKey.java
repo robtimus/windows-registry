@@ -82,33 +82,33 @@ final class RemoteSubKey extends RegistryKey {
 
     @Override
     public boolean exists() {
-        return local.exists(root.hKey());
+        return local.exists(root.hKey(), machineName());
     }
 
     @Override
     public void create() {
-        local.create(root.hKey());
+        local.create(root.hKey(), machineName());
     }
 
     @Override
     public boolean createIfNotExists() {
-        return local.createIfNotExists(root.hKey());
+        return local.createIfNotExists(root.hKey(), machineName());
     }
 
     @Override
     public RegistryKey renameTo(String newName) {
-        SubKey renamed = local.renameTo(root.hKey(), newName);
+        SubKey renamed = local.renameTo(root.hKey(), newName, machineName());
         return new RemoteSubKey(root, renamed);
     }
 
     @Override
     public void delete() {
-        local.delete(root.hKey());
+        local.delete(root.hKey(), machineName());
     }
 
     @Override
     public boolean deleteIfExists() {
-        return local.deleteIfExists(root.hKey());
+        return local.deleteIfExists(root.hKey(), machineName());
     }
 
     // handles
@@ -116,8 +116,8 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     Handle handle(int samDesired, boolean create) {
         HKEY hKey = create
-                ? local.createOrOpenKey(root.hKey(), samDesired)
-                : local.openKey(root.hKey(), samDesired);
+                ? local.createOrOpenKey(root.hKey(), samDesired, machineName())
+                : local.openKey(root.hKey(), samDesired, machineName());
         return new Handle(hKey);
     }
 
