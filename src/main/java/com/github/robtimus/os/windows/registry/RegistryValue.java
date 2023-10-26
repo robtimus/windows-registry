@@ -30,7 +30,8 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
  *
  * @author Rob Spoor
  */
-public abstract class RegistryValue {
+public abstract sealed class RegistryValue
+        permits SettableRegistryValue, FullResourceDescriptorValue, LinkValue, NoneValue, ResourceListValue, ResourceRequirementsListValue {
 
     /** The name of the default value of registry keys. */
     public static final String DEFAULT = ""; //$NON-NLS-1$
