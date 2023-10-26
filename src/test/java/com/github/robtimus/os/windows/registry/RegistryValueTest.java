@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.charset.StandardCharsets;
@@ -1111,6 +1112,53 @@ final class RegistryValueTest {
                         assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
                     }
                 }
+            }
+        }
+    }
+
+    @Nested
+    @DisplayName("exhaustiveness")
+    class Exhaustiveness {
+
+        // The tests in this nested class don't test any behaviour, they test the API for exhaustiveness using the compiler
+
+        @Test
+        void testSeparateClasses() {
+            RegistryValue value = DWordValue.of("name", 0);
+            switch (value) {
+                case BinaryValue v -> assertNotNull(v);
+                case DWordValue v -> assertNotNull(v);
+                case FullResourceDescriptorValue v -> assertNotNull(v);
+                case LinkValue v -> assertNotNull(v);
+                case MultiStringValue v -> assertNotNull(v);
+                case NoneValue v -> assertNotNull(v);
+                case QWordValue v -> assertNotNull(v);
+                case ResourceListValue v -> assertNotNull(v);
+                case ResourceRequirementsListValue v -> assertNotNull(v);
+                case StringValue v -> assertNotNull(v);
+            }
+        }
+
+        @Test
+        void testWithSettableRegistryValue() {
+            RegistryValue value = DWordValue.of("name", 0);
+            switch (value) {
+                case FullResourceDescriptorValue v -> assertNotNull(v);
+                case LinkValue v -> assertNotNull(v);
+                case NoneValue v -> assertNotNull(v);
+                case ResourceListValue v -> assertNotNull(v);
+                case ResourceRequirementsListValue v -> assertNotNull(v);
+                case SettableRegistryValue v -> testSettableRegistryValue(v);
+            }
+        }
+
+        private void testSettableRegistryValue(SettableRegistryValue value) {
+            switch (value) {
+                case BinaryValue v -> assertNotNull(v);
+                case DWordValue v -> assertNotNull(v);
+                case MultiStringValue v -> assertNotNull(v);
+                case QWordValue v -> assertNotNull(v);
+                case StringValue v -> assertNotNull(v);
             }
         }
     }
