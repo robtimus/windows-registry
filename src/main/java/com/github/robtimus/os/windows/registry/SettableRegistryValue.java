@@ -26,7 +26,7 @@ import com.github.robtimus.os.windows.registry.foreign.BytePointer;
  *
  * @author Rob Spoor
  */
-public abstract class SettableRegistryValue extends RegistryValue {
+public abstract sealed class SettableRegistryValue extends RegistryValue permits BinaryValue, DWordValue, MultiStringValue, QWordValue, StringValue {
 
     SettableRegistryValue(String name, int type) {
         super(name, type);
