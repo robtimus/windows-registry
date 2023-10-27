@@ -1181,6 +1181,60 @@ class SubKeyTest extends RegistryKeyTestBase {
     }
 
     @Nested
+    @DisplayName("isAccessible")
+    class IsAccessible {
+
+        @Test
+        @DisplayName("existing")
+        void testExisting() {
+            HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            assertTrue(registryKey.isAccessible());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api).RegCloseKey(hKey);
+        }
+
+        @Test
+        @DisplayName("non-accessible")
+        void testNonAccessible() {
+            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-accessible");
+            assertFalse(registryKey.isAccessible());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-accessible"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("non-existing")
+        void testNonExisting() {
+            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            assertFalse(registryKey.isAccessible());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::isAccessible);
+            assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
     @DisplayName("create")
     class Create {
 

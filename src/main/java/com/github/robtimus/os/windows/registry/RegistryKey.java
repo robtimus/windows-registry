@@ -523,6 +523,26 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     public abstract boolean exists();
 
     /**
+     * Tests whether or not this registry key is accessible.
+     * Accessible means that accessing it will not throw a {@link RegistryAccessDeniedException}.
+     * <p>
+     * The following are the relations between this method and {@link #exists()}:
+     * <ul>
+     *   <li>If {@code isAccessible()} returns {@code true} then {@link #exists()} will return {@code true}.</li>
+     *   <li>If {@link #exists()} returns {@code false} then {@code isAccessible()} will return {@code false}.</li>
+     *   <li>If {@code isAccessible()} returns {@code false} then {@link #exists()} will not necessarily return {@code false};
+     *       existing keys may not be accessible.</li>
+     *   <li>If {@link #exists()} returns {@code true} then {@code isAccessible()} will not necessarily return {@code true};
+     *       existing keys may not be accessible.</li>
+     * </ul>
+     *
+     * @return {@code true} if this registry key is accessible, or {@code false} otherwise.
+     * @throws RegistryException If the accessibility of this registry cannot be determined.
+     * @since 1.1
+     */
+    public abstract boolean isAccessible();
+
+    /**
      * Creates this registry key if it does not exist already.
      *
      * @throws RegistryKeyAlreadyExistsException If this registry key already {@link #exists() exists}.

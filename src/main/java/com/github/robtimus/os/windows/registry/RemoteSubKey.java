@@ -86,6 +86,11 @@ final class RemoteSubKey extends RegistryKey {
     }
 
     @Override
+    public boolean isAccessible() {
+        return local.isAccessible(root.hKey(), machineName());
+    }
+
+    @Override
     public void create() {
         local.create(root.hKey(), machineName());
     }

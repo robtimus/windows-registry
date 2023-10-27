@@ -610,6 +610,33 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         }
     }
 
+    @Nested
+    @DisplayName("isAccessible")
+    class IsAccessible {
+
+        @Test
+        @DisplayName("success")
+        void testSuccess() {
+            when(RegistryKey.api.RegQueryInfoKey(eq(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
+
+            assertTrue(remoteRoot.isAccessible());
+
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+
+        @Test
+        @DisplayName("failure")
+        void testFailure() {
+            when(RegistryKey.api.RegQueryInfoKey(eq(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+
+            assertFalse(remoteRoot.isAccessible());
+
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        }
+    }
+
     @Test
     @DisplayName("create")
     void testCreate() {

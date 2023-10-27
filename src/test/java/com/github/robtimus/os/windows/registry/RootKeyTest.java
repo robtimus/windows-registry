@@ -558,6 +558,12 @@ class RootKeyTest extends RegistryKeyTestBase {
     }
 
     @Test
+    @DisplayName("isAccessible")
+    void testIsAccessible() {
+        assertTrue(RegistryKey.HKEY_CURRENT_USER.isAccessible());
+    }
+
+    @Test
     @DisplayName("create")
     void testCreate() {
         RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, RegistryKey.HKEY_CURRENT_USER::create);

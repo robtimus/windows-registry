@@ -97,6 +97,12 @@ final class RemoteRootKey extends RemoteRegistryKey {
     }
 
     @Override
+    public boolean isAccessible() {
+        // The pre-defined root keys are always accessible if they exist
+        return exists();
+    }
+
+    @Override
     public void create() {
         throw new RegistryKeyAlreadyExistsException(path(), machineName);
     }

@@ -121,6 +121,24 @@ final class SubKey extends RegistryKey {
     }
 
     @Override
+    public boolean isAccessible() {
+        return isAccessible(root.hKey(), machineName());
+    }
+
+    boolean isAccessible(HKEY rootHKey, String machineName) {
+        HKEYByReference phkResult = new HKEYByReference();
+        int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
+        if (code == WinError.ERROR_SUCCESS) {
+            closeKey(phkResult.getValue(), path(), machineName);
+            return true;
+        }
+        if (code == WinError.ERROR_FILE_NOT_FOUND || code == WinError.ERROR_ACCESS_DENIED) {
+            return false;
+        }
+        throw RegistryException.forKey(code, path(), machineName);
+    }
+
+    @Override
     public void create() {
         create(root.hKey(), machineName());
     }

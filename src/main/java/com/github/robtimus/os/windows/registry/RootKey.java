@@ -132,6 +132,12 @@ final class RootKey extends RegistryKey {
     }
 
     @Override
+    public boolean isAccessible() {
+        // The pre-defined root keys are always accessible
+        return true;
+    }
+
+    @Override
     public void create() {
         throw new RegistryKeyAlreadyExistsException(path());
     }
