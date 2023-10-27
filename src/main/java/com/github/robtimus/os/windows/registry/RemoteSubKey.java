@@ -19,6 +19,7 @@ package com.github.robtimus.os.windows.registry;
 
 import java.lang.ref.Cleaner;
 import java.util.Optional;
+import java.util.function.IntPredicate;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 
 final class RemoteSubKey extends RegistryKey {
@@ -119,11 +120,24 @@ final class RemoteSubKey extends RegistryKey {
     // handles
 
     @Override
-    Handle handle(int samDesired, boolean create) {
-        HKEY hKey = create
-                ? local.createOrOpenKey(root.hKey(), samDesired, machineName())
-                : local.openKey(root.hKey(), samDesired, machineName());
+    RegistryKey.Handle handle(int samDesired, boolean create) {
+        HKEY hKey = hKey(samDesired, create);
         return new Handle(hKey);
+    }
+
+    @Override
+    Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
+        HKEY hKey = hKey(samDesired, ignoreError);
+        return Optional.ofNullable(hKey)
+                .map(Handle::new);
+    }
+
+    private HKEY hKey(int samDesired, boolean create) {
+        return local.hKey(root.hKey(), samDesired, create, machineName());
+    }
+
+    private HKEY hKey(int samDesired, IntPredicate ignoreError) {
+        return local.hKey(root.hKey(), samDesired, ignoreError, machineName());
     }
 
     // Comparable / Object

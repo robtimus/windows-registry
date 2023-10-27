@@ -32,6 +32,9 @@ import java.util.OptionalLong;
 import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
+import java.util.function.Consumer;
+import java.util.function.Function;
+import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.sun.jna.Native;
@@ -523,6 +526,53 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     public abstract boolean exists();
 
     /**
+     * Runs an action on a {@link Handle} if this registry key exists. The handle will be open only during the execution of the action.
+     *
+     * @param action The action to run.
+     * @param options The options that define how the handle is created. If {@link HandleOption#CREATE} is given it will be ignored.
+     * @throws NullPointerException If the given action is {@code null}.
+     * @see #exists()
+     * @see #handle(HandleOption...)
+     * @since 1.1
+     */
+    public void ifExists(Consumer<? super Handle> action, HandleOption... options) {
+        Objects.requireNonNull(action);
+
+        Set<HandleOption> optionSet = EnumSet.noneOf(HandleOption.class);
+        Collections.addAll(optionSet, options);
+
+        int samDesired = samDesired(optionSet);
+
+        handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND)
+                .ifPresent(handle -> runAction(handle, action));
+    }
+
+    /**
+     * Runs an action on a {@link Handle} if this registry key exists. The handle will be open only during the execution of the action.
+     *
+     * @param <R> The type of result of the action.
+     * @param action The action to run.
+     * @param options The options that define how the handle is created. If {@link HandleOption#CREATE} is given it will be ignored.
+     * @return An {@link Optional} with the return of calling the action on the handle,
+     *         or {@link Optional#empty()} if this registry key does not exist.
+     * @throws NullPointerException If the given action is {@code null}.
+     * @see #exists()
+     * @see #handle(HandleOption...)
+     * @since 1.1
+     */
+    public <R> Optional<R> ifExists(Function<? super Handle, ? extends R> action, HandleOption... options) {
+        Objects.requireNonNull(action);
+
+        Set<HandleOption> optionSet = EnumSet.noneOf(HandleOption.class);
+        Collections.addAll(optionSet, options);
+
+        int samDesired = samDesired(optionSet);
+
+        return handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND)
+                .map(handle -> runAction(handle, action));
+    }
+
+    /**
      * Tests whether or not this registry key is accessible.
      * Accessible means that accessing it will not throw a {@link RegistryAccessDeniedException}.
      * <p>
@@ -541,6 +591,65 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      * @since 1.1
      */
     public abstract boolean isAccessible();
+
+    /**
+     * Runs an action on a {@link Handle} if this registry key is accessible. The handle will be open only during the execution of the action.
+     *
+     * @param action The action to run.
+     * @param options The options that define how the handle is created. If {@link HandleOption#CREATE} is given it will be ignored.
+     * @throws NullPointerException If the given action is {@code null}.
+     * @see #isAccessible()
+     * @see #handle(HandleOption...)
+     * @since 1.1
+     */
+    public void ifAccessible(Consumer<? super Handle> action, HandleOption... options) {
+        Objects.requireNonNull(action);
+
+        Set<HandleOption> optionSet = EnumSet.noneOf(HandleOption.class);
+        Collections.addAll(optionSet, options);
+
+        int samDesired = samDesired(optionSet);
+
+        handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND || error == WinError.ERROR_ACCESS_DENIED)
+                .ifPresent(handle -> runAction(handle, action));
+    }
+
+    /**
+     * Runs an action on a {@link Handle} if this registry key is accessible. The handle will be open only during the execution of the action.
+     *
+     * @param <R> The type of result of the action.
+     * @param action The action to run.
+     * @param options The options that define how the handle is created. If {@link HandleOption#CREATE} is given it will be ignored.
+     * @return An {@link Optional} with the return of calling the action on the handle,
+     *         or {@link Optional#empty()} if this registry key is not accessible.
+     * @throws NullPointerException If the given action is {@code null}.
+     * @see #isAccessible()
+     * @see #handle(HandleOption...)
+     * @since 1.1
+     */
+    public <R> Optional<R> ifAccessible(Function<? super Handle, ? extends R> action, HandleOption... options) {
+        Objects.requireNonNull(action);
+
+        Set<HandleOption> optionSet = EnumSet.noneOf(HandleOption.class);
+        Collections.addAll(optionSet, options);
+
+        int samDesired = samDesired(optionSet);
+
+        return handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND || error == WinError.ERROR_ACCESS_DENIED)
+                .map(handle -> runAction(handle, action));
+    }
+
+    private void runAction(Handle handle, Consumer<? super Handle> action) {
+        try (handle) {
+            action.accept(handle);
+        }
+    }
+
+    private <R> R runAction(Handle handle, Function<? super Handle, ? extends R> action) {
+        try (handle) {
+            return action.apply(handle);
+        }
+    }
 
     /**
      * Creates this registry key if it does not exist already.
@@ -635,6 +744,13 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     }
 
     abstract Handle handle(int samDesired, boolean create);
+
+    /**
+     * Creates a handle, unless an error occurs that can be ignored according to the given predicate.
+     * In that case, {@link Optional#empty()} should be returned.
+     * If an error occurs that cannot be ignored, a {@link RegistryException} should be thrown.
+     */
+    abstract Optional<Handle> handle(int samDesired, IntPredicate ignoreError);
 
     private int samDesired(Set<HandleOption> options) {
         int samDesired = WinNT.KEY_READ;

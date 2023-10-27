@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
+import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
 import com.sun.jna.platform.win32.WinReg;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -165,8 +166,13 @@ final class RootKey extends RegistryKey {
     // handles
 
     @Override
-    Handle handle(int samDesired, boolean create) {
+    RegistryKey.Handle handle(int samDesired, boolean create) {
         return handle;
+    }
+
+    @Override
+    Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
+        return Optional.of(handle);
     }
 
     // Comparable / Object

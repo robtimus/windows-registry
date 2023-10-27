@@ -19,6 +19,7 @@ package com.github.robtimus.os.windows.registry;
 
 import java.lang.ref.Cleaner;
 import java.util.Optional;
+import java.util.function.IntPredicate;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinReg.HKEY;
 
@@ -92,14 +93,26 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public boolean exists() {
-        int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, null);
-        return code == WinError.ERROR_SUCCESS;
+        int code = checkHKEY();
+        if (code == WinError.ERROR_SUCCESS) {
+            return true;
+        }
+        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+            return false;
+        }
+        throw RegistryException.forKey(code, path(), machineName);
     }
 
     @Override
     public boolean isAccessible() {
-        // The pre-defined root keys are always accessible if they exist
-        return exists();
+        int code = checkHKEY();
+        if (code == WinError.ERROR_SUCCESS) {
+            return true;
+        }
+        if (code == WinError.ERROR_FILE_NOT_FOUND || code == WinError.ERROR_ACCESS_DENIED) {
+            return false;
+        }
+        throw RegistryException.forKey(code, path(), machineName);
     }
 
     @Override
@@ -109,6 +122,8 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public boolean createIfNotExists() {
+        // verify the handle using exists
+        exists();
         return false;
     }
 
@@ -130,8 +145,28 @@ final class RemoteRootKey extends RemoteRegistryKey {
     // handles
 
     @Override
-    Handle handle(int samDesired, boolean create) {
+    RegistryKey.Handle handle(int samDesired, boolean create) {
+        int code = checkHKEY();
+        if (code != WinError.ERROR_SUCCESS) {
+            throw RegistryException.forKey(code, path(), machineName());
+        }
         return handle;
+    }
+
+    @Override
+    Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
+        int code = checkHKEY();
+        if (code == WinError.ERROR_SUCCESS) {
+            return Optional.of(handle);
+        }
+        if (ignoreError.test(code)) {
+            return Optional.empty();
+        }
+        throw RegistryException.forKey(code, path(), machineName());
+    }
+
+    private int checkHKEY() {
+        return api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, null);
     }
 
     // Comparable / Object

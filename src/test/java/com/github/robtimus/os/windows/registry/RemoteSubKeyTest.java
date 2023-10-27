@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -41,6 +42,8 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -192,6 +195,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -212,6 +216,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
                 verify(RegistryKey.api).RegCloseKey(hKey);
@@ -230,6 +235,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
                 assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
                 verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
@@ -253,6 +259,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 Collector<RegistryKey, ?, ?> collector = Collectors.toList();
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> stream.collect(collector));
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
             }
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
@@ -611,6 +618,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -635,6 +643,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
                     assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                    assertEquals("test-machine", exception.machineName());
 
                     verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
                     verify(RegistryKey.api).RegCloseKey(hKey);
@@ -653,6 +662,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
                     assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                    assertEquals("test-machine", exception.machineName());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
                     verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
@@ -676,6 +686,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
                     assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                    assertEquals("test-machine", exception.machineName());
 
                     verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
                     verify(RegistryKey.api).RegCloseKey(hKey);
@@ -695,6 +706,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
                     assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                    assertEquals("test-machine", exception.machineName());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
                     verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
@@ -719,6 +731,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 Collector<RegistryValue, ?, ?> collector = Collectors.toList();
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> stream.collect(collector));
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
             }
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
@@ -756,6 +769,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -773,6 +787,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
             assertEquals("string", exception.name());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
@@ -790,6 +805,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -842,6 +858,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -874,6 +891,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -933,6 +951,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -952,6 +971,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -986,6 +1006,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1002,6 +1023,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
             assertEquals("string", exception.name());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
@@ -1058,6 +1080,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1075,6 +1098,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -1112,14 +1136,146 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::exists);
+            RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::exists);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("ifExists")
+    class IfExists {
+
+        @Nested
+        @DisplayName("with consumer")
+        class WithConsumer {
+
+            @Test
+            @DisplayName("success")
+            @SuppressWarnings("resource")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path\\existing");
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifExists(action);
+
+                verify(action).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(rootHKey, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\not-found");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifExists(action);
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\not-found"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.ifExists(action));
+                assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+        }
+
+        @Nested
+        @DisplayName("with function")
+        class WithFunction {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path\\existing");
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+
+                Function<RegistryKey.Handle, String> action = handle -> "new handle";
+
+                Optional<String> result = registryKey.ifExists(action);
+
+                assertEquals(Optional.of("new handle"), result);
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(rootHKey, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\not-found");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                registryKey.ifExists(action);
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\not-found"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.ifExists(action));
+                assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
         }
     }
 
@@ -1140,18 +1296,6 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         }
 
         @Test
-        @DisplayName("non-accessible")
-        void testNonAccessible() {
-            mockOpenFailure(rootHKey, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
-
-            RegistryKey registryKey = remoteRoot.resolve("path\\non-accessible");
-            assertFalse(registryKey.isAccessible());
-
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-accessible"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api, never()).RegCloseKey(any());
-        }
-
-        @Test
         @DisplayName("non-existing")
         void testNonExisting() {
             mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
@@ -1164,6 +1308,18 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         }
 
         @Test
+        @DisplayName("non-accessible")
+        void testNonAccessible() {
+            mockOpenFailure(rootHKey, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
+
+            RegistryKey registryKey = remoteRoot.resolve("path\\non-accessible");
+            assertFalse(registryKey.isAccessible());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-accessible"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
         @DisplayName("failure")
         void testFailure() {
             mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
@@ -1171,9 +1327,179 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::isAccessible);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("ifAccessible")
+    class IfAccessible {
+
+        @Nested
+        @DisplayName("with consumer")
+        class WithConsumer {
+
+            @Test
+            @DisplayName("success")
+            @SuppressWarnings("resource")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path\\existing");
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("access denied")
+            @SuppressWarnings("resource")
+            void testAccessDenied() {
+                mockOpenFailure(rootHKey, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\access-denied");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\access-denied"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.ifAccessible(action));
+                assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+        }
+
+        @Nested
+        @DisplayName("with function")
+        class WithFunction {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(rootHKey, "path\\existing");
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\existing");
+
+                Function<RegistryKey.Handle, String> action = handle -> "new handle";
+
+                Optional<String> result = registryKey.ifAccessible(action);
+
+                assertEquals(Optional.of("new handle"), result);
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\non-existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("access denied")
+            @SuppressWarnings("resource")
+            void testAccessDenied() {
+                mockOpenFailure(rootHKey, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\access-denied");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\access-denied"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = remoteRoot.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.ifAccessible(action));
+                assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+                assertEquals("test-machine", exception.machineName());
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
         }
     }
 
@@ -1217,6 +1543,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, registryKey::create);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\existing"), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api).RegCloseKey(hKey);
@@ -1231,6 +1558,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::create);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1290,6 +1618,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1322,6 +1651,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\non-existing", "foo");
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
@@ -1338,6 +1668,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\foo", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
             verify(RegistryKey.api, never()).RegOpenKeyEx(eq(rootHKey), not(eq("path\\foo")), anyInt(), anyInt(), any());
@@ -1354,6 +1685,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
             verify(RegistryKey.api, never()).RegOpenKeyEx(not(eq(rootHKey)), not(eq("path\\foo")), anyInt(), anyInt(), any());
@@ -1368,6 +1700,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegRenameKey(rootHKey, "path\\existing", "foo");
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
@@ -1425,6 +1758,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::delete);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1438,6 +1772,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1482,6 +1817,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
@@ -1596,6 +1932,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::handle);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
@@ -1612,6 +1949,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class,
                     () -> registryKey.handle(RegistryKey.HandleOption.CREATE));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
             verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
@@ -1630,6 +1968,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
+            assertEquals("test-machine", exception.machineName());
             assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eq("path\\failure"), anyInt(), anyInt(), any());

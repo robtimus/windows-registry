@@ -22,6 +22,7 @@ import java.util.ArrayDeque;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
+import java.util.function.IntPredicate;
 import com.sun.jna.platform.win32.WinError;
 import com.sun.jna.platform.win32.WinNT;
 import com.sun.jna.platform.win32.WinReg.HKEY;
@@ -108,10 +109,8 @@ final class SubKey extends RegistryKey {
     }
 
     boolean exists(HKEY rootHKey, String machineName) {
-        HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
+        int code = checkSubKey(rootHKey, machineName);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue(), path(), machineName);
             return true;
         }
         if (code == WinError.ERROR_FILE_NOT_FOUND) {
@@ -126,16 +125,23 @@ final class SubKey extends RegistryKey {
     }
 
     boolean isAccessible(HKEY rootHKey, String machineName) {
-        HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
+        int code = checkSubKey(rootHKey, machineName);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.getValue(), path(), machineName);
             return true;
         }
         if (code == WinError.ERROR_FILE_NOT_FOUND || code == WinError.ERROR_ACCESS_DENIED) {
             return false;
         }
         throw RegistryException.forKey(code, path(), machineName);
+    }
+
+    private int checkSubKey(HKEY rootHKey, String machineName) {
+        HKEYByReference phkResult = new HKEYByReference();
+        int code = api.RegOpenKeyEx(rootHKey, path, 0, WinNT.KEY_READ, phkResult);
+        if (code == WinError.ERROR_SUCCESS) {
+            closeKey(phkResult.getValue(), path(), machineName);
+        }
+        return code;
     }
 
     @Override
@@ -232,14 +238,37 @@ final class SubKey extends RegistryKey {
     // handles
 
     @Override
-    Handle handle(int samDesired, boolean create) {
-        HKEY hKey = create
-                ? createOrOpenKey(root.hKey(), samDesired, machineName())
-                : openKey(root.hKey(), samDesired, machineName());
+    RegistryKey.Handle handle(int samDesired, boolean create) {
+        HKEY hKey = hKey(samDesired, create);
         return new Handle(hKey);
     }
 
-    HKEY createOrOpenKey(HKEY rootHKey, int samDesired, String machineName) {
+    @Override
+    Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
+        HKEY hKey = hKey(samDesired, ignoreError);
+        return Optional.ofNullable(hKey)
+                .map(Handle::new);
+    }
+
+    private HKEY hKey(int samDesired, boolean create) {
+        return hKey(root.hKey(), samDesired, create, machineName());
+    }
+
+    private HKEY hKey(int samDesired, IntPredicate ignoreError) {
+        return hKey(root.hKey(), samDesired, ignoreError, machineName());
+    }
+
+    HKEY hKey(HKEY rootHKEY, int samDesired, boolean create, String machineName) {
+        return create
+                ? createOrOpenKey(rootHKEY, samDesired, machineName)
+                : openKey(rootHKEY, samDesired, error -> false, machineName);
+    }
+
+    HKEY hKey(HKEY rootHKEY, int samDesired, IntPredicate ignoreError, String machineName) {
+        return openKey(rootHKEY, samDesired, ignoreError, machineName);
+    }
+
+    private HKEY createOrOpenKey(HKEY rootHKey, int samDesired, String machineName) {
         HKEYByReference phkResult = new HKEYByReference();
 
         int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
@@ -249,11 +278,14 @@ final class SubKey extends RegistryKey {
         throw RegistryException.forKey(code, path(), machineName);
     }
 
-    HKEY openKey(HKEY rootHKey, int samDesired, String machineName) {
+    private HKEY openKey(HKEY rootHKey, int samDesired, IntPredicate ignoreError, String machineName) {
         HKEYByReference phkResult = new HKEYByReference();
         int code = api.RegOpenKeyEx(rootHKey, path, 0, samDesired, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.getValue();
+        }
+        if (ignoreError.test(code)) {
+            return null;
         }
         throw RegistryException.forKey(code, path(), machineName);
     }

@@ -34,6 +34,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -41,6 +42,8 @@ import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -1169,14 +1172,143 @@ class SubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
-            InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::exists);
+            RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::exists);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("ifExists")
+    class IfExists {
+
+        @Nested
+        @DisplayName("with consumer")
+        class WithConsumer {
+
+            @Test
+            @DisplayName("success")
+            @SuppressWarnings("resource")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifExists(action);
+
+                verify(action).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\not-found");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifExists(action);
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\not-found"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.ifExists(action));
+                assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+        }
+
+        @Nested
+        @DisplayName("with function")
+        class WithFunction {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+
+                Function<RegistryKey.Handle, String> action = handle -> "new handle";
+
+                Optional<String> result = registryKey.ifExists(action);
+
+                assertEquals(Optional.of("new handle"), result);
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\not-found");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                registryKey.ifExists(action);
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\not-found"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.ifExists(action));
+                assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
         }
     }
 
@@ -1197,18 +1329,6 @@ class SubKeyTest extends RegistryKeyTestBase {
         }
 
         @Test
-        @DisplayName("non-accessible")
-        void testNonAccessible() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
-
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-accessible");
-            assertFalse(registryKey.isAccessible());
-
-            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-accessible"), anyInt(), anyInt(), any());
-            verify(RegistryKey.api, never()).RegCloseKey(any());
-        }
-
-        @Test
         @DisplayName("non-existing")
         void testNonExisting() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
@@ -1217,6 +1337,18 @@ class SubKeyTest extends RegistryKeyTestBase {
             assertFalse(registryKey.isAccessible());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any());
+            verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+
+        @Test
+        @DisplayName("non-accessible")
+        void testNonAccessible() {
+            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-accessible");
+            assertFalse(registryKey.isAccessible());
+
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-accessible"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
         }
 
@@ -1231,6 +1363,173 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
             verify(RegistryKey.api, never()).RegCloseKey(any());
+        }
+    }
+
+    @Nested
+    @DisplayName("ifAccessible")
+    class IfAccessible {
+
+        @Nested
+        @DisplayName("with consumer")
+        class WithConsumer {
+
+            @Test
+            @DisplayName("success")
+            @SuppressWarnings("resource")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("access denied")
+            @SuppressWarnings("resource")
+            void testAccessDenied() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\access-denied");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\access-denied"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+                InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.ifAccessible(action));
+                assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+
+                verify(action, never()).accept(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+        }
+
+        @Nested
+        @DisplayName("with function")
+        class WithFunction {
+
+            @Test
+            @DisplayName("success")
+            void testSuccess() {
+                HKEY hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+
+                Function<RegistryKey.Handle, String> action = handle -> "new handle";
+
+                Optional<String> result = registryKey.ifAccessible(action);
+
+                assertEquals(Optional.of("new handle"), result);
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api).RegCloseKey(hKey);
+            }
+
+            @Test
+            @DisplayName("non-existing")
+            @SuppressWarnings("resource")
+            void testNonExisting() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\non-existing"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("access denied")
+            @SuppressWarnings("resource")
+            void testAccessDenied() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\access-denied");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                registryKey.ifAccessible(action);
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\access-denied"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
+
+            @Test
+            @DisplayName("failure")
+            @SuppressWarnings("resource")
+            void testFailure() {
+                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+
+                @SuppressWarnings("unchecked")
+                Function<RegistryKey.Handle, String> action = mock(Function.class);
+
+                InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.ifAccessible(action));
+                assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
+
+                verify(action, never()).apply(any());
+
+                verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq("path\\failure"), anyInt(), anyInt(), any());
+                verify(RegistryKey.api, never()).RegCloseKey(any());
+            }
         }
     }
 

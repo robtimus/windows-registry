@@ -30,12 +30,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -557,10 +560,70 @@ class RootKeyTest extends RegistryKeyTestBase {
         assertTrue(RegistryKey.HKEY_CURRENT_USER.exists());
     }
 
+    @Nested
+    @DisplayName("ifExists")
+    class IfExists {
+
+        @Test
+        @DisplayName("with consumer")
+        void testWithConsumer() {
+            @SuppressWarnings("unchecked")
+            Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+            RegistryKey.HKEY_CURRENT_USER.ifExists(action);
+
+            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+                verify(action).accept(handle);
+            }
+        }
+
+        @Test
+        @DisplayName("with function")
+        void testWithFunction() {
+            Function<RegistryKey.Handle, String> action = handle -> handle.toString();
+
+            Optional<String> result = RegistryKey.HKEY_CURRENT_USER.ifExists(action);
+
+            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+                assertEquals(Optional.of(handle.toString()), result);
+            }
+        }
+    }
+
     @Test
     @DisplayName("isAccessible")
     void testIsAccessible() {
         assertTrue(RegistryKey.HKEY_CURRENT_USER.isAccessible());
+    }
+
+    @Nested
+    @DisplayName("ifAccessible")
+    class IfAccessible {
+
+        @Test
+        @DisplayName("with consumer")
+        void testWithConsumer() {
+            @SuppressWarnings("unchecked")
+            Consumer<RegistryKey.Handle> action = mock(Consumer.class);
+
+            RegistryKey.HKEY_CURRENT_USER.ifAccessible(action);
+
+            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+                verify(action).accept(handle);
+            }
+        }
+
+        @Test
+        @DisplayName("with function")
+        void testWithFunction() {
+            Function<RegistryKey.Handle, String> action = handle -> handle.toString();
+
+            Optional<String> result = RegistryKey.HKEY_CURRENT_USER.ifAccessible(action);
+
+            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+                assertEquals(Optional.of(handle.toString()), result);
+            }
+        }
     }
 
     @Test
