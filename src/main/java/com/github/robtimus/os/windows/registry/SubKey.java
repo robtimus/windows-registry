@@ -239,6 +239,25 @@ final class SubKey extends RegistryKey {
         return new Handle(hKey);
     }
 
+    HKEY createOrOpenKey(HKEY rootHKey, int samDesired, String machineName) {
+        HKEYByReference phkResult = new HKEYByReference();
+
+        int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
+        if (code == WinError.ERROR_SUCCESS) {
+            return phkResult.getValue();
+        }
+        throw RegistryException.forKey(code, path(), machineName);
+    }
+
+    HKEY openKey(HKEY rootHKey, int samDesired, String machineName) {
+        HKEYByReference phkResult = new HKEYByReference();
+        int code = api.RegOpenKeyEx(rootHKey, path, 0, samDesired, phkResult);
+        if (code == WinError.ERROR_SUCCESS) {
+            return phkResult.getValue();
+        }
+        throw RegistryException.forKey(code, path(), machineName);
+    }
+
     // Comparable / Object
 
     @Override
@@ -259,25 +278,6 @@ final class SubKey extends RegistryKey {
         result = 31 * result + root.hashCode();
         result = 31 * result + path.hashCode();
         return result;
-    }
-
-    HKEY openKey(HKEY rootHKey, int samDesired, String machineName) {
-        HKEYByReference phkResult = new HKEYByReference();
-        int code = api.RegOpenKeyEx(rootHKey, path, 0, samDesired, phkResult);
-        if (code == WinError.ERROR_SUCCESS) {
-            return phkResult.getValue();
-        }
-        throw RegistryException.forKey(code, path(), machineName);
-    }
-
-    HKEY createOrOpenKey(HKEY rootHKey, int samDesired, String machineName) {
-        HKEYByReference phkResult = new HKEYByReference();
-
-        int code = api.RegCreateKeyEx(rootHKey, path, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
-        if (code == WinError.ERROR_SUCCESS) {
-            return phkResult.getValue();
-        }
-        throw RegistryException.forKey(code, path(), machineName);
     }
 
     private final class Handle extends RegistryKey.Handle {
