@@ -109,17 +109,23 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
     public Pointer LocalFree(
             Pointer hMem) {
 
-        MemorySegment result = invokeLocalFree(hMem);
+        MemorySegment segment = segment(hMem);
 
-        return result != null && !MemorySegment.NULL.equals(result)
-                ? new Pointer(result)
-                : null;
+        MemorySegment result = invokeLocalFree(segment);
+
+        if (result == null || MemorySegment.NULL.equals(result)) {
+            return null;
+        }
+        if (result.equals(segment)) {
+            return hMem;
+        }
+        throw new IllegalStateException(Messages.Kernel32.localFreeUnexpectedResult(segment, result));
     }
 
-    private MemorySegment invokeLocalFree(Pointer hMem) {
+    private MemorySegment invokeLocalFree(MemorySegment segment) {
         try {
             return (MemorySegment) localFree.invokeExact(
-                    segment(hMem));
+                    segment);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
