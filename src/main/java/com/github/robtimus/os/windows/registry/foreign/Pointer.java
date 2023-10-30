@@ -20,7 +20,7 @@ package com.github.robtimus.os.windows.registry.foreign;
 import java.lang.foreign.MemorySegment;
 
 @SuppressWarnings("javadoc")
-public class Pointer {
+public abstract class Pointer {
 
     private final MemorySegment segment;
 
