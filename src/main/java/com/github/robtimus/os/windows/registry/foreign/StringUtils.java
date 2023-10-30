@@ -67,7 +67,7 @@ public final class StringUtils {
     private static int stringLength(MemorySegment segment, long start) {
         // add offset >= 0 check to guard against overflow
         int length = 0;
-        for (long offset = start; offset < segment.byteSize() && offset >= 0; offset += 2, length++) {
+        for (long offset = start; offset < segment.byteSize() && offset >= 0; offset += CHAR_SIZE, length++) {
             char c = segment.get(CHAR_LAYOUT, offset);
             if (c == 0) {
                 return length;
@@ -77,7 +77,7 @@ public final class StringUtils {
     }
 
     static MemorySegment fromString(String value, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocate(CHAR_SIZE * (value.length() + 1L));
+        MemorySegment segment = allocator.allocateArray(CHAR_LAYOUT, value.length() + 1L);
         copy(value, segment, 0);
         return segment;
     }
@@ -87,7 +87,7 @@ public final class StringUtils {
                 .mapToLong(value -> value.length() + 1L)
                 .sum();
 
-        MemorySegment segment = allocator.allocate(CHAR_SIZE * charCount);
+        MemorySegment segment = allocator.allocateArray(CHAR_LAYOUT, charCount);
 
         long offset = 0;
         for (String value : values) {
