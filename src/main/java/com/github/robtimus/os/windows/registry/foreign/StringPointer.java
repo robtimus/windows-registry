@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import java.lang.foreign.AddressLayout;
+import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
@@ -64,8 +65,8 @@ public final class StringPointer extends Pointer {
         }
 
         public StringPointer value(int length) {
-            MemorySegment segment = segment().get(ValueLayout.ADDRESS, 0);
-            segment = segment.reinterpret(StringUtils.CHAR_SIZE * (length + 1L));
+            AddressLayout layout = ValueLayout.ADDRESS.withTargetLayout(MemoryLayout.sequenceLayout(length + 1L, ValueLayout.JAVA_CHAR));
+            MemorySegment segment = segment().get(layout, 0);
             return new StringPointer(segment);
         }
     }
