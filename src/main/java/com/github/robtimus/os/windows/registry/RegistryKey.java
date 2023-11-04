@@ -791,13 +791,10 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         }
     }
 
-    static Cleaner.Cleanable closeOnClean(Object object, HKEY hKey, Arena allocator, String path, String machineName) {
+    static Cleaner.Cleanable closeOnClean(Object object, HKEY hKey, String path, String machineName) {
         // Since this method is static, using a lambda does not capture any state except what's used inside it,
         // and therefore it's safe to use as action
-        return CLEANER.register(object, () -> {
-            closeKey(hKey, path, machineName);
-            allocator.close();
-        });
+        return CLEANER.register(object, () -> closeKey(hKey, path, machineName));
     }
 
     // nested classes
