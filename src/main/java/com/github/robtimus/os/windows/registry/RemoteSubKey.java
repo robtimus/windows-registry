@@ -137,37 +137,27 @@ final class RemoteSubKey extends RegistryKey {
 
     @Override
     Handle handle(int samDesired, boolean create) {
-        @SuppressWarnings("resource")
-        Arena hKeyAllocator = Arena.ofShared();
         try (Arena allocator = Arena.ofConfined()) {
-            HKEY hKey = hKey(samDesired, create, allocator, hKeyAllocator);
-            return new Handle(hKey, hKeyAllocator);
-        } catch (RuntimeException e) {
-            hKeyAllocator.close();
-            throw e;
+            HKEY hKey = hKey(samDesired, create, allocator);
+            return new Handle(hKey);
         }
     }
 
     @Override
     Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
-        @SuppressWarnings("resource")
-        Arena hKeyAllocator = Arena.ofShared();
         try (Arena allocator = Arena.ofConfined()) {
-            HKEY hKey = hKey(samDesired, ignoreError, allocator, hKeyAllocator);
+            HKEY hKey = hKey(samDesired, ignoreError, allocator);
             return Optional.ofNullable(hKey)
-                    .map(hk -> new Handle(hk, hKeyAllocator));
-        } catch (RuntimeException e) {
-            hKeyAllocator.close();
-            throw e;
+                    .map(Handle::new);
         }
     }
 
-    private HKEY hKey(int samDesired, boolean create, SegmentAllocator allocator, SegmentAllocator hKeyAllocator) {
-        return local.hKey(root.hKey(), samDesired, create, allocator, hKeyAllocator, machineName());
+    private HKEY hKey(int samDesired, boolean create, SegmentAllocator allocator) {
+        return local.hKey(root.hKey(), samDesired, create, allocator, machineName());
     }
 
-    private HKEY hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, SegmentAllocator hKeyAllocator) {
-        return local.hKey(root.hKey(), samDesired, ignoreError, allocator, hKeyAllocator, machineName());
+    private HKEY hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator) {
+        return local.hKey(root.hKey(), samDesired, ignoreError, allocator, machineName());
     }
 
     // Comparable / Object
@@ -202,9 +192,9 @@ final class RemoteSubKey extends RegistryKey {
 
         private final Cleaner.Cleanable cleanable;
 
-        private Handle(HKEY hKey, Arena allocator) {
+        private Handle(HKEY hKey) {
             super(hKey);
-            this.cleanable = closeOnClean(this, hKey, allocator, path(), machineName());
+            this.cleanable = closeOnClean(this, hKey, path(), machineName());
         }
 
         @Override

@@ -58,20 +58,15 @@ public abstract class RemoteRegistryKey extends RegistryKey implements AutoClose
          * @throws RegistryException If the connection failed.
          */
         public RemoteRegistryKey at(String machineName) {
-            @SuppressWarnings("resource")
-            Arena hKeyAllocator = Arena.ofShared();
             try (Arena allocator = Arena.ofConfined()) {
                 StringPointer lpMachineName = StringPointer.withValue(machineName, allocator);
-                HKEY.Reference phkResult = HKEY.uninitializedReference(hKeyAllocator);
+                HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
 
                 int code = api.RegConnectRegistry(lpMachineName, rootKey.hKey(), phkResult);
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, rootKey.path(), machineName);
                 }
-                return new RemoteRootKey(machineName, rootKey, phkResult.value(), hKeyAllocator);
-            } catch (RuntimeException e) {
-                hKeyAllocator.close();
-                throw e;
+                return new RemoteRootKey(machineName, rootKey, phkResult.value());
             }
         }
     }
