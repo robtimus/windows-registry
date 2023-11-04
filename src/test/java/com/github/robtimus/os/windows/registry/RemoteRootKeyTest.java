@@ -39,8 +39,6 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
-import java.lang.foreign.Arena;
-import java.lang.foreign.MemorySegment.Scope;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -1139,28 +1137,13 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     Arguments[] equalsArguments() {
         RegistryKey registryKey = remoteRoot;
 
-        // Using ALLOCATOR directly causes errors when attempting to close it.
-        // Therefore, wrap it in an arena that doesn't throw exceptions when closed.
-        Arena allocator = new Arena() {
-
-            @Override
-            public Scope scope() {
-                return ALLOCATOR.scope();
-            }
-
-            @Override
-            public void close() {
-                // don't do anything
-            }
-        };
-
         return new Arguments[] {
                 arguments(registryKey, registryKey, true),
-                arguments(registryKey, new RemoteRootKey("test-machine", RootKey.HKEY_LOCAL_MACHINE, rootHKey, allocator), true),
+                arguments(registryKey, new RemoteRootKey("test-machine", RootKey.HKEY_LOCAL_MACHINE, rootHKey), true),
                 arguments(registryKey, registryKey.resolve(""), true),
                 arguments(registryKey, registryKey.resolve("test"), false),
-                arguments(registryKey, new RemoteRootKey("test-machine2", RootKey.HKEY_LOCAL_MACHINE, rootHKey, allocator), false),
-                arguments(registryKey, new RemoteRootKey("test-machine", RootKey.HKEY_CURRENT_USER, rootHKey, allocator), false),
+                arguments(registryKey, new RemoteRootKey("test-machine2", RootKey.HKEY_LOCAL_MACHINE, rootHKey), false),
+                arguments(registryKey, new RemoteRootKey("test-machine", RootKey.HKEY_CURRENT_USER, rootHKey), false),
                 arguments(registryKey, RegistryKey.HKEY_LOCAL_MACHINE, false),
                 arguments(registryKey, "foo", false),
                 arguments(registryKey, null, false),
