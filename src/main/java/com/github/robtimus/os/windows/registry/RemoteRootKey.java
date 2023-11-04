@@ -17,7 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import java.lang.foreign.Arena;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.function.IntPredicate;
@@ -32,12 +31,12 @@ final class RemoteRootKey extends RemoteRegistryKey {
     private final Handle handle;
     private final Cleaner.Cleanable cleanable;
 
-    RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey, Arena allocator) {
+    RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey) {
         this.machineName = machineName;
         this.rootKey = rootKey;
         this.hKey = hKey;
         this.handle = new Handle();
-        this.cleanable = closeOnClean(this, hKey, allocator, rootKey.name(), machineName);
+        this.cleanable = closeOnClean(this, hKey, rootKey.name(), machineName);
     }
 
     HKEY hKey() {
