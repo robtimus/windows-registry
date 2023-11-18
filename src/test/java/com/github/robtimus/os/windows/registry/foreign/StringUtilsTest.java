@@ -55,27 +55,29 @@ class StringUtilsTest {
         @ValueSource(strings = { "foo", "bar" })
         @EmptySource
         void testNonEmptySegment(String value) {
-            Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
-            memory.setWideString(0, value);
-            byte[] bytes = memory.getByteArray(0, (int) memory.size());
+            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE)) {
+                memory.setWideString(0, value);
+                byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-            MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
 
-            String result = StringUtils.toString(segment);
-            assertEquals(value, result);
+                String result = StringUtils.toString(segment);
+                assertEquals(value, result);
+            }
         }
 
         @Test
         void testMissingTerminator() {
             String value = "foo";
-            Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
-            memory.setWideString(0, value);
-            byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
+            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE)) {
+                memory.setWideString(0, value);
+                byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
 
-            MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
 
-            IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toString(segment));
-            assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
+                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toString(segment));
+                assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
+            }
         }
     }
 
@@ -102,20 +104,21 @@ class StringUtilsTest {
                     + values.size()
                     + 1;
 
-            Memory memory = new Memory(size * Native.WCHAR_SIZE);
-            long offset = 0;
-            for (String value : values) {
-                memory.setWideString(offset, value);
-                offset += (value.length() + 1) * Native.WCHAR_SIZE;
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+                long offset = 0;
+                for (String value : values) {
+                    memory.setWideString(offset, value);
+                    offset += (value.length() + 1) * Native.WCHAR_SIZE;
+                }
+                memory.setWideString(offset, "");
+
+                byte[] bytes = memory.getByteArray(0, (int) memory.size());
+
+                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+
+                List<String> result = StringUtils.toStringList(segment);
+                assertEquals(values, result);
             }
-            memory.setWideString(offset, "");
-
-            byte[] bytes = memory.getByteArray(0, (int) memory.size());
-
-            MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
-
-            List<String> result = StringUtils.toStringList(segment);
-            assertEquals(values, result);
         }
 
         @Test
@@ -129,20 +132,21 @@ class StringUtilsTest {
                     + values.size()
                     + 1;
 
-            Memory memory = new Memory(size * Native.WCHAR_SIZE);
-            long offset = 0;
-            for (String value : values) {
-                memory.setWideString(offset, value);
-                offset += (value.length() + 1) * Native.WCHAR_SIZE;
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+                long offset = 0;
+                for (String value : values) {
+                    memory.setWideString(offset, value);
+                    offset += (value.length() + 1) * Native.WCHAR_SIZE;
+                }
+                memory.setWideString(offset, "");
+
+                byte[] bytes = memory.getByteArray(0, (int) memory.size());
+
+                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+
+                List<String> result = StringUtils.toStringList(segment);
+                assertEquals(values.subList(0, 2), result);
             }
-            memory.setWideString(offset, "");
-
-            byte[] bytes = memory.getByteArray(0, (int) memory.size());
-
-            MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
-
-            List<String> result = StringUtils.toStringList(segment);
-            assertEquals(values.subList(0, 2), result);
         }
 
         @Test
@@ -154,19 +158,20 @@ class StringUtilsTest {
                     .sum()
                     + values.size();
 
-            Memory memory = new Memory(size * Native.WCHAR_SIZE);
-            long offset = 0;
-            for (String value : values) {
-                memory.setWideString(offset, value);
-                offset += (value.length() + 1) * Native.WCHAR_SIZE;
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+                long offset = 0;
+                for (String value : values) {
+                    memory.setWideString(offset, value);
+                    offset += (value.length() + 1) * Native.WCHAR_SIZE;
+                }
+
+                byte[] bytes = memory.getByteArray(0, (int) memory.size());
+
+                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+
+                List<String> result = StringUtils.toStringList(segment);
+                assertEquals(values, result);
             }
-
-            byte[] bytes = memory.getByteArray(0, (int) memory.size());
-
-            MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
-
-            List<String> result = StringUtils.toStringList(segment);
-            assertEquals(values, result);
         }
 
         @Test
@@ -178,19 +183,20 @@ class StringUtilsTest {
                     .sum()
                     + values.size();
 
-            Memory memory = new Memory(size * Native.WCHAR_SIZE);
-            long offset = 0;
-            for (String value : values) {
-                memory.setWideString(offset, value);
-                offset += (value.length() + 1) * Native.WCHAR_SIZE;
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+                long offset = 0;
+                for (String value : values) {
+                    memory.setWideString(offset, value);
+                    offset += (value.length() + 1) * Native.WCHAR_SIZE;
+                }
+
+                byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
+
+                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+
+                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toStringList(segment));
+                assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
             }
-
-            byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
-
-            MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
-
-            IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toStringList(segment));
-            assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
         }
     }
 
@@ -203,12 +209,13 @@ class StringUtilsTest {
 
         byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
-        Memory memory = new Memory(bytes.length);
-        memory.write(0, bytes, 0, bytes.length);
+        try (Memory memory = new Memory(bytes.length)) {
+            memory.write(0, bytes, 0, bytes.length);
 
-        String result = memory.getWideString(0);
+            String result = memory.getWideString(0);
 
-        assertEquals(value, result);
+            assertEquals(value, result);
+        }
     }
 
     @Nested
@@ -225,18 +232,19 @@ class StringUtilsTest {
 
             byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
-            Memory memory = new Memory(bytes.length);
-            memory.write(0, bytes, 0, bytes.length);
+            try (Memory memory = new Memory(bytes.length)) {
+                memory.write(0, bytes, 0, bytes.length);
 
-            List<String> result = new ArrayList<>();
-            long offset = 0;
-            while (offset < memory.size()) {
-                String value = memory.getWideString(offset);
-                result.add(value);
-                offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                List<String> result = new ArrayList<>();
+                long offset = 0;
+                while (offset < memory.size()) {
+                    String value = memory.getWideString(offset);
+                    result.add(value);
+                    offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                }
+
+                assertEquals(expected, result);
             }
-
-            assertEquals(expected, result);
         }
 
         @Test
@@ -249,18 +257,19 @@ class StringUtilsTest {
 
             byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
-            Memory memory = new Memory(bytes.length);
-            memory.write(0, bytes, 0, bytes.length);
+            try (Memory memory = new Memory(bytes.length)) {
+                memory.write(0, bytes, 0, bytes.length);
 
-            List<String> result = new ArrayList<>();
-            long offset = 0;
-            while (offset < memory.size()) {
-                String value = memory.getWideString(offset);
-                result.add(value);
-                offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                List<String> result = new ArrayList<>();
+                long offset = 0;
+                while (offset < memory.size()) {
+                    String value = memory.getWideString(offset);
+                    result.add(value);
+                    offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                }
+
+                assertEquals(expected, result);
             }
-
-            assertEquals(expected, result);
         }
     }
 }
