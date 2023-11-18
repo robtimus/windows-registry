@@ -42,54 +42,57 @@ final class StringUtils {
     }
 
     static String toString(byte[] data, int dataLength) {
-        Memory memory = new Memory((long) dataLength + Native.WCHAR_SIZE);
-        memory.clear();
-        memory.write(0, data, 0, dataLength);
-        return W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
-                ? memory.getWideString(0)
-                : memory.getString(0);
+        try (Memory memory = new Memory((long) dataLength + Native.WCHAR_SIZE)) {
+            memory.clear();
+            memory.write(0, data, 0, dataLength);
+            return W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE
+                    ? memory.getWideString(0)
+                    : memory.getString(0);
+        }
     }
 
     static byte[] fromString(String value) {
-        Memory memory;
         if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-            memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
-            memory.setWideString(0, value);
-        } else {
-            memory = new Memory(value.length() + 1L);
-            memory.setString(0, value);
+            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE)) {
+                memory.setWideString(0, value);
+                return memory.getByteArray(0, (int) memory.size());
+            }
         }
-        return memory.getByteArray(0, (int) memory.size());
+        try (Memory memory = new Memory(value.length() + 1L)) {
+            memory.setString(0, value);
+            return memory.getByteArray(0, (int) memory.size());
+        }
     }
 
     static List<String> toStringList(byte[] data, int dataLength) {
-        Memory memory = new Memory(dataLength + 2L * Native.WCHAR_SIZE);
-        memory.clear();
-        memory.write(0, data, 0, dataLength);
-
         List<String> result = new ArrayList<>();
         int offset = 0;
-        while (offset < memory.size()) {
-            String value;
-            if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-                value = memory.getWideString(offset);
-                offset += value.length() * Native.WCHAR_SIZE;
-                offset += Native.WCHAR_SIZE;
-            } else {
-                value = memory.getString(offset);
-                offset += value.length();
-                offset += 1;
-            }
+        try (Memory memory = new Memory(dataLength + 2L * Native.WCHAR_SIZE)) {
+            memory.clear();
+            memory.write(0, data, 0, dataLength);
 
-            if (value.length() == 0) {
-                // A sequence of null-terminated strings, terminated by an empty string (\0).
-                // => The first empty string terminates the string list
-                break;
-            }
+            while (offset < memory.size()) {
+                String value;
+                if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
+                    value = memory.getWideString(offset);
+                    offset += value.length() * Native.WCHAR_SIZE;
+                    offset += Native.WCHAR_SIZE;
+                } else {
+                    value = memory.getString(offset);
+                    offset += value.length();
+                    offset += 1;
+                }
 
-            result.add(value);
+                if (value.length() == 0) {
+                    // A sequence of null-terminated strings, terminated by an empty string (\0).
+                    // => The first empty string terminates the string list
+                    break;
+                }
+
+                result.add(value);
+            }
+            return Collections.unmodifiableList(result);
         }
-        return Collections.unmodifiableList(result);
     }
 
     static byte[] fromStringList(List<String> values) {
@@ -103,17 +106,18 @@ final class StringUtils {
         size += charwidth;
 
         int offset = 0;
-        Memory memory = new Memory(size);
-        memory.clear();
-        for (String s : values) {
-            if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
-                memory.setWideString(offset, s);
-            } else {
-                memory.setString(offset, s);
+        try (Memory memory = new Memory(size)) {
+            memory.clear();
+            for (String s : values) {
+                if (W32APITypeMapper.DEFAULT == W32APITypeMapper.UNICODE) {
+                    memory.setWideString(offset, s);
+                } else {
+                    memory.setString(offset, s);
+                }
+                offset += s.length() * charwidth;
+                offset += charwidth;
             }
-            offset += s.length() * charwidth;
-            offset += charwidth;
+            return memory.getByteArray(0, size);
         }
-        return memory.getByteArray(0, size);
     }
 }
