@@ -31,12 +31,12 @@ public final class IntPointer extends Pointer {
     }
 
     public static IntPointer withValue(int value, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocate(LAYOUT, value);
+        MemorySegment segment = allocator.allocateFrom(LAYOUT, value);
         return new IntPointer(segment);
     }
 
     public static IntPointer uninitialized(SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocate(LAYOUT, 0);
+        MemorySegment segment = allocator.allocateFrom(LAYOUT, 0);
         return new IntPointer(segment);
     }
 
