@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
+import static java.lang.invoke.MethodHandles.insertCoordinates;
 import java.lang.foreign.AddressLayout;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
@@ -66,12 +67,15 @@ public final class WinDef {
 
     public static final class FILETIME extends Structure {
 
-        static final StructLayout LAYOUT = MemoryLayout.structLayout(
-                ValueLayout.JAVA_INT.withName("dwLowDateTime"), //$NON-NLS-1$
-                ValueLayout.JAVA_INT.withName("dwHighDateTime")); //$NON-NLS-1$
+        private static final String DW_LOW_DATE_TIME_NAME = "dwLowDateTime"; //$NON-NLS-1$
+        private static final String DW_HIGH_DATE_TIME_NAME = "dwHighDateTime"; //$NON-NLS-1$
 
-        private static final VarHandle DW_LOW_DATE_TIME = LAYOUT.varHandle(groupElement("dwLowDateTime")); //$NON-NLS-1$
-        private static final VarHandle DW_HIGH_DATE_TIME = LAYOUT.varHandle(groupElement("dwHighDateTime")); //$NON-NLS-1$
+        static final StructLayout LAYOUT = MemoryLayout.structLayout(
+                ValueLayout.JAVA_INT.withName(DW_LOW_DATE_TIME_NAME),
+                ValueLayout.JAVA_INT.withName(DW_HIGH_DATE_TIME_NAME));
+
+        private static final VarHandle DW_LOW_DATE_TIME = insertCoordinates(LAYOUT.varHandle(groupElement(DW_LOW_DATE_TIME_NAME)), 1, 0L);
+        private static final VarHandle DW_HIGH_DATE_TIME = insertCoordinates(LAYOUT.varHandle(groupElement(DW_HIGH_DATE_TIME_NAME)), 1, 0L);
 
         public FILETIME(SegmentAllocator allocator) {
             super(LAYOUT, allocator);
