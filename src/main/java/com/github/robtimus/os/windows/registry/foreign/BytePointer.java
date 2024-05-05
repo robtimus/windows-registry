@@ -30,22 +30,22 @@ public final class BytePointer extends Pointer {
     }
 
     public static BytePointer unitialized(int size, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocateArray(ValueLayout.JAVA_BYTE, size);
+        MemorySegment segment = allocator.allocate(ValueLayout.JAVA_BYTE, size);
         return new BytePointer(segment);
     }
 
     public static BytePointer withBytes(byte[] bytes, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+        MemorySegment segment = allocator.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
         return new BytePointer(segment);
     }
 
     public static BytePointer withInt(int value, ValueLayout.OfInt layout, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocate(layout, value);
+        MemorySegment segment = allocator.allocateFrom(layout, value);
         return new BytePointer(segment);
     }
 
     public static BytePointer withLong(long value, ValueLayout.OfLong layout, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocate(layout, value);
+        MemorySegment segment = allocator.allocateFrom(layout, value);
         return new BytePointer(segment);
     }
 
