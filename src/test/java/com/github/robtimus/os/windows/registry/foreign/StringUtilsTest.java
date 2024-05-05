@@ -59,7 +59,7 @@ class StringUtilsTest {
                 memory.setWideString(0, value);
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 String result = StringUtils.toString(segment);
                 assertEquals(value, result);
@@ -73,7 +73,7 @@ class StringUtilsTest {
                 memory.setWideString(0, value);
                 byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
 
-                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toString(segment));
                 assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
@@ -114,7 +114,7 @@ class StringUtilsTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 List<String> result = StringUtils.toStringList(segment);
                 assertEquals(values, result);
@@ -142,7 +142,7 @@ class StringUtilsTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 List<String> result = StringUtils.toStringList(segment);
                 assertEquals(values.subList(0, 2), result);
@@ -167,7 +167,7 @@ class StringUtilsTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 List<String> result = StringUtils.toStringList(segment);
                 assertEquals(values, result);
@@ -192,7 +192,7 @@ class StringUtilsTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
 
-                MemorySegment segment = ALLOCATOR.allocateArray(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toStringList(segment));
                 assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());

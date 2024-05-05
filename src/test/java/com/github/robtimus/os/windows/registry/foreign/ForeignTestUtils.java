@@ -42,7 +42,7 @@ public final class ForeignTestUtils {
     }
 
     public static HKEY newHKEY() {
-        MemorySegment segment = ALLOCATOR.allocate(ValueLayout.JAVA_LONG, ++hKeyValue);
+        MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_LONG, ++hKeyValue);
         HKEY hKey = new HKEY(segment);
 
         assertHKEYNotEquals(WinReg.HKEY_CLASSES_ROOT, hKey);

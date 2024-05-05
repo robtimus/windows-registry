@@ -38,7 +38,7 @@ public final class StringPointer extends Pointer {
     }
 
     public static StringPointer uninitialized(int size, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocateArray(StringUtils.CHAR_LAYOUT, size + 1L);
+        MemorySegment segment = allocator.allocate(StringUtils.CHAR_LAYOUT, size + 1L);
         return new StringPointer(segment);
     }
 
