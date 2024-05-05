@@ -26,6 +26,11 @@ import java.util.List;
 @SuppressWarnings("javadoc")
 public final class StringUtils {
 
+    // LPWSTR and LPCWSTR are explicitly 16-bit, see
+    // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/50e9ef83-d6fd-4e22-a34a-2c6b4e3c24f3 and
+    // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/76f10dd8-699d-45e6-a53c-5aefc586da20
+    // That means there's no need to lookup the size for wchar_t
+
     static final ValueLayout.OfChar CHAR_LAYOUT = ValueLayout.JAVA_CHAR;
     static final long CHAR_SIZE = CHAR_LAYOUT.byteSize();
 
@@ -69,7 +74,7 @@ public final class StringUtils {
         int length = 0;
         for (long offset = start; offset < segment.byteSize() && offset >= 0; offset += CHAR_SIZE, length++) {
             char c = segment.get(CHAR_LAYOUT, offset);
-            if (c == 0) {
+            if (c == '\0') {
                 return length;
             }
         }
@@ -77,7 +82,7 @@ public final class StringUtils {
     }
 
     static MemorySegment fromString(String value, SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocateArray(CHAR_LAYOUT, value.length() + 1L);
+        MemorySegment segment = allocator.allocate(CHAR_LAYOUT, value.length() + 1L);
         copy(value, segment, 0);
         return segment;
     }
@@ -87,7 +92,7 @@ public final class StringUtils {
                 .mapToLong(value -> value.length() + 1L)
                 .sum();
 
-        MemorySegment segment = allocator.allocateArray(CHAR_LAYOUT, charCount);
+        MemorySegment segment = allocator.allocate(CHAR_LAYOUT, charCount);
 
         long offset = 0;
         for (String value : values) {
