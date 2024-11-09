@@ -31,4 +31,4 @@ Interaction with the Windows registry is done through the [Foreign Function and 
 
 * Native interaction with the Windows registry instead of using commands like `REG QUERY` provides better performance.
 * Native interaction with the Windows registry instead of piggybacking on Java internal classes like `java.util.Preferences` provides greater compatibility between Java versions.
-* FFM is part of the Java code libraries. There is no need to install any libraries manually. There is not even need to install any runtime dependencies.
+* FFM is part of the Java core libraries. There is no need to install any libraries manually. There is not even need to install any runtime dependencies. However, modular applications will need to add JVM flag `--enable-native-access=com.github.robtimus.os.windows.registry` (or add `com.github.robtimus.os.windows.registry` to any already present `--enable-native-access` module list).
