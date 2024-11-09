@@ -15,7 +15,7 @@ The entry point for accessing the Windows registry is one of the constants of cl
 
 Unlike several other libraries for working with the Windows registry, registry values are not returned as strings. Instead, class [RegistryValue](https://robtimus.github.io/windows-registry/apidocs/com.github.robtimus.os.windows.registry/com/github/robtimus/os/windows/registry/RegistryValue.html) defines several sub classes, one for each of the known registry value types. For instance, [StringValue](https://robtimus.github.io/windows-registry/apidocs/com.github.robtimus.os.windows.registry/com/github/robtimus/os/windows/registry/StringValue.html) is used for string values, [DWordValue](https://robtimus.github.io/windows-registry/apidocs/com.github.robtimus.os.windows.registry/com/github/robtimus/os/windows/registry/DWordValue.html) for DWORD (int) values, etc. This allows you to retrieve and set values using proper types, instead of having to convert everything to and from strings.
 
-In addition to retrieving registry values as instances of `RegistryValue` or a sub class of `RegistryValue`, class `RegistryKey` provides some utility methods to retrieve registry values as string, DWORD (int) or QWORD (int), as these are considered the most used types.
+In addition to retrieving registry values as instances of `RegistryValue` or a sub class of `RegistryValue`, class `RegistryKey` provides some utility methods to retrieve registry values as string, DWORD (int) or QWORD (long), as these are considered the most used types.
 
 ## Handles
 
