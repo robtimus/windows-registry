@@ -355,8 +355,9 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
             StringPointer lpSubKeyName,
             StringPointer lpNewKeyName) {
 
+        MethodHandle regRenameKeyHandle = regRenameKey.orElseThrow(UnsupportedOperationException::new);
         try {
-            return (int) regRenameKey.orElseThrow(UnsupportedOperationException::new).invokeExact(
+            return (int) regRenameKeyHandle.invokeExact(
                     hKey.segment(),
                     segment(lpSubKeyName),
                     lpNewKeyName.segment());
