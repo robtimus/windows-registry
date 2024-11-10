@@ -183,7 +183,7 @@ class RegistryIT {
             queryKey(registryKey).assertSubKeys("subKey", "sub key");
 
             // Traverse with sub keys last
-            List<RegistryKey> allKeys = registryKey.traverse().collect(Collectors.toList());
+            List<RegistryKey> allKeys = registryKey.traverse().toList();
             assertThat(allKeys, containsInAnyOrder(registryKey, subKey1, subKey2));
             assertEquals(registryKey, allKeys.get(0));
 
@@ -200,7 +200,7 @@ class RegistryIT {
 
             registryKey.traverse(TraverseOption.SUB_KEYS_FIRST)
                     // don't delete immediately, as that has unspecified effects on the stream, as documented
-                    .collect(Collectors.toList())
+                    .toList()
                     .stream()
                     .forEach(RegistryKey::delete);
 
@@ -292,7 +292,7 @@ class RegistryIT {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\rename");
             registryKey.createIfNotExists();
 
-            List<String> subKeys = Arrays.asList("subKey1", "subKey2", "subKey3");
+            List<String> subKeys = List.of("subKey1", "subKey2", "subKey3");
             subKeys.forEach(s -> registryKey.resolve(s).create());
 
             registryKey.setValue(StringValue.of("string", "test"));
@@ -403,17 +403,17 @@ class RegistryIT {
 
         List<String> lines = Pattern.compile("\r?\n").splitAsStream(output)
                 .filter(s -> !s.trim().isEmpty())
-                .collect(Collectors.toList());
+                .toList();
 
         List<ValueInfo> values = lines.stream()
                 .filter(s -> Character.isWhitespace(s.charAt(0)))
                 .map(ValueInfo::new)
-                .collect(Collectors.toList());
+                .toList();
 
         List<String> subKeys = lines.stream()
                 .filter(s -> s.startsWith(path + "\\"))
                 .map(s -> s.substring(path.length() + 1))
-                .collect(Collectors.toList());
+                .toList();
 
         return new KeyInfo(values, subKeys);
     }
