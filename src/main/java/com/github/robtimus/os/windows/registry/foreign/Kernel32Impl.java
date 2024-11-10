@@ -31,6 +31,7 @@ final class Kernel32Impl implements Kernel32 {
     private final MethodHandle expandEnvironmentStrings;
     private final MethodHandle formatMessage;
     private final MethodHandle localFree;
+    private final MethodHandle closeHandle;
 
     @SuppressWarnings("nls")
     Kernel32Impl() {
@@ -55,6 +56,10 @@ final class Kernel32Impl implements Kernel32 {
 
         localFree = functionMethodHandle(linker, symbolLookup, "LocalFree", FunctionDescriptor.of(ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS), // hMem
+                CaptureState.LINKER_OPTION);
+
+        closeHandle = functionMethodHandle(linker, symbolLookup, "CloseHandle", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN,
+                ValueLayout.ADDRESS), // hObject
                 CaptureState.LINKER_OPTION);
     }
 
@@ -123,6 +128,20 @@ final class Kernel32Impl implements Kernel32 {
             return (MemorySegment) localFree.invokeExact(
                     captureState,
                     segment);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public boolean CloseHandle(
+            MemorySegment hObject,
+            MemorySegment captureState) {
+
+        try {
+            return (boolean) closeHandle.invokeExact(
+                    captureState,
+                    hObject);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
