@@ -65,6 +65,7 @@
     <version.java>25</version.java>
 
     <version.jna>5.13.0</version.jna>
+    <version.mockito>5.17.0</version.mockito>
   </properties>
 
   <dependencies>
@@ -110,6 +111,7 @@
           <configuration>
             <excludePackageNames>com.github.robtimus.os.windows.registry.foreign</excludePackageNames>
             <release>${version.java}</release>
+            <additionalOptions>--enable-preview</additionalOptions>
           </configuration>
         </plugin>
       </plugins>
@@ -119,6 +121,11 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
+        <configuration>
+          <compilerArgs>
+            <arg>--enable-preview</arg>
+          </compilerArgs>
+        </configuration>
       </plugin>
 
       <plugin>
@@ -225,6 +232,7 @@
             -javaagent:${org.mockito:mockito-core:jar}
             <!-- Allow JUnit to access the test classes -->
             --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
+            --enable-preview
           </argLine>
         </configuration>
       </plugin>
@@ -322,6 +330,7 @@
               <argLine>
                 @{argLine}
                 --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
+                --enable-preview
               </argLine>
               <testSourceDirectory>${basedir}/src/it/java</testSourceDirectory>
             </configuration>
