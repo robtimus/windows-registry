@@ -24,18 +24,23 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Optional;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HANDLE;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY.Reference;
 
 final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     private final MethodHandle regCloseKey;
     private final MethodHandle regConnectRegistry;
     private final MethodHandle regCreateKeyEx;
+    private final Optional<MethodHandle> regCreateKeyTransacted;
     private final MethodHandle regDeleteKey;
+    private final Optional<MethodHandle> regDeleteKeyTransacted;
     private final MethodHandle regDeleteValue;
     private final MethodHandle regEnumKeyEx;
     private final MethodHandle regEnumValue;
     private final MethodHandle regOpenKeyEx;
+    private final Optional<MethodHandle> regOpenKeyTransacted;
     private final MethodHandle regQueryInfoKey;
     private final MethodHandle regQueryValueEx;
     private final Optional<MethodHandle> regRenameKey;
@@ -65,9 +70,32 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
                 ValueLayout.ADDRESS, // phkResult
                 ValueLayout.ADDRESS); // lpdwDisposition
 
+        // RegCreateKeyTransactedW does not work before Windows Vista / Windows Server 2008
+        regCreateKeyTransacted = optionalFunctionMethodHandle(linker, symbolLookup, "RegCreateKeyTransactedW", ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.JAVA_INT, // dwOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS, // lpSecurityAttributes
+                ValueLayout.ADDRESS, // phkResult
+                ValueLayout.ADDRESS, // lpdwDisposition
+                ValueLayout.ADDRESS, // hTransaction
+                ValueLayout.ADDRESS); // pExtendedParemeter
+
         regDeleteKey = functionMethodHandle(linker, symbolLookup, "RegDeleteKeyW", ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS); // lpSubKey
+
+        // RegDeleteKeyTransactedW does not work before Windows Vista / Windows Server 2008
+        regDeleteKeyTransacted = optionalFunctionMethodHandle(linker, symbolLookup, "RegDeleteKeyTransactedW", ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.ADDRESS, // hTransaction
+                ValueLayout.ADDRESS); // pExtendedParemeter
 
         regDeleteValue = functionMethodHandle(linker, symbolLookup, "RegDeleteValueW", ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
@@ -99,6 +127,16 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
                 ValueLayout.JAVA_INT, // ulOptions
                 ValueLayout.JAVA_INT, // samDesired
                 ValueLayout.ADDRESS); // phkResult
+
+        // RegOpenKeyTransactedW does not work before Windows Vista / Windows Server 2008
+        regOpenKeyTransacted = optionalFunctionMethodHandle(linker, symbolLookup, "RegOpenKeyTransactedW", ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // ulOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS, // phkResult
+                ValueLayout.ADDRESS, // hTransaction
+                ValueLayout.ADDRESS); // pExtendedParemeter
 
         regQueryInfoKey = functionMethodHandle(linker, symbolLookup, "RegQueryInfoKeyW", ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
@@ -194,6 +232,44 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
     }
 
     @Override
+    public int RegCreateKeyTransacted(
+            HKEY hKey,
+            StringPointer lpSubKey,
+            int Reserved, // NOSONAR
+            StringPointer lpClass,
+            int dwOptions,
+            int samDesired,
+            NullPointer lpSecurityAttributes,
+            Reference phkResult,
+            IntPointer lpdwDisposition,
+            HANDLE hTransaction,
+            NullPointer pExtendedParemeter) {
+
+        MethodHandle regCreateKeyTransactedHandle = regCreateKeyTransacted.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regCreateKeyTransactedHandle.invokeExact(
+                    hKey.segment(),
+                    lpSubKey.segment(),
+                    Reserved,
+                    segment(lpClass),
+                    dwOptions,
+                    samDesired,
+                    segment(lpSecurityAttributes),
+                    phkResult.segment(),
+                    segment(lpdwDisposition),
+                    hTransaction.segment(),
+                    segment(pExtendedParemeter));
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public boolean isRegCreateKeyTransactedEnabled() {
+        return regCreateKeyTransacted.isPresent();
+    }
+
+    @Override
     public int RegDeleteKey(
             HKEY hKey,
             StringPointer lpSubKey) {
@@ -205,6 +281,34 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Override
+    public int RegDeleteKeyTransacted(
+            HKEY hKey,
+            StringPointer lpSubKey,
+            int samDesired,
+            int Reserved, // NOSONAR
+            HANDLE hTransaction,
+            NullPointer pExtendedParameter) {
+
+        MethodHandle regDeleteKeyTransactedHandle = regDeleteKeyTransacted.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regDeleteKeyTransactedHandle.invokeExact(
+                    hKey.segment(),
+                    lpSubKey.segment(),
+                    samDesired,
+                    Reserved,
+                    hTransaction.segment(),
+                    segment(pExtendedParameter));
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public boolean isRegDeleteKeyTransactedEnabled() {
+        return regDeleteKeyTransacted.isPresent();
     }
 
     @Override
@@ -291,6 +395,36 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
+    }
+
+    @Override
+    public int RegOpenKeyTransacted(
+            HKEY hKey,
+            StringPointer lpSubKey,
+            int ulOptions,
+            int samDesired,
+            Reference phkResult,
+            HANDLE hTransaction,
+            NullPointer pExtendedParemeter) {
+
+        MethodHandle regOpenKeyTransactedHandle = regOpenKeyTransacted.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regOpenKeyTransactedHandle.invokeExact(
+                    hKey.segment(),
+                    segment(lpSubKey),
+                    ulOptions,
+                    samDesired,
+                    phkResult.segment(),
+                    hTransaction.segment(),
+                    segment(pExtendedParemeter));
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public boolean isRegOpenKeyTransactedEnabled() {
+        return regOpenKeyTransacted.isPresent();
     }
 
     @Override

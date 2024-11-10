@@ -145,7 +145,7 @@ final class SubKey extends RegistryKey {
         StringPointer lpSubKey = StringPointer.withValue(path, allocator);
         HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
 
-        int code = api.RegOpenKeyEx(rootHKey, lpSubKey, 0, WinNT.KEY_READ, phkResult);
+        int code = currentContext().openKey(rootHKey, lpSubKey, 0, WinNT.KEY_READ, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             closeKey(phkResult.value(), path(), machineName);
         }
@@ -181,7 +181,7 @@ final class SubKey extends RegistryKey {
         HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
         IntPointer lpdwDisposition = IntPointer.uninitialized(allocator);
 
-        int code = api.RegCreateKeyEx(rootHKey, lpSubKey, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
+        int code = currentContext().createKey(rootHKey, lpSubKey, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, phkResult, lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
             closeKey(phkResult.value(), path(), machineName);
             return lpdwDisposition.value();
@@ -229,7 +229,7 @@ final class SubKey extends RegistryKey {
     void delete(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
         StringPointer lpSubKey = StringPointer.withValue(path, allocator);
 
-        int code = api.RegDeleteKey(rootHKey, lpSubKey);
+        int code = currentContext().deleteKey(rootHKey, lpSubKey);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path(), machineName);
         }
@@ -245,7 +245,7 @@ final class SubKey extends RegistryKey {
     boolean deleteIfExists(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
         StringPointer lpSubKey = StringPointer.withValue(path, allocator);
 
-        int code = api.RegDeleteKey(rootHKey, lpSubKey);
+        int code = currentContext().deleteKey(rootHKey, lpSubKey);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
         }
@@ -296,7 +296,7 @@ final class SubKey extends RegistryKey {
         StringPointer lpSubKey = StringPointer.withValue(path, allocator);
         HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
 
-        int code = api.RegCreateKeyEx(rootHKey, lpSubKey, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
+        int code = currentContext().createKey(rootHKey, lpSubKey, WinNT.REG_OPTION_NON_VOLATILE, samDesired, phkResult, null);
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.value();
         }
@@ -307,7 +307,7 @@ final class SubKey extends RegistryKey {
         StringPointer lpSubKey = StringPointer.withValue(path, allocator);
         HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
 
-        int code = api.RegOpenKeyEx(rootHKey, lpSubKey, 0, samDesired, phkResult);
+        int code = currentContext().openKey(rootHKey, lpSubKey, 0, samDesired, phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             return phkResult.value();
         }

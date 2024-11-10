@@ -23,6 +23,7 @@ import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HANDLE;
 
 final class Kernel32Impl extends ApiImpl implements Kernel32 {
 
@@ -30,6 +31,7 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
     private final MethodHandle formatMessage;
     private final MethodHandle getLastError;
     private final MethodHandle localFree;
+    private final MethodHandle closeHandle;
 
     @SuppressWarnings("nls")
     Kernel32Impl() {
@@ -54,6 +56,9 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
 
         localFree = functionMethodHandle(linker, symbolLookup, "LocalFree", ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS); // hMem
+
+        closeHandle = functionMethodHandle(linker, symbolLookup, "CloseHandle", ValueLayout.JAVA_BOOLEAN,
+                ValueLayout.ADDRESS); // hObject
     }
 
     @Override
@@ -126,6 +131,18 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
         try {
             return (MemorySegment) localFree.invokeExact(
                     segment);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    @Override
+    public boolean CloseHandle(
+            HANDLE hObject) {
+
+        try {
+            return (boolean) closeHandle.invokeExact(
+                    hObject.segment());
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }

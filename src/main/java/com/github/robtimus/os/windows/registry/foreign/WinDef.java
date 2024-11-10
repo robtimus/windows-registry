@@ -33,6 +33,19 @@ public final class WinDef {
     private WinDef() {
     }
 
+    public static final class HANDLE extends Pointer {
+
+        static final AddressLayout LAYOUT = ValueLayout.ADDRESS;
+
+        HANDLE(MemorySegment segment) {
+            super(segment.asReadOnly());
+        }
+
+        public boolean isInvalid() {
+            return segment().address() == -1;
+        }
+    }
+
     public static final class HKEY extends Pointer {
 
         static final AddressLayout LAYOUT = ValueLayout.ADDRESS;

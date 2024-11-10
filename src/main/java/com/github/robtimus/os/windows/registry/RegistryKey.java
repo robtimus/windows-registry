@@ -44,6 +44,7 @@ import com.github.robtimus.os.windows.registry.foreign.IntPointer;
 import com.github.robtimus.os.windows.registry.foreign.StringPointer;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY.Reference;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
@@ -73,6 +74,10 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     // Non-private non-final to allow replacing for testing
     static Advapi32 api = Advapi32.INSTANCE;
+
+    private static final ScopedValue<Context> CONTEXT = ScopedValue.newInstance();
+
+    private static final Context.NonTransactional NO_TRANSACTION = new Context.NonTransactional();
 
     private static final Cleaner CLEANER = Cleaner.create();
 
@@ -782,6 +787,41 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         return path();
     }
 
+    // transactional
+
+    /**
+     * Returns a context for running actions inside a transactions.
+     *
+     * @return A context for running actions inside a transactions.
+     * @since 2.0
+     */
+    public static TransactionalContext transactional() {
+        return new TransactionalContext();
+    }
+
+    /**
+     * Returns a context for running actions without any transaction.
+     * This method can be used inside a {@link #transactional() transactional context} to temporarily disable transactions.
+     *
+     * @return A context for running actions without any transaction.
+     * @since 2.0
+     */
+    public static NonTransactionalContext nonTransactional() {
+        return new NonTransactionalContext();
+    }
+
+    static Context currentContext() {
+        return CONTEXT.orElse(NO_TRANSACTION);
+    }
+
+    static <R, X extends Throwable> R callWithTransaction(Transaction transaction, TransactionalContext.Callable<R, X> action) throws X {
+        return ScopedValue.where(CONTEXT, new Context.Transactional(transaction)).call(() -> action.call(transaction));
+    }
+
+    static <R, X extends Throwable> R callWithoutTransaction(NonTransactionalContext.Callable<R, X> action) throws X {
+        return ScopedValue.where(CONTEXT, NO_TRANSACTION).call(action::call);
+    }
+
     // utility
 
     static void closeKey(HKEY hKey, String path, String machineName) {
@@ -1386,6 +1426,107 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         HandleOption(int samDesired) {
             this.samDesired = samDesired;
+        }
+    }
+
+    abstract static class Context {
+
+        abstract int createKey(
+                HKEY hKey,
+                StringPointer lpSubKey,
+                int dwOptions,
+                int samDesired,
+                Reference phkResult,
+                IntPointer lpdwDisposition);
+
+        abstract int deleteKey(
+                HKEY hKey,
+                StringPointer lpSubKey);
+
+        abstract int openKey(
+                HKEY hKey,
+                StringPointer lpSubKey,
+                int ulOptions,
+                int samDesired,
+                Reference phkResult);
+
+        private static final class Transactional extends Context {
+
+            private final Transaction transaction;
+
+            private Transactional(Transaction transaction) {
+                this.transaction = transaction;
+            }
+
+            @Override
+            int createKey(
+                    HKEY hKey,
+                    StringPointer lpSubKey,
+                    int dwOptions,
+                    int samDesired,
+                    Reference phkResult,
+                    IntPointer lpdwDisposition) {
+
+                return api.RegCreateKeyTransacted(hKey, lpSubKey, 0, null, dwOptions, samDesired, null, phkResult, lpdwDisposition,
+                        transaction.handle(), null);
+            }
+
+            @Override
+            int deleteKey(
+                    HKEY hKey,
+                    StringPointer lpSubKey) {
+
+                // TODO: check samDesired
+                return api.RegDeleteKeyTransacted(hKey, lpSubKey, 0, 0, transaction.handle(), null);
+            }
+
+            @Override
+            int openKey(
+                    HKEY hKey,
+                    StringPointer lpSubKey,
+                    int ulOptions,
+                    int samDesired,
+                    Reference phkResult) {
+
+                return api.RegOpenKeyTransacted(hKey, lpSubKey, ulOptions, samDesired, phkResult, transaction.handle(), null);
+            }
+        }
+
+        static final class NonTransactional extends Context {
+
+            private NonTransactional() {
+            }
+
+            @Override
+            int createKey(
+                    HKEY hKey,
+                    StringPointer lpSubKey,
+                    int dwOptions,
+                    int samDesired,
+                    Reference phkResult,
+                    IntPointer lpdwDisposition) {
+
+                return api.RegCreateKeyEx(hKey, lpSubKey, 0, null, dwOptions, samDesired, null, phkResult, lpdwDisposition);
+            }
+
+            @Override
+            int deleteKey(
+                    HKEY hKey,
+                    StringPointer lpSubKey) {
+
+                return api.RegDeleteKey(hKey, lpSubKey);
+            }
+
+            @Override
+            int openKey(
+                    HKEY hKey,
+                    StringPointer lpSubKey,
+                    int ulOptions,
+                    int samDesired,
+                    Reference phkResult) {
+
+                return api.RegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+            }
         }
     }
 }

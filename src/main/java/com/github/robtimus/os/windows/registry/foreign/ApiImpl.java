@@ -17,6 +17,8 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import java.lang.System.Logger.Level;
+import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
@@ -28,6 +30,15 @@ import java.util.Optional;
 abstract class ApiImpl {
 
     ApiImpl() {
+    }
+
+    static Optional<SymbolLookup> optionalSymbolLookup(String name, Arena arena) {
+        try {
+            return Optional.of(SymbolLookup.libraryLookup(name, arena));
+        } catch (IllegalArgumentException e) {
+            System.getLogger("windows-registry").log(Level.WARNING, e.getMessage()); //$NON-NLS-1$
+            return Optional.empty();
+        }
     }
 
     static MethodHandle functionMethodHandle(Linker linker, SymbolLookup symbolLookup,
@@ -42,6 +53,12 @@ abstract class ApiImpl {
 
         return symbolLookup.find(name)
                 .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(returnLayout, argumentLayouts)));
+    }
+
+    static Optional<MethodHandle> optionalFunctionMethodHandle(Linker linker, Optional<SymbolLookup> symbolLookup,
+            String name, MemoryLayout returnLayout, MemoryLayout... argumentLayouts) {
+
+        return symbolLookup.flatMap(lookup -> optionalFunctionMethodHandle(linker, lookup, name, returnLayout, argumentLayouts));
     }
 
     static MemorySegment segment(Pointer pointer) {

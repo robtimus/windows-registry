@@ -37,6 +37,10 @@ public final class StringPointer extends Pointer {
         return new StringPointer(segment);
     }
 
+    public static StringPointer withNullableValue(String value, SegmentAllocator allocator) {
+        return value == null ? null : withValue(value, allocator);
+    }
+
     public static StringPointer uninitialized(int size, SegmentAllocator allocator) {
         MemorySegment segment = allocator.allocate(StringUtils.CHAR_LAYOUT, size + 1L);
         return new StringPointer(segment);

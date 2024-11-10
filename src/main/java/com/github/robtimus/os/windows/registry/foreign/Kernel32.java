@@ -17,6 +17,8 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HANDLE;
+
 @SuppressWarnings("javadoc")
 public interface Kernel32 {
 
@@ -40,4 +42,7 @@ public interface Kernel32 {
 
     Pointer LocalFree/* NOSONAR */(
             Pointer hMem);
+
+    boolean CloseHandle/* NOSONAR */(
+            HANDLE hObject);
 }

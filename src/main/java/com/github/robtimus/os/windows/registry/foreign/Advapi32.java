@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
+import com.github.robtimus.os.windows.registry.foreign.WinDef.HANDLE;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
 @SuppressWarnings("javadoc")
@@ -44,9 +45,34 @@ public interface Advapi32 {
             HKEY.Reference phkResult,
             IntPointer lpdwDisposition);
 
+    int RegCreateKeyTransacted/* NOSONAR */(
+            HKEY hKey,
+            StringPointer lpSubKey,
+            int Reserved, // NOSONAR
+            StringPointer lpClass,
+            int dwOptions,
+            int samDesired,
+            NullPointer /* SECURITY_ATTRIBUTES */ lpSecurityAttributes, // no need to implement SECURITY_ATTRIBUTES as they are never used
+            HKEY.Reference phkResult,
+            IntPointer lpdwDisposition,
+            HANDLE hTransaction,
+            NullPointer pExtendedParemeter); // force to be null
+
+    boolean isRegCreateKeyTransactedEnabled();
+
     int RegDeleteKey/* NOSONAR */(
             HKEY hKey,
             StringPointer lpSubKey);
+
+    int RegDeleteKeyTransacted/* NOSONAR */(
+            HKEY hKey,
+            StringPointer lpSubKey,
+            int samDesired,
+            int Reserved, // NOSONAR
+            HANDLE hTransaction,
+            NullPointer pExtendedParameter); // force to be null
+
+    boolean isRegDeleteKeyTransactedEnabled();
 
     int RegDeleteValue/* NOSONAR */(
             HKEY hKey,
@@ -78,6 +104,17 @@ public interface Advapi32 {
             int ulOptions,
             int samDesired,
             HKEY.Reference phkResult);
+
+    int RegOpenKeyTransacted/* NOSONAR */(
+            HKEY hKey,
+            StringPointer lpSubKey,
+            int ulOptions,
+            int samDesired,
+            HKEY.Reference phkResult,
+            HANDLE hTransaction,
+            NullPointer pExtendedParemeter); // force to be null
+
+    boolean isRegOpenKeyTransactedEnabled();
 
     int RegQueryInfoKey/* NOSONAR */(
             HKEY hKey,
