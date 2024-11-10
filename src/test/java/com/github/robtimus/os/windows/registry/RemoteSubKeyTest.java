@@ -48,8 +48,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.Function;
-import java.util.stream.Collector;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -175,9 +173,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
-                List<RegistryKey> subKeys = stream.collect(Collectors.toList());
+                List<RegistryKey> subKeys = stream.toList();
 
-                List<RegistryKey> expected = Arrays.asList(
+                List<RegistryKey> expected = List.of(
                         registryKey.resolve("child1"),
                         registryKey.resolve("child2"),
                         registryKey.resolve("child3")
@@ -259,8 +257,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
-                Collector<RegistryKey, ?, ?> collector = Collectors.toList();
-                NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> stream.collect(collector));
+                NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, stream::toList);
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
                 assertEquals("test-machine", exception.machineName());
             }
@@ -279,9 +276,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testMaxDepthIsZero() {
             RegistryKey registryKey = remoteRoot.resolve("path");
             try (Stream<RegistryKey> stream = registryKey.traverse(0)) {
-                List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+                List<RegistryKey> registryKeys = stream.toList();
 
-                List<RegistryKey> expected = Arrays.asList(registryKey);
+                List<RegistryKey> expected = List.of(registryKey);
 
                 assertEquals(expected, registryKeys);
             }
@@ -303,9 +300,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(1, RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
-                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+                    List<RegistryKey> registryKeys = stream.toList();
 
-                    List<RegistryKey> expected = Arrays.asList(
+                    List<RegistryKey> expected = List.of(
                             registryKey.resolve("subKey1"),
                             registryKey.resolve("subKey2"),
                             registryKey.resolve("subKey3"),
@@ -330,9 +327,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(1)) {
-                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+                    List<RegistryKey> registryKeys = stream.toList();
 
-                    List<RegistryKey> expected = Arrays.asList(
+                    List<RegistryKey> expected = List.of(
                             registryKey,
                             registryKey.resolve("subKey1"),
                             registryKey.resolve("subKey2"),
@@ -386,9 +383,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
-                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+                    List<RegistryKey> registryKeys = stream.toList();
 
-                    List<RegistryKey> expected = Arrays.asList(
+                    List<RegistryKey> expected = List.of(
                             registryKey.resolve("subKey1\\subKey11"),
                             registryKey.resolve("subKey1\\subKey12"),
                             registryKey.resolve("subKey1\\subKey13"),
@@ -470,9 +467,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(Integer.MAX_VALUE)) {
-                    List<RegistryKey> registryKeys = stream.collect(Collectors.toList());
+                    List<RegistryKey> registryKeys = stream.toList();
 
-                    List<RegistryKey> expected = Arrays.asList(
+                    List<RegistryKey> expected = List.of(
                             registryKey,
                             registryKey.resolve("subKey1"),
                             registryKey.resolve("subKey1\\subKey11"),
@@ -551,9 +548,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 try (Stream<RegistryValue> stream = registryKey.values()) {
-                    List<RegistryValue> values = stream.collect(Collectors.toList());
+                    List<RegistryValue> values = stream.toList();
 
-                    List<RegistryValue> expected = Arrays.asList(stringValue, binaryValue, wordValue);
+                    List<RegistryValue> expected = List.of(stringValue, binaryValue, wordValue);
 
                     assertEquals(expected, values);
                 }
@@ -576,9 +573,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.contains("i"));
                 try (Stream<RegistryValue> stream = registryKey.values(filter)) {
-                    List<RegistryValue> values = stream.collect(Collectors.toList());
+                    List<RegistryValue> values = stream.toList();
 
-                    List<RegistryValue> expected = Arrays.asList(stringValue, binaryValue);
+                    List<RegistryValue> expected = List.of(stringValue, binaryValue);
 
                     assertEquals(expected, values);
                 }
@@ -601,9 +598,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 RegistryValue.Filter filter = RegistryValue.filter().strings().words();
                 try (Stream<RegistryValue> stream = registryKey.values(filter)) {
-                    List<RegistryValue> values = stream.collect(Collectors.toList());
+                    List<RegistryValue> values = stream.toList();
 
-                    List<RegistryValue> expected = Arrays.asList(stringValue, wordValue);
+                    List<RegistryValue> expected = List.of(stringValue, wordValue);
 
                     assertEquals(expected, values);
                 }
@@ -731,8 +728,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             try (Stream<RegistryValue> stream = registryKey.values()) {
-                Collector<RegistryValue, ?, ?> collector = Collectors.toList();
-                NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> stream.collect(collector));
+                NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, stream::toList);
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
                 assertEquals("test-machine", exception.machineName());
             }
@@ -1999,7 +1995,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         );
         registryKeys.sort(null);
 
-        List<RegistryKey> expected = Arrays.asList(
+        List<RegistryKey> expected = List.of(
                 RegistryKey.HKEY_CURRENT_USER,
                 RegistryKey.HKEY_CURRENT_USER.resolve("Software"),
                 RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
