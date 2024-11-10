@@ -47,94 +47,94 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
         SymbolLookup symbolLookup = SymbolLookup.libraryLookup("Advapi32", ARENA);
 
         regCloseKey = functionMethodHandle(linker, symbolLookup, "RegCloseKey", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS); // hKey
+                ValueLayout.ADDRESS); // hKey
 
         regConnectRegistry = functionMethodHandle(linker, symbolLookup, "RegConnectRegistryW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // lpMachineName
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS); // phkResult
+                ValueLayout.ADDRESS, // lpMachineName
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS); // phkResult
 
         regCreateKeyEx = functionMethodHandle(linker, symbolLookup, "RegCreateKeyExW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS, // lpSubKey
-                        ValueLayout.JAVA_INT, // Reserved
-                        ValueLayout.ADDRESS, // lpClass
-                        ValueLayout.JAVA_INT, // dwOptions
-                        ValueLayout.JAVA_INT, // samDesired
-                        ValueLayout.ADDRESS, // lpSecurityAttributes
-                        ValueLayout.ADDRESS, // phkResult
-                        ValueLayout.ADDRESS); // lpdwDisposition
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.JAVA_INT, // dwOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS, // lpSecurityAttributes
+                ValueLayout.ADDRESS, // phkResult
+                ValueLayout.ADDRESS); // lpdwDisposition
 
         regDeleteKey = functionMethodHandle(linker, symbolLookup, "RegDeleteKeyW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS); // lpSubKey
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS); // lpSubKey
 
         regDeleteValue = functionMethodHandle(linker, symbolLookup, "RegDeleteValueW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS); // lpValueName
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS); // lpValueName
 
         regEnumKeyEx = functionMethodHandle(linker, symbolLookup, "RegEnumKeyExW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.JAVA_INT, // dwIndex
-                        ValueLayout.ADDRESS, // lpName
-                        ValueLayout.ADDRESS, // lpcchName
-                        ValueLayout.ADDRESS, // lpReserved
-                        ValueLayout.ADDRESS, // lpClass
-                        ValueLayout.ADDRESS, // lpcchClass
-                        ValueLayout.ADDRESS); // lpftLastWriteTime
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.JAVA_INT, // dwIndex
+                ValueLayout.ADDRESS, // lpName
+                ValueLayout.ADDRESS, // lpcchName
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.ADDRESS, // lpcchClass
+                ValueLayout.ADDRESS); // lpftLastWriteTime
 
         regEnumValue = functionMethodHandle(linker, symbolLookup, "RegEnumValueW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.JAVA_INT, // dwIndex
-                        ValueLayout.ADDRESS, // lpValueName
-                        ValueLayout.ADDRESS, // lpcchValueName
-                        ValueLayout.ADDRESS, // lpReserved
-                        ValueLayout.ADDRESS, // lpType
-                        ValueLayout.ADDRESS, // lpData
-                        ValueLayout.ADDRESS); // lpcbData
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.JAVA_INT, // dwIndex
+                ValueLayout.ADDRESS, // lpValueName
+                ValueLayout.ADDRESS, // lpcchValueName
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpType
+                ValueLayout.ADDRESS, // lpData
+                ValueLayout.ADDRESS); // lpcbData
 
         regOpenKeyEx = functionMethodHandle(linker, symbolLookup, "RegOpenKeyExW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS, // lpSubKey
-                        ValueLayout.JAVA_INT, // ulOptions
-                        ValueLayout.JAVA_INT, // samDesired
-                        ValueLayout.ADDRESS); // phkResult
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // ulOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS); // phkResult
 
         regQueryInfoKey = functionMethodHandle(linker, symbolLookup, "RegQueryInfoKeyW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS, // lpClass
-                        ValueLayout.ADDRESS, // lpcchClass
-                        ValueLayout.ADDRESS, // lpReserved
-                        ValueLayout.ADDRESS, // lpcSubKeys
-                        ValueLayout.ADDRESS, // lpcbMaxSubKeyLen
-                        ValueLayout.ADDRESS, // lpcbMaxClassLen
-                        ValueLayout.ADDRESS, // lpcValues
-                        ValueLayout.ADDRESS, // lpcbMaxValueNameLen
-                        ValueLayout.ADDRESS, // lpcbMaxValueLen
-                        ValueLayout.ADDRESS, // lpcbSecurityDescriptor
-                        ValueLayout.ADDRESS); // lpftLastWriteTime
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.ADDRESS, // lpcchClass
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpcSubKeys
+                ValueLayout.ADDRESS, // lpcbMaxSubKeyLen
+                ValueLayout.ADDRESS, // lpcbMaxClassLen
+                ValueLayout.ADDRESS, // lpcValues
+                ValueLayout.ADDRESS, // lpcbMaxValueNameLen
+                ValueLayout.ADDRESS, // lpcbMaxValueLen
+                ValueLayout.ADDRESS, // lpcbSecurityDescriptor
+                ValueLayout.ADDRESS); // lpftLastWriteTime
 
         regQueryValueEx = functionMethodHandle(linker, symbolLookup, "RegQueryValueExW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS, // lpValueName
-                        ValueLayout.ADDRESS, // lpReserved
-                        ValueLayout.ADDRESS, // lpType
-                        ValueLayout.ADDRESS, // lpData
-                        ValueLayout.ADDRESS); // lpcbData
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpValueName
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpType
+                ValueLayout.ADDRESS, // lpData
+                ValueLayout.ADDRESS); // lpcbData
 
         // RegRenameKey does not work before Windows Vista / Windows Server 2008
         regRenameKey = optionalFunctionMethodHandle(linker, symbolLookup, "RegRenameKey", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS, // lpSubKeyName
-                        ValueLayout.ADDRESS); // lpNewKeyName
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKeyName
+                ValueLayout.ADDRESS); // lpNewKeyName
 
         regSetValueEx = functionMethodHandle(linker, symbolLookup, "RegSetValueExW", ValueLayout.JAVA_INT,
-                        ValueLayout.ADDRESS, // hKey
-                        ValueLayout.ADDRESS, // lpValueName
-                        ValueLayout.JAVA_INT, // Reserved
-                        ValueLayout.JAVA_INT, // dwType
-                        ValueLayout.ADDRESS, // lpData
-                        ValueLayout.JAVA_INT); // cbData
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpValueName
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.JAVA_INT, // dwType
+                ValueLayout.ADDRESS, // lpData
+                ValueLayout.JAVA_INT); // cbData
     }
 
     @Override
