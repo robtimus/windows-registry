@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry;
 
 import com.github.robtimus.os.windows.registry.foreign.Advapi32;
+import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 
 /**
  * An enumeration over optional registry features.
@@ -27,8 +28,23 @@ import com.github.robtimus.os.windows.registry.foreign.Advapi32;
  */
 public enum RegistryFeature {
 
-    /** {@link RegistryKey#renameTo(String) Renaming} registry keys. */
+    /**
+     * {@link RegistryKey#renameTo(String) Renaming} registry keys.
+     */
     RENAME_KEY(Advapi32.INSTANCE.isRegRenameKeyEnabled()),
+
+    /**
+     * {@link Transaction transactions}.
+     *
+     * @since 2.0
+     */
+    TRANSACTIONS(Advapi32.INSTANCE.isRegCreateKeyTransactedEnabled()
+            && Advapi32.INSTANCE.isRegDeleteKeyTransactedEnabled()
+            && Advapi32.INSTANCE.isRegOpenKeyTransactedEnabled()
+            && KtmW32.INSTANCE.isCreateTransactionEnabled()
+            && KtmW32.INSTANCE.isCommitTransactionEnabled()
+            && KtmW32.INSTANCE.isRollbackTransactionEnabled()
+            && KtmW32.INSTANCE.isGetTransactionInformationEnabled()),
     ;
 
     private final boolean enabled;

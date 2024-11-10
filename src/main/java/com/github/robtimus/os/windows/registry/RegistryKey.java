@@ -78,6 +78,10 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
     // Non-private non-final to allow replacing for testing
     static Advapi32 api = Advapi32.INSTANCE;
 
+    private static final ScopedValue<Context> CONTEXT = ScopedValue.newInstance();
+
+    private static final Context.NonTransactional NO_TRANSACTION = new Context.NonTransactional();
+
     private static final Cleaner CLEANER = Cleaner.create();
 
     static final Instant FILETIME_BASE = ZonedDateTime.of(1601, 1, 1, 0, 0, 0, 0, ZoneOffset.UTC).toInstant();
@@ -786,6 +790,41 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         return path();
     }
 
+    // transactional
+
+    /**
+     * Returns a context for running actions inside a transactions.
+     *
+     * @return A context for running actions inside a transactions.
+     * @since 2.0
+     */
+    public static TransactionalContext transactional() {
+        return new TransactionalContext();
+    }
+
+    /**
+     * Returns a context for running actions without any transaction.
+     * This method can be used inside a {@link #transactional() transactional context} to temporarily disable transactions.
+     *
+     * @return A context for running actions without any transaction.
+     * @since 2.0
+     */
+    public static NonTransactionalContext nonTransactional() {
+        return new NonTransactionalContext();
+    }
+
+    static Context currentContext() {
+        return CONTEXT.orElse(NO_TRANSACTION);
+    }
+
+    static <R, X extends Throwable> R callWithTransaction(Transaction transaction, TransactionalContext.Callable<R, X> action) throws X {
+        return ScopedValue.where(CONTEXT, new Context.Transactional(transaction)).call(() -> action.call(transaction));
+    }
+
+    static <R, X extends Throwable> R callWithoutTransaction(NonTransactionalContext.Callable<R, X> action) throws X {
+        return ScopedValue.where(CONTEXT, NO_TRANSACTION).call(action::call);
+    }
+
     // utility
 
     static void closeKey(MemorySegment hKey, String path, String machineName) {
@@ -1484,6 +1523,139 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         HandleOption(int samDesired) {
             this.samDesired = samDesired;
+        }
+    }
+
+    abstract static class Context {
+
+        abstract int createKey(
+                MemorySegment hKey,
+                MemorySegment lpSubKey,
+                int dwOptions,
+                int samDesired,
+                MemorySegment phkResult,
+                MemorySegment lpdwDisposition);
+
+        abstract int deleteKey(
+                MemorySegment hKey,
+                MemorySegment lpSubKey);
+
+        abstract int openKey(
+                MemorySegment hKey,
+                MemorySegment lpSubKey,
+                int ulOptions,
+                int samDesired,
+                MemorySegment phkResult);
+
+        private static final class Transactional extends Context {
+
+            private final Transaction transaction;
+
+            private Transactional(Transaction transaction) {
+                this.transaction = transaction;
+            }
+
+            @Override
+            int createKey(
+                    MemorySegment hKey,
+                    MemorySegment lpSubKey,
+                    int dwOptions,
+                    int samDesired,
+                    MemorySegment phkResult,
+                    MemorySegment lpdwDisposition) {
+
+                return api.RegCreateKeyTransacted(
+                        hKey,
+                        lpSubKey,
+                        0,
+                        MemorySegment.NULL,
+                        dwOptions,
+                        samDesired,
+                        MemorySegment.NULL,
+                        phkResult,
+                        lpdwDisposition,
+                        transaction.handle(),
+                        MemorySegment.NULL);
+            }
+
+            @Override
+            int deleteKey(
+                    MemorySegment hKey,
+                    MemorySegment lpSubKey) {
+
+                // TODO: check samDesired
+                return api.RegDeleteKeyTransacted(
+                        hKey,
+                        lpSubKey,
+                        0,
+                        0,
+                        transaction.handle(),
+                        MemorySegment.NULL);
+            }
+
+            @Override
+            int openKey(
+                    MemorySegment hKey,
+                    MemorySegment lpSubKey,
+                    int ulOptions,
+                    int samDesired,
+                    MemorySegment phkResult) {
+
+                return api.RegOpenKeyTransacted(
+                        hKey,
+                        lpSubKey,
+                        ulOptions,
+                        samDesired,
+                        phkResult,
+                        transaction.handle(),
+                        MemorySegment.NULL);
+            }
+        }
+
+        static final class NonTransactional extends Context {
+
+            private NonTransactional() {
+            }
+
+            @Override
+            int createKey(
+                    MemorySegment hKey,
+                    MemorySegment lpSubKey,
+                    int dwOptions,
+                    int samDesired,
+                    MemorySegment phkResult,
+                    MemorySegment lpdwDisposition) {
+
+                return api.RegCreateKeyEx(
+                        hKey,
+                        lpSubKey,
+                        0,
+                        MemorySegment.NULL,
+                        dwOptions,
+                        samDesired,
+                        MemorySegment.NULL,
+                        phkResult,
+                        lpdwDisposition);
+            }
+
+            @Override
+            int deleteKey(
+                    MemorySegment hKey,
+                    MemorySegment lpSubKey) {
+
+                return api.RegDeleteKey(hKey, lpSubKey);
+            }
+
+            @Override
+            int openKey(
+                    MemorySegment hKey,
+                    MemorySegment lpSubKey,
+                    int ulOptions,
+                    int samDesired,
+                    MemorySegment phkResult) {
+
+                return api.RegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+            }
         }
     }
 }
