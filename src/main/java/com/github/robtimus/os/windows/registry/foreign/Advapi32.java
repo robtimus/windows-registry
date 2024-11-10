@@ -45,9 +45,34 @@ public interface Advapi32 {
             /* PHKEY */ MemorySegment phkResult,
             /* LPDWORD */ MemorySegment lpdwDisposition);
 
+    /* LSTATUS */ int RegCreateKeyTransacted/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKey,
+            /* DWORD */ int Reserved, // NOSONAR
+            /* LPWSTR */ MemorySegment lpClass,
+            /* DWORD */ int dwOptions,
+            /* REGSAM */ int samDesired,
+            /* const LPSECURITY_ATTRIBUTES */ MemorySegment lpSecurityAttributes,
+            /* PHKEY */ MemorySegment phkResult,
+            /* LPDWORD */ MemorySegment lpdwDisposition,
+            /* HANDLE */ MemorySegment hTransaction,
+            /* PVOID */ MemorySegment pExtendedParemeter);
+
+    boolean isRegCreateKeyTransactedEnabled();
+
     /* LSTATUS */ int RegDeleteKey/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey);
+
+    /* LSTATUS */ int RegDeleteKeyTransacted/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKey,
+            /* REGSAM */ int samDesired,
+            /* DWORD */ int Reserved, // NOSONAR
+            /* HANDLE */ MemorySegment hTransaction,
+            /* PVOID */ MemorySegment pExtendedParameter);
+
+    boolean isRegDeleteKeyTransactedEnabled();
 
     /* LSTATUS */ int RegDeleteValue/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
@@ -79,6 +104,17 @@ public interface Advapi32 {
             /* DWORD */ int ulOptions,
             /* REGSAM */ int samDesired,
             /* PHKEY */ MemorySegment phkResult);
+
+    /* LSTATUS */ int RegOpenKeyTransacted/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKey,
+            /* DWORD */ int ulOptions,
+            /* REGSAM */ int samDesired,
+            /* PHKEY */ MemorySegment phkResult,
+            /* HANDLE */ MemorySegment hTransaction,
+            /* PVOID */ MemorySegment pExtendedParemeter);
+
+    boolean isRegOpenKeyTransactedEnabled();
 
     /* LSTATUS */ int RegQueryInfoKey/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
