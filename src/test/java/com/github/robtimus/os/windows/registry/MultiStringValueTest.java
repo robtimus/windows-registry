@@ -25,7 +25,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import java.util.Arrays;
+import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -50,7 +50,7 @@ class MultiStringValueTest {
         void testFromString() {
             MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
-            assertEquals(Arrays.asList(VALUE1, VALUE2, VALUE3), value.values());
+            assertEquals(List.of(VALUE1, VALUE2, VALUE3), value.values());
         }
 
         @Test
@@ -59,7 +59,7 @@ class MultiStringValueTest {
             BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
             MultiStringValue value = new MultiStringValue("test", data, data.size());
 
-            assertEquals(Arrays.asList(VALUE1, VALUE2, VALUE3), value.values());
+            assertEquals(List.of(VALUE1, VALUE2, VALUE3), value.values());
         }
     }
 
@@ -135,7 +135,7 @@ class MultiStringValueTest {
 
             assertNotEquals(value, otherValue);
             assertEquals(value.name(), otherValue.name());
-            assertEquals(Arrays.asList(VALUE3, VALUE2, VALUE1), otherValue.values());
+            assertEquals(List.of(VALUE3, VALUE2, VALUE1), otherValue.values());
         }
 
         @Test
