@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import java.lang.System.Logger.Level;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -35,6 +36,15 @@ public final class ForeignUtils {
     private ForeignUtils() {
     }
 
+    static Optional<SymbolLookup> optionalSymbolLookup(String name, Arena arena) {
+        try {
+            return Optional.of(SymbolLookup.libraryLookup(name, arena));
+        } catch (IllegalArgumentException e) {
+            System.getLogger("windows-registry").log(Level.WARNING, e.getMessage()); //$NON-NLS-1$
+            return Optional.empty();
+        }
+    }
+
     static MethodHandle functionMethodHandle(Linker linker, SymbolLookup symbolLookup, String name,
             FunctionDescriptor function, Linker.Option... options) {
 
@@ -47,6 +57,12 @@ public final class ForeignUtils {
 
         return symbolLookup.find(name)
                 .map(address -> linker.downcallHandle(address, function, options));
+    }
+
+    static Optional<MethodHandle> optionalFunctionMethodHandle(Linker linker, Optional<SymbolLookup> symbolLookup, String name,
+            FunctionDescriptor function, Linker.Option... options) {
+
+        return symbolLookup.flatMap(lookup -> optionalFunctionMethodHandle(linker, lookup, name, function, options));
     }
 
     public static MemorySegment allocateBytes(SegmentAllocator allocator, byte[] bytes) {

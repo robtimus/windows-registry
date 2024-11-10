@@ -33,6 +33,16 @@ public final class WinDef {
     private WinDef() {
     }
 
+    public static final class HANDLE {
+
+        private HANDLE() {
+        }
+
+        public static boolean isInvalid(MemorySegment segment) {
+            return segment.address() == -1;
+        }
+    }
+
     public static final class HKEY {
 
         private static final AddressLayout LAYOUT = ValueLayout.ADDRESS;

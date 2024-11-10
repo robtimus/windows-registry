@@ -57,4 +57,14 @@ public final class WinNT {
 
     private WinNT() {
     }
+
+    public static final class TRANSACTION_OUTCOME { // NOSONAR
+
+        public static final int TransactionOutcomeUndetermined = 1; // NOSONAR
+        public static final int TransactionOutcomeCommitted = 2; // NOSONAR
+        public static final int TransactionOutcomeAborted = 3; // NOSONAR
+
+        private TRANSACTION_OUTCOME() {
+        }
+    }
 }

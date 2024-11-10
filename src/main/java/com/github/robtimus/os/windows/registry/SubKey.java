@@ -147,7 +147,8 @@ final class SubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = api.RegOpenKeyEx(rootHKey,
+        int code = currentContext().openKey(
+                rootHKey,
                 lpSubKey,
                 0,
                 WinNT.KEY_READ,
@@ -187,14 +188,11 @@ final class SubKey extends RegistryKey {
         MemorySegment phkResult = HKEY.allocateRef(allocator);
         MemorySegment lpdwDisposition = allocateInt(allocator);
 
-        int code = api.RegCreateKeyEx(
+        int code = currentContext().createKey(
                 rootHKey,
                 lpSubKey,
-                0,
-                MemorySegment.NULL,
                 WinNT.REG_OPTION_NON_VOLATILE,
                 WinNT.KEY_READ,
-                MemorySegment.NULL,
                 phkResult,
                 lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
@@ -244,7 +242,7 @@ final class SubKey extends RegistryKey {
     void delete(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
-        int code = api.RegDeleteKey(rootHKey, lpSubKey);
+        int code = currentContext().deleteKey(rootHKey, lpSubKey);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path(), machineName);
         }
@@ -260,7 +258,7 @@ final class SubKey extends RegistryKey {
     boolean deleteIfExists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
-        int code = api.RegDeleteKey(rootHKey, lpSubKey);
+        int code = currentContext().deleteKey(rootHKey, lpSubKey);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
         }
@@ -311,14 +309,11 @@ final class SubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = api.RegCreateKeyEx(
+        int code = currentContext().createKey(
                 rootHKey,
                 lpSubKey,
-                0,
-                MemorySegment.NULL,
                 WinNT.REG_OPTION_NON_VOLATILE,
                 samDesired,
-                MemorySegment.NULL,
                 phkResult,
                 MemorySegment.NULL);
         if (code == WinError.ERROR_SUCCESS) {
@@ -331,7 +326,7 @@ final class SubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = api.RegOpenKeyEx(
+        int code = currentContext().openKey(
                 rootHKey,
                 lpSubKey,
                 0,

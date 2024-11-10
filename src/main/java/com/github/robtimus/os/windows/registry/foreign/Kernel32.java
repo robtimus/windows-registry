@@ -45,4 +45,8 @@ public interface Kernel32 {
     /* HLOCAL */ MemorySegment LocalFree/* NOSONAR */(
             /* HLOCAL */ MemorySegment hMem,
             MemorySegment captureState);
+
+    /* BOOL */ boolean CloseHandle/* NOSONAR */(
+            /* HANDLE */ MemorySegment hObject,
+            MemorySegment captureState);
 }

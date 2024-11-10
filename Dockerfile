@@ -1,6 +1,7 @@
 # escape=`
 
-FROM mcr.microsoft.com/windows/nanoserver:20H2
+# nanoserver doesn't support KtmW32
+FROM mcr.microsoft.com/windows/servercore:ltsc2022
 RUN mkdir C:\tools `
     && mkdir C:\tools\java `
     && curl -L --output C:\tools\java\jdk.zip https://github.com/adoptium/temurin25-binaries/releases/download/jdk-25%2B36/OpenJDK25U-jdk_x64_windows_hotspot_25_36.zip `
@@ -12,6 +13,7 @@ RUN mkdir C:\tools `
     && del C:\tools\maven\maven.zip
 ENV JAVA_HOME=C:\tools\java\jdk-25+36
 ENV MAVEN_HOME=C:\tools\maven\apache-maven-3.9.11
+USER ContainerUser
 # Use setx instead of ENV to append to the current value; ${PATH} etc don't seem to work
 RUN setx PATH "%PATH%;%JAVA_HOME%\bin;%MAVEN_HOME%\bin"
 
