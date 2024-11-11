@@ -106,6 +106,10 @@ public final class TransactionalContext {
     public <R, X extends Throwable> R call(Callable<? extends R, X> action) throws X {
         Objects.requireNonNull(action);
 
+        if (!RegistryFeature.TRANSACTIONS.isEnabled()) {
+            throw new UnsupportedOperationException(Messages.RegistryFeature.notEnabled(RegistryFeature.TRANSACTIONS));
+        }
+
         // Transaction cannot implement AutoCloseable because that would require the close method to be public,
         // so create an AutoCloseable wrapper around it
         final class CloseableTransaction implements AutoCloseable {
