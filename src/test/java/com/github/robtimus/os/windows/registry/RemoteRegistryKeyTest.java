@@ -52,7 +52,7 @@ class RemoteRegistryKeyTest extends RegistryKeyTestBase {
             void testSuccess() {
                 HKEY hKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
 
-                try (RemoteRegistryKey registryKey = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine")) {
+                try (RemoteRegistryKey _ = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine")) {
                     // No need to do anything
                 }
 
