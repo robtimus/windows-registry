@@ -572,7 +572,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("with function")
         void testWithFunction() {
-            Function<RegistryKey.Handle, String> action = handle -> handle.toString();
+            Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
             Optional<String> result = RegistryKey.HKEY_CURRENT_USER.ifExists(action);
 
@@ -608,7 +608,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("with function")
         void testWithFunction() {
-            Function<RegistryKey.Handle, String> action = handle -> handle.toString();
+            Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
             Optional<String> result = RegistryKey.HKEY_CURRENT_USER.ifAccessible(action);
 
@@ -669,7 +669,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testNoArguments() {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle handle = registryKey.handle()) {
+                try (RegistryKey.Handle _ = registryKey.handle()) {
                     // Do nothing
                 }
             });
@@ -680,7 +680,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testWithCreate() {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
+                try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                     // Do nothing
                 }
             });
@@ -691,7 +691,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testWithManageValues() {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
+                try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                     // Do nothing
                 }
             });
@@ -702,7 +702,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testWithCreateAndManageValues() {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
+                try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                     // Do nothing
                 }
             });
