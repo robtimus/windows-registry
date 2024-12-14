@@ -1223,7 +1223,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\existing");
 
-                Function<RegistryKey.Handle, String> action = handle -> "new handle";
+                Function<RegistryKey.Handle, String> action = _ -> "new handle";
 
                 Optional<String> result = registryKey.ifExists(action);
 
@@ -1428,7 +1428,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\existing");
 
-                Function<RegistryKey.Handle, String> action = handle -> "new handle";
+                Function<RegistryKey.Handle, String> action = _ -> "new handle";
 
                 Optional<String> result = registryKey.ifAccessible(action);
 
@@ -1831,7 +1831,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle handle = registryKey.handle()) {
+            try (RegistryKey.Handle _ = registryKey.handle()) {
                 // Do nothing
             }
 
@@ -1855,7 +1855,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
+            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                 // Do nothing
             }
 
@@ -1871,7 +1871,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             HKEY hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
+            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
 
@@ -1896,7 +1896,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle handle = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
+            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
 

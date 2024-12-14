@@ -22,7 +22,6 @@ import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.nio.charset.StandardCharsets;
@@ -1126,16 +1125,16 @@ final class RegistryValueTest {
         void testSeparateClasses() {
             RegistryValue value = DWordValue.of("name", 0);
             switch (value) {
-                case BinaryValue v -> assertNotNull(v);
-                case DWordValue v -> assertNotNull(v);
-                case FullResourceDescriptorValue v -> assertNotNull(v);
-                case LinkValue v -> assertNotNull(v);
-                case MultiStringValue v -> assertNotNull(v);
-                case NoneValue v -> assertNotNull(v);
-                case QWordValue v -> assertNotNull(v);
-                case ResourceListValue v -> assertNotNull(v);
-                case ResourceRequirementsListValue v -> assertNotNull(v);
-                case StringValue v -> assertNotNull(v);
+                case BinaryValue v -> assertInstanceOf(BinaryValue.class, v);
+                case DWordValue v -> assertInstanceOf(DWordValue.class, v);
+                case FullResourceDescriptorValue v -> assertInstanceOf(FullResourceDescriptorValue.class, v);
+                case LinkValue v -> assertInstanceOf(LinkValue.class, v);
+                case MultiStringValue v -> assertInstanceOf(MultiStringValue.class, v);
+                case NoneValue v -> assertInstanceOf(NoneValue.class, v);
+                case QWordValue v -> assertInstanceOf(QWordValue.class, v);
+                case ResourceListValue v -> assertInstanceOf(ResourceListValue.class, v);
+                case ResourceRequirementsListValue v -> assertInstanceOf(ResourceRequirementsListValue.class, v);
+                case StringValue v -> assertInstanceOf(StringValue.class, v);
             }
         }
 
@@ -1143,22 +1142,22 @@ final class RegistryValueTest {
         void testWithSettableRegistryValue() {
             RegistryValue value = DWordValue.of("name", 0);
             switch (value) {
-                case FullResourceDescriptorValue v -> assertNotNull(v);
-                case LinkValue v -> assertNotNull(v);
-                case NoneValue v -> assertNotNull(v);
-                case ResourceListValue v -> assertNotNull(v);
-                case ResourceRequirementsListValue v -> assertNotNull(v);
+                case FullResourceDescriptorValue v -> assertInstanceOf(FullResourceDescriptorValue.class, v);
+                case LinkValue v -> assertInstanceOf(LinkValue.class, v);
+                case NoneValue v -> assertInstanceOf(NoneValue.class, v);
+                case ResourceListValue v -> assertInstanceOf(ResourceListValue.class, v);
+                case ResourceRequirementsListValue v -> assertInstanceOf(ResourceRequirementsListValue.class, v);
                 case SettableRegistryValue v -> testSettableRegistryValue(v);
             }
         }
 
         private void testSettableRegistryValue(SettableRegistryValue value) {
             switch (value) {
-                case BinaryValue v -> assertNotNull(v);
-                case DWordValue v -> assertNotNull(v);
-                case MultiStringValue v -> assertNotNull(v);
-                case QWordValue v -> assertNotNull(v);
-                case StringValue v -> assertNotNull(v);
+                case BinaryValue v -> assertInstanceOf(BinaryValue.class, v);
+                case DWordValue v -> assertInstanceOf(DWordValue.class, v);
+                case MultiStringValue v -> assertInstanceOf(MultiStringValue.class, v);
+                case QWordValue v -> assertInstanceOf(QWordValue.class, v);
+                case StringValue v -> assertInstanceOf(StringValue.class, v);
             }
         }
     }

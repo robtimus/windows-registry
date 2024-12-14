@@ -285,7 +285,7 @@ final class SubKey extends RegistryKey {
     HKEY hKey(HKEY rootHKEY, int samDesired, boolean create, SegmentAllocator allocator, String machineName) {
         return create
                 ? createOrOpenKey(rootHKEY, samDesired, allocator, machineName)
-                : openKey(rootHKEY, samDesired, error -> false, allocator, machineName);
+                : openKey(rootHKEY, samDesired, _ -> false, allocator, machineName);
     }
 
     HKEY hKey(HKEY rootHKEY, int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, String machineName) {

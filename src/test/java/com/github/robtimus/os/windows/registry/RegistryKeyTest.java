@@ -478,7 +478,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
                 }).when(RegistryKey.api).RegQueryInfoKey(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-                try (RegistryKey.Handle handle = registryKey.handle()) {
+                try (RegistryKey.Handle _ = registryKey.handle()) {
                     assertEquals(RegistryKey.FILETIME_BASE, registryKey.lastWriteTime());
                 }
             }
