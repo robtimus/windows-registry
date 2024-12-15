@@ -25,6 +25,8 @@ public interface Advapi32 {
 
     Advapi32 INSTANCE = new Advapi32Impl();
 
+    // The following functions all return any error and do not require GetLastError() to be called; CaptureState is therefore not needed
+
     int RegCloseKey/* NOSONAR */(
             HKEY hKey);
 
