@@ -18,7 +18,10 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -38,14 +41,27 @@ class Kernel32UtilsTest {
         assertEquals(expected, result);
     }
 
-    @ParameterizedTest
     @DisplayName("formatMessage")
-    @ValueSource(ints = { WinError.ERROR_SUCCESS, WinError.ERROR_ACCESS_DENIED, WinError.ERROR_ALREADY_EXISTS })
-    void testFormatMessage(int code) {
-        String result = Kernel32Utils.formatMessage(code);
+    @Nested
+    class FormatMessage {
 
-        String expected = Kernel32Util.formatMessage(code);
+        @ParameterizedTest
+        @DisplayName("success")
+        @ValueSource(ints = { WinError.ERROR_SUCCESS, WinError.ERROR_ACCESS_DENIED, WinError.ERROR_ALREADY_EXISTS })
+        void testFormatMessage(int code) {
+            String result = Kernel32Utils.formatMessage(code);
 
-        assertEquals(expected, result);
+            String expected = Kernel32Util.formatMessage(code);
+
+            assertEquals(expected, result);
+        }
+
+        @Test
+        @DisplayName("unknown code")
+        void testFormatMessageWithError() {
+            IllegalStateException exception = assertThrows(IllegalStateException.class, () -> Kernel32Utils.formatMessage(-1));
+            // 317 is ERROR_MR_MID_NOT_FOUND: The system cannot find message text for message number 0x%1 in the message file for %2.
+            assertEquals(Messages.Kernel32.formatMessageError(-1, 317), exception.getMessage());
+        }
     }
 }

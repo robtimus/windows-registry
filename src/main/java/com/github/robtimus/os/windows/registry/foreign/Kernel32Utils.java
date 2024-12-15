@@ -32,17 +32,18 @@ public final class Kernel32Utils {
 
         try (Arena allocator = Arena.ofConfined()) {
             StringPointer lpSrc = StringPointer.withValue(input, allocator);
+            CaptureState captureState = CaptureState.allocate(allocator);
 
-            int result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc, null, 0);
+            int result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc, null, 0, captureState);
             if (result == 0) {
-                throw new IllegalStateException(formatMessage(result));
+                throw new IllegalStateException(formatMessage(captureState.getLastError()));
             }
 
             StringPointer lpDst = StringPointer.uninitialized(result, allocator);
 
-            result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc, lpDst, result);
+            result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc, lpDst, result, captureState);
             if (result == 0) {
-                throw new IllegalStateException(formatMessage(result));
+                throw new IllegalStateException(formatMessage(captureState.getLastError()));
             }
 
             return lpDst.value();
@@ -54,10 +55,11 @@ public final class Kernel32Utils {
             int dwFlags = WinBase.FORMAT_MESSAGE_ALLOCATE_BUFFER | WinBase.FORMAT_MESSAGE_FROM_SYSTEM | WinBase.FORMAT_MESSAGE_IGNORE_INSERTS;
             int dwLanguageId = 0;
             StringPointer.Reference lpBuffer = StringPointer.uninitializedReference(allocator);
+            CaptureState captureState = CaptureState.allocate(allocator);
 
-            int result = Kernel32.INSTANCE.FormatMessage(dwFlags, null, code, dwLanguageId, lpBuffer, 0, null);
+            int result = Kernel32.INSTANCE.FormatMessage(dwFlags, null, code, dwLanguageId, lpBuffer, 0, null, captureState);
             if (result == 0) {
-                throw new IllegalStateException(Messages.Kernel32.formatMessageError(code, result));
+                throw new IllegalStateException(Messages.Kernel32.formatMessageError(code, captureState.getLastError()));
             }
 
             StringPointer pointer = lpBuffer.value(result);
@@ -66,14 +68,14 @@ public final class Kernel32Utils {
                         .value()
                         .strip();
             } finally {
-                free(pointer);
+                free(pointer, captureState);
             }
         }
     }
 
-    private static void free(StringPointer pointer) {
-        if (Kernel32.INSTANCE.LocalFree(pointer) != null) {
-            throw new IllegalStateException(Messages.Kernel32.localFreeError(Kernel32.INSTANCE.GetLastError()));
+    private static void free(StringPointer pointer, CaptureState captureState) {
+        if (Kernel32.INSTANCE.LocalFree(pointer, captureState) != null) {
+            throw new IllegalStateException(Messages.Kernel32.localFreeError(captureState.getLastError()));
         }
     }
 }

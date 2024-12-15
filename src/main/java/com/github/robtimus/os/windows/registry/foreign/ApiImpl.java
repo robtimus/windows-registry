@@ -19,7 +19,6 @@ package com.github.robtimus.os.windows.registry.foreign;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
-import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.invoke.MethodHandle;
@@ -30,18 +29,18 @@ abstract class ApiImpl {
     ApiImpl() {
     }
 
-    static MethodHandle functionMethodHandle(Linker linker, SymbolLookup symbolLookup,
-            String name, MemoryLayout returnLayout, MemoryLayout... argumentLayouts) {
+    static MethodHandle functionMethodHandle(Linker linker, SymbolLookup symbolLookup, String name,
+            FunctionDescriptor function, Linker.Option... options) {
 
-        return optionalFunctionMethodHandle(linker, symbolLookup, name, returnLayout, argumentLayouts)
+        return optionalFunctionMethodHandle(linker, symbolLookup, name, function, options)
                 .orElseThrow(() -> new IllegalStateException(Messages.ApiImpl.functionNotFound(name)));
     }
 
-    static Optional<MethodHandle> optionalFunctionMethodHandle(Linker linker, SymbolLookup symbolLookup,
-            String name, MemoryLayout returnLayout, MemoryLayout... argumentLayouts) {
+    static Optional<MethodHandle> optionalFunctionMethodHandle(Linker linker, SymbolLookup symbolLookup, String name,
+            FunctionDescriptor function, Linker.Option... options) {
 
         return symbolLookup.find(name)
-                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(returnLayout, argumentLayouts)));
+                .map(address -> linker.downcallHandle(address, function, options));
     }
 
     static MemorySegment segment(Pointer pointer) {

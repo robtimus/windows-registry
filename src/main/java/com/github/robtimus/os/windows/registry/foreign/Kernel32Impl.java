@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
+import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
@@ -28,7 +29,6 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
 
     private final MethodHandle expandEnvironmentStrings;
     private final MethodHandle formatMessage;
-    private final MethodHandle getLastError;
     private final MethodHandle localFree;
 
     @SuppressWarnings("nls")
@@ -36,34 +36,37 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
         Linker linker = Linker.nativeLinker();
         SymbolLookup symbolLookup = SymbolLookup.libraryLookup("Kernel32", ARENA);
 
-        expandEnvironmentStrings = functionMethodHandle(linker, symbolLookup, "ExpandEnvironmentStringsW", ValueLayout.JAVA_INT,
+        expandEnvironmentStrings = functionMethodHandle(linker, symbolLookup, "ExpandEnvironmentStringsW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // lpSrc
                 ValueLayout.ADDRESS, // lpDst
-                ValueLayout.JAVA_INT); // nSize
+                ValueLayout.JAVA_INT), // nSize
+                CaptureState.LINKER_OPTION);
 
-        formatMessage = functionMethodHandle(linker, symbolLookup, "FormatMessageW", ValueLayout.JAVA_INT,
+        formatMessage = functionMethodHandle(linker, symbolLookup, "FormatMessageW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.JAVA_INT, // dwFlags
                 ValueLayout.ADDRESS, // lpSource
                 ValueLayout.JAVA_INT, // dwMessageId
                 ValueLayout.JAVA_INT, // dwLanguageId
                 ValueLayout.ADDRESS, // lpBuffer
                 ValueLayout.JAVA_INT, // nSize
-                ValueLayout.ADDRESS); // Arguments
+                ValueLayout.ADDRESS), // Arguments
+                CaptureState.LINKER_OPTION);
 
-        getLastError = functionMethodHandle(linker, symbolLookup, "GetLastError", ValueLayout.JAVA_INT);
-
-        localFree = functionMethodHandle(linker, symbolLookup, "LocalFree", ValueLayout.ADDRESS,
-                ValueLayout.ADDRESS); // hMem
+        localFree = functionMethodHandle(linker, symbolLookup, "LocalFree", FunctionDescriptor.of(ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS), // hMem
+                CaptureState.LINKER_OPTION);
     }
 
     @Override
     public int ExpandEnvironmentStrings(
             StringPointer lpSrc,
             StringPointer lpDst,
-            int nSize) {
+            int nSize,
+            CaptureState captureState) {
 
         try {
             return (int) expandEnvironmentStrings.invokeExact(
+                    captureState.segment(),
                     lpSrc.segment(),
                     segment(lpDst),
                     nSize);
@@ -80,10 +83,12 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
             int dwLanguageId,
             StringPointer.Reference lpBuffer,
             int nSize,
-            Pointer Arguments) { // NOSONAR
+            Pointer Arguments,
+            CaptureState captureState) { // NOSONAR
 
         try {
             return (int) formatMessage.invokeExact(
+                    captureState.segment(),
                     dwFlags,
                     segment(lpSource),
                     dwMessageId,
@@ -97,21 +102,13 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
     }
 
     @Override
-    public int GetLastError() {
-        try {
-            return (int) getLastError.invokeExact();
-        } catch (Throwable e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    @Override
     public Pointer LocalFree(
-            Pointer hMem) {
+            Pointer hMem,
+            CaptureState captureState) {
 
         MemorySegment segment = segment(hMem);
 
-        MemorySegment result = invokeLocalFree(segment);
+        MemorySegment result = invokeLocalFree(segment, captureState);
 
         if (result == null || MemorySegment.NULL.equals(result)) {
             return null;
@@ -122,9 +119,10 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
         throw new IllegalStateException(Messages.Kernel32.localFreeUnexpectedResult(segment, result));
     }
 
-    private MemorySegment invokeLocalFree(MemorySegment segment) {
+    private MemorySegment invokeLocalFree(MemorySegment segment, CaptureState captureState) {
         try {
             return (MemorySegment) localFree.invokeExact(
+                    captureState.segment(),
                     segment);
         } catch (Throwable e) {
             throw new IllegalStateException(e);

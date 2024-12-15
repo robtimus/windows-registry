@@ -22,10 +22,13 @@ public interface Kernel32 {
 
     Kernel32 INSTANCE = new Kernel32Impl();
 
+    // The following functions all require GetLastError() to be called to retrieve any error that occurred
+
     int ExpandEnvironmentStrings/* NOSONAR */(
             StringPointer lpSrc,
             StringPointer lpDst,
-            int nSize);
+            int nSize,
+            CaptureState captureState);
 
     int FormatMessage/* NOSONAR */(
             int dwFlags,
@@ -34,10 +37,10 @@ public interface Kernel32 {
             int dwLanguageId,
             StringPointer.Reference lpBuffer,
             int nSize,
-            Pointer Arguments); // NOSONAR
-
-    int GetLastError/* NOSONAR */();
+            Pointer Arguments,
+            CaptureState captureState); // NOSONAR
 
     Pointer LocalFree/* NOSONAR */(
-            Pointer hMem);
+            Pointer hMem,
+            CaptureState captureState);
 }
