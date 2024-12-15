@@ -37,8 +37,8 @@ public interface Kernel32 {
             int dwLanguageId,
             StringPointer.Reference lpBuffer,
             int nSize,
-            Pointer Arguments,
-            CaptureState captureState); // NOSONAR
+            Pointer Arguments, // NOSONAR
+            CaptureState captureState);
 
     Pointer LocalFree/* NOSONAR */(
             Pointer hMem,
