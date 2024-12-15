@@ -135,7 +135,7 @@ abstract class RegistryKeyTestBase {
                 .map(value -> value.rawData(ALLOCATOR))
                 .toArray(BytePointer[]::new);
         int maxValueLength = Arrays.stream(datas)
-                .mapToInt(d -> d.size())
+                .mapToInt(BytePointer::size)
                 .max()
                 .orElseThrow();
 
