@@ -58,9 +58,11 @@ class RegistryIT {
 
     @BeforeEach
     void assureDocker() {
-        // By only running tests in Docker, any bugs will not mess up the host system
-        String userName = System.getProperty("user.name");
-        assumeTrue("ContainerUser".equalsIgnoreCase(userName), "Must run in Docker; current user name: " + userName);
+        if (!Boolean.getBoolean("allow-non-dockerized-registry-tests")) {
+            // By only running tests in Docker, any bugs will not mess up the host system
+            String userName = System.getProperty("user.name");
+            assumeTrue("ContainerUser".equalsIgnoreCase(userName), "Must run in Docker; current user name: " + userName);
+        }
     }
 
     @Nested
