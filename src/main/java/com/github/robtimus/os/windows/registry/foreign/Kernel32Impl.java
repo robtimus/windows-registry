@@ -83,8 +83,8 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
             int dwLanguageId,
             StringPointer.Reference lpBuffer,
             int nSize,
-            Pointer Arguments,
-            CaptureState captureState) { // NOSONAR
+            Pointer Arguments, // NOSONAR
+            CaptureState captureState) {
 
         try {
             return (int) formatMessage.invokeExact(
