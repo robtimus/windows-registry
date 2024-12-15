@@ -20,6 +20,7 @@ package com.github.robtimus.os.windows.registry.foreign;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
@@ -40,9 +41,10 @@ class ApiImplTest {
         void testFunctionNotFound() {
             Linker linker = Linker.nativeLinker();
             SymbolLookup symbolLookup = SymbolLookup.libraryLookup("Advapi32", ARENA);
+            FunctionDescriptor function = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS);
 
             IllegalStateException exception = assertThrows(IllegalStateException.class,
-                    () -> ApiImpl.functionMethodHandle(linker, symbolLookup, "nonExistingFunction", ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                    () -> ApiImpl.functionMethodHandle(linker, symbolLookup, "nonExistingFunction", function));
 
             assertEquals(Messages.ApiImpl.functionNotFound("nonExistingFunction"), exception.getMessage());
         }
@@ -57,9 +59,10 @@ class ApiImplTest {
         void testFunctionNotFound() {
             Linker linker = Linker.nativeLinker();
             SymbolLookup symbolLookup = SymbolLookup.libraryLookup("Advapi32", ARENA);
+            FunctionDescriptor function = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS);
 
             assertEquals(Optional.empty(),
-                    ApiImpl.optionalFunctionMethodHandle(linker, symbolLookup, "nonExistingFunction", ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
+                    ApiImpl.optionalFunctionMethodHandle(linker, symbolLookup, "nonExistingFunction", function));
         }
     }
 }
