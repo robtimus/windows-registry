@@ -17,19 +17,19 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytePointer;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytesSegment;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
@@ -64,13 +64,13 @@ class DWordValueTest {
         }
 
         @Nested
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         class FromBytes {
 
             @Test
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
                 assertEquals(67305985, value.value());
@@ -79,7 +79,7 @@ class DWordValueTest {
             @Test
             @DisplayName("REG_DWORD_BIG_ENDIAN")
             void testBigEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
 
                 assertEquals(16909060, value.value());
@@ -98,51 +98,51 @@ class DWordValueTest {
             @Test
             @DisplayName("default endian")
             void testDefaultEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = DWordValue.of("test", 67305985);
 
-                assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(ALLOCATOR));
             }
 
             @Test
             @DisplayName("little-endian")
             void testLittleEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = DWordValue.littleEndianOf("test", 67305985);
 
-                assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(ALLOCATOR));
             }
 
             @Test
             @DisplayName("big-endian")
             void testBigEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = DWordValue.bigEndianOf("test", 16909060);
 
-                assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(ALLOCATOR));
             }
         }
 
         @Nested
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         class FromBytePointer {
 
             @Test
             @DisplayName("REG_DWORD_BIG_ENDIAN")
             void testBigEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
 
-                assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(ALLOCATOR));
             }
 
             @Test
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
-                BytePointer data = bytePointer(1, 2, 3, 4);
+                MemorySegment data = bytesSegment(1, 2, 3, 4);
                 DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
-                assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(ALLOCATOR));
             }
         }
     }
@@ -512,7 +512,7 @@ class DWordValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        BytePointer data = bytePointer(1, 2, 3, 4);
+        MemorySegment data = bytesSegment(1, 2, 3, 4);
         DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
         return new Arguments[] {

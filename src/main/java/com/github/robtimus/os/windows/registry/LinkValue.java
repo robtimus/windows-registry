@@ -18,8 +18,9 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
+import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -31,9 +32,9 @@ public final class LinkValue extends RegistryValue {
 
     private final byte[] data;
 
-    LinkValue(String name, BytePointer data, int dataLength) {
+    LinkValue(String name, MemorySegment data, long dataLength) {
         super(name, WinNT.REG_LINK);
-        this.data = data.toByteArray(dataLength);
+        this.data = toByteArray(data.asSlice(0, dataLength));
     }
 
     @Override
