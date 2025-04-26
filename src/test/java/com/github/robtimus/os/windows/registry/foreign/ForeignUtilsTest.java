@@ -1,6 +1,6 @@
 /*
- * ApiImplTest.java
- * Copyright 2023 Rob Spoor
+ * ForeignUtilsTest.java
+ * Copyright 2025 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,8 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalFunctionMethodHandle;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.lang.foreign.FunctionDescriptor;
@@ -30,7 +32,10 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 @SuppressWarnings("nls")
-class ApiImplTest {
+final class ForeignUtilsTest {
+
+    private ForeignUtilsTest() {
+    }
 
     @Nested
     @DisplayName("functionMethodHandle")
@@ -44,7 +49,7 @@ class ApiImplTest {
             FunctionDescriptor function = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS);
 
             IllegalStateException exception = assertThrows(IllegalStateException.class,
-                    () -> ApiImpl.functionMethodHandle(linker, symbolLookup, "nonExistingFunction", function));
+                    () -> functionMethodHandle(linker, symbolLookup, "nonExistingFunction", function));
 
             assertEquals(Messages.ApiImpl.functionNotFound("nonExistingFunction"), exception.getMessage());
         }
@@ -61,8 +66,7 @@ class ApiImplTest {
             SymbolLookup symbolLookup = SymbolLookup.libraryLookup("Advapi32", ARENA);
             FunctionDescriptor function = FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.ADDRESS);
 
-            assertEquals(Optional.empty(),
-                    ApiImpl.optionalFunctionMethodHandle(linker, symbolLookup, "nonExistingFunction", function));
+            assertEquals(Optional.empty(), optionalFunctionMethodHandle(linker, symbolLookup, "nonExistingFunction", function));
         }
     }
 }

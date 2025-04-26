@@ -17,10 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.Objects;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.Kernel32Utils;
+import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -33,9 +34,9 @@ public final class StringValue extends SettableRegistryValue {
 
     private final String value;
 
-    StringValue(String name, int type, BytePointer data, int dataLength) {
+    StringValue(String name, int type, MemorySegment data, long dataLength) {
         super(name, type);
-        value = data.toString(dataLength);
+        value = WString.getString(data.asSlice(0, dataLength));
     }
 
     private StringValue(String name, int type, String value) {
@@ -102,8 +103,8 @@ public final class StringValue extends SettableRegistryValue {
     }
 
     @Override
-    BytePointer rawData(SegmentAllocator allocator) {
-        return BytePointer.withString(value, allocator);
+    MemorySegment rawData(SegmentAllocator allocator) {
+        return WString.allocate(allocator, value);
     }
 
     @Override

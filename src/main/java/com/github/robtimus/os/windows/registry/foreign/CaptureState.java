@@ -44,22 +44,14 @@ public final class CaptureState {
             .flatMap(Optional::stream)
             .toArray(String[]::new));
 
-    private final MemorySegment segment;
-
-    private CaptureState(MemorySegment segment) {
-        this.segment = segment;
+    private CaptureState() {
     }
 
-    public static CaptureState allocate(SegmentAllocator allocator) {
-        MemorySegment segment = allocator.allocate(LAYOUT);
-        return new CaptureState(segment);
+    public static MemorySegment allocate(SegmentAllocator allocator) {
+        return allocator.allocate(LAYOUT);
     }
 
-    MemorySegment segment() {
-        return segment;
-    }
-
-    public int getLastError() {
+    public static int getLastError(MemorySegment segment) {
         return segment.get(LAST_ERROR_LAYOUT, LAST_ERROR_OFFSET);
     }
 }
