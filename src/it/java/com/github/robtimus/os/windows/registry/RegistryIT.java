@@ -379,7 +379,7 @@ class RegistryIT {
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
-                RegistryKey subKey2 = registryKey.resolve("subKey1");
+                RegistryKey subKey2 = registryKey.resolve("subKey2");
                 subKey2.deleteIfExists();
 
                 RegistryKey.transactional().run(transaction -> {
@@ -406,7 +406,7 @@ class RegistryIT {
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
-                RegistryKey subKey2 = registryKey.resolve("subKey1");
+                RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(transaction -> {
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -432,7 +432,7 @@ class RegistryIT {
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
-                RegistryKey subKey2 = registryKey.resolve("subKey1");
+                RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(_ -> {
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -457,7 +457,7 @@ class RegistryIT {
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
-                RegistryKey subKey2 = registryKey.resolve("subKey1");
+                RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(transaction -> {
                     RegistryKey.nonTransactional().run(() -> {
@@ -485,7 +485,7 @@ class RegistryIT {
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
-                RegistryKey subKey2 = registryKey.resolve("subKey1");
+                RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(transaction -> {
                     registryKey.setValue(StringValue.of("test", "bar"));
@@ -497,7 +497,7 @@ class RegistryIT {
                         subKey2.createIfNotExists();
                     });
 
-                    transaction.commit();
+                    assertThrows(TransactionException.class, transaction::commit);
                 });
 
                 assertTrue(registryKey.exists());
