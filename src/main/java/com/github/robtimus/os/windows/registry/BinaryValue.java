@@ -17,14 +17,16 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.Arrays;
 import java.util.HexFormat;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -39,9 +41,9 @@ public final class BinaryValue extends SettableRegistryValue {
 
     private final byte[] data;
 
-    BinaryValue(String name, BytePointer data, int dataLength) {
+    BinaryValue(String name, MemorySegment data, long dataLength) {
         super(name, WinNT.REG_BINARY);
-        this.data = data.toByteArray(dataLength);
+        this.data = toByteArray(data.asSlice(0, dataLength));
     }
 
     private BinaryValue(String name, byte[] data) {
@@ -95,8 +97,8 @@ public final class BinaryValue extends SettableRegistryValue {
     }
 
     @Override
-    BytePointer rawData(SegmentAllocator allocator) {
-        return BytePointer.withBytes(data, allocator);
+    MemorySegment rawData(SegmentAllocator allocator) {
+        return allocateBytes(allocator, data);
     }
 
     @Override

@@ -19,8 +19,11 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqHKEY;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqBytes;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqSize;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.notNULL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -32,13 +35,13 @@ import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.lang.foreign.MemorySegment;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -56,8 +59,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
@@ -67,7 +68,7 @@ import com.github.robtimus.os.windows.registry.foreign.WinReg;
 class RemoteRootKeyTest extends RegistryKeyTestBase {
 
     private RemoteRegistryKey remoteRoot;
-    private HKEY rootHKey;
+    private MemorySegment rootHKey;
 
     // Using autoCloseArguments = true will attempt to close arguments after teardown() is called, which means that the actual native API is used.
     // Not closing arguments means they get closed at a later time, which interferes with other tests.
@@ -93,12 +94,13 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         remoteRoot.close();
         remoteRoot.close();
 
-        verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), any());
-        verify(RegistryKey.api).RegCloseKey(eqHKEY(rootHKey));
+        verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
+        verify(RegistryKey.api).RegCloseKey(rootHKey);
 
-        verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
-        verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
-        verify(RegistryKey.api, never()).RegCloseKey(not(eqHKEY(rootHKey)));
+        verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
+        verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
+                notNull());
+        verify(RegistryKey.api, never()).RegCloseKey(not(eq(rootHKey)));
 
         autoCloseables.forEach(c -> assertDoesNotThrow(c::close));
 
@@ -183,7 +185,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("query failure")
         void testQueryFailure() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), notNull(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNULL(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -195,9 +198,10 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("enum failure")
         void testEnumFailure() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
-            when(RegistryKey.api.RegEnumKeyEx(eqHKEY(rootHKey), eq(0), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegEnumKeyEx(eq(rootHKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
@@ -225,8 +229,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
                 assertEquals(expected, registryKeys);
             }
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
-            verify(RegistryKey.api, never()).RegCloseKey(any());
+            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
+            verify(RegistryKey.api, never()).RegCloseKey(notNull());
         }
 
         @Nested
@@ -356,7 +360,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("query failure")
         void testQueryFailure() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), notNull(), notNull(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNULL(), notNULL(),
+                            notNull(), notNull());
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -368,9 +373,10 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("enum failure")
         void testEnumFailure() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
-            when(RegistryKey.api.RegEnumValue(eqHKEY(rootHKey), eq(0), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegEnumValue(eq(rootHKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
@@ -401,7 +407,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegQueryValueEx(eqHKEY(rootHKey), any(), any(), any(), isNull(), any());
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(rootHKey), notNull(), notNull(), notNull(), isNULL(), notNull());
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
@@ -454,7 +461,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegQueryValueEx(eqHKEY(rootHKey), any(), any(), any(), isNull(), any());
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
+                    .RegQueryValueEx(eq(rootHKey), notNull(), notNull(), notNull(), isNULL(), notNull());
 
             RegistryKey registryKey = remoteRoot;
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
@@ -493,15 +501,16 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("success")
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
-            BytePointer data = stringValue.rawData(ALLOCATOR);
+            MemorySegment data = stringValue.rawData(ALLOCATOR);
 
-            when(RegistryKey.api.RegSetValueEx(any(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqPointer(data), anyInt()))
+            when(RegistryKey.api.RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot;
             registryKey.setValue(stringValue);
 
-            verify(RegistryKey.api).RegSetValueEx(any(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqPointer(data), eq(data.size()));
+            verify(RegistryKey.api)
+                    .RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data));
         }
 
         @Test
@@ -509,7 +518,7 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            when(RegistryKey.api.RegSetValueEx(any(), any(), anyInt(), anyInt(), any(), anyInt()))
+            when(RegistryKey.api.RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
@@ -526,18 +535,18 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
             RegistryKey registryKey = remoteRoot;
             registryKey.deleteValue("string");
 
-            verify(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+            verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(any(), any());
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -558,30 +567,30 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("value existed")
             void testExisted() {
-                doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
                 RegistryKey registryKey = remoteRoot;
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
             }
 
             @Test
             @DisplayName("value didn't exist")
             void testValueDidntExist() {
-                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
                 RegistryKey registryKey = remoteRoot;
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
             }
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteValue(any(), any());
+            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -599,35 +608,41 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("success")
         void testSuccess() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             assertTrue(remoteRoot.exists());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
 
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             assertFalse(remoteRoot.exists());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
             doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, remoteRoot::exists);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
     }
 
@@ -643,15 +658,16 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @DisplayName("success")
             void testSuccess() {
                 doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
 
                 remoteRoot.ifExists(action);
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
 
                 try (RegistryKey.Handle handle = remoteRoot.handle()) {
                     verify(action).accept(handle);
@@ -663,7 +679,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testNonExisting() {
                 doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -672,8 +689,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
 
             @Test
@@ -681,7 +698,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testFailure() {
                 doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -692,8 +710,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
         }
 
@@ -705,14 +723,15 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @DisplayName("success")
             void testSuccess() {
                 doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
                 Optional<String> result = remoteRoot.ifExists(action);
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
 
                 try (RegistryKey.Handle handle = remoteRoot.handle()) {
                     assertEquals(Optional.of(handle.toString()), result);
@@ -724,7 +743,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testNonExisting() {
                 doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -733,8 +753,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
 
             @Test
@@ -742,7 +762,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testFailure() {
                 doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -753,8 +774,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
         }
     }
@@ -767,46 +788,54 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("success")
         void testSuccess() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             assertTrue(remoteRoot.isAccessible());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
 
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             assertFalse(remoteRoot.isAccessible());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
 
         @Test
         @DisplayName("access denied")
         void testAccessDenied() {
             doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             assertFalse(remoteRoot.isAccessible());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, remoteRoot::isAccessible);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
     }
 
@@ -822,15 +851,16 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @DisplayName("success")
             void testSuccess() {
                 doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
 
                 remoteRoot.ifAccessible(action);
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
 
                 try (RegistryKey.Handle handle = remoteRoot.handle()) {
                     verify(action).accept(handle);
@@ -842,7 +872,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testNonExisting() {
                 doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -851,8 +882,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
 
             @Test
@@ -860,7 +891,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testAccessDenied() {
                 doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -869,8 +901,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
 
             @Test
@@ -878,7 +910,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testFailure() {
                 doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -889,8 +922,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
         }
 
@@ -902,14 +935,15 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @DisplayName("success")
             void testSuccess() {
                 doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
                 Optional<String> result = remoteRoot.ifAccessible(action);
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
 
                 try (RegistryKey.Handle handle = remoteRoot.handle()) {
                     assertEquals(Optional.of(handle.toString()), result);
@@ -921,7 +955,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testNonExisting() {
                 doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -932,8 +967,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
 
             @Test
@@ -941,7 +976,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testAccessDenied() {
                 doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -952,8 +988,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
 
             @Test
@@ -961,7 +997,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("resource")
             void testFailure() {
                 doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                        .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                                notNull(), notNull(), notNull());
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -972,8 +1009,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api)
-                        .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                        notNull(), notNull(), notNull(), notNull());
             }
         }
     }
@@ -985,8 +1022,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         assertEquals("HKEY_LOCAL_MACHINE", exception.path());
         assertEquals("test-machine", exception.machineName());
 
-        verify(RegistryKey.api, never())
-                .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+        verify(RegistryKey.api, never()).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                notNull(), notNull(), notNull(), notNull());
     }
 
     @Nested
@@ -997,24 +1034,28 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("success")
         void testSuccess() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             assertFalse(remoteRoot::createIfNotExists);
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, remoteRoot::createIfNotExists);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+            verify(RegistryKey.api).RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull());
         }
     }
 
@@ -1110,7 +1151,8 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         @DisplayName("verify failure")
         void testVerifyFailure() {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                    .RegQueryInfoKey(eqHKEY(rootHKey), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull());
 
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, remoteRoot::handle);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());

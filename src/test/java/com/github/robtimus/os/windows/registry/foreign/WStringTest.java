@@ -1,5 +1,5 @@
 /*
- * StringUtilsTest.java
+ * WStringTest.java
  * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -36,18 +36,18 @@ import com.sun.jna.Memory;
 import com.sun.jna.Native;
 
 @SuppressWarnings("nls")
-class StringUtilsTest {
+class WStringTest {
 
     @Nested
-    @DisplayName("toString")
-    class ToString {
+    @DisplayName("getString")
+    class GetString {
 
         @Test
         @DisplayName("empty segment")
         void testEmptySegment() {
             MemorySegment segment = MemorySegment.NULL;
 
-            assertNull(StringUtils.toString(segment));
+            assertNull(WString.getString(segment));
         }
 
         @ParameterizedTest
@@ -61,7 +61,7 @@ class StringUtilsTest {
 
                 MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
-                String result = StringUtils.toString(segment);
+                String result = WString.getString(segment);
                 assertEquals(value, result);
             }
         }
@@ -75,22 +75,22 @@ class StringUtilsTest {
 
                 MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
-                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toString(segment));
+                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> WString.getString(segment));
                 assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
             }
         }
     }
 
     @Nested
-    @DisplayName("toStringList")
-    class ToStringList {
+    @DisplayName("getStringList")
+    class GetStringList {
 
         @Test
         @DisplayName("empty segment")
         void testEmptySegment() {
             MemorySegment segment = MemorySegment.NULL;
 
-            assertEquals(Collections.emptyList(), StringUtils.toStringList(segment));
+            assertEquals(Collections.emptyList(), WString.getStringList(segment));
         }
 
         @Test
@@ -116,7 +116,7 @@ class StringUtilsTest {
 
                 MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
-                List<String> result = StringUtils.toStringList(segment);
+                List<String> result = WString.getStringList(segment);
                 assertEquals(values, result);
             }
         }
@@ -144,7 +144,7 @@ class StringUtilsTest {
 
                 MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
-                List<String> result = StringUtils.toStringList(segment);
+                List<String> result = WString.getStringList(segment);
                 assertEquals(values.subList(0, 2), result);
             }
         }
@@ -169,7 +169,7 @@ class StringUtilsTest {
 
                 MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
-                List<String> result = StringUtils.toStringList(segment);
+                List<String> result = WString.getStringList(segment);
                 assertEquals(values, result);
             }
         }
@@ -194,18 +194,18 @@ class StringUtilsTest {
 
                 MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
-                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> StringUtils.toStringList(segment));
+                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> WString.getStringList(segment));
                 assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
             }
         }
     }
 
     @ParameterizedTest
-    @DisplayName("fromString")
+    @DisplayName("allocate(SegmentAllocator, String)")
     @ValueSource(strings = { "foo", "bar" })
     @EmptySource
-    void testFromString(String value) {
-        MemorySegment segment = StringUtils.fromString(value, ALLOCATOR);
+    void testAllocateFromString(String value) {
+        MemorySegment segment = WString.allocate(ALLOCATOR, value);
 
         byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
@@ -219,8 +219,8 @@ class StringUtilsTest {
     }
 
     @Nested
-    @DisplayName("fromStringList")
-    class FromStringList {
+    @DisplayName("allocate(SegmentAllocator, List<String>)")
+    class AllocateFromStringList {
 
         @Test
         @DisplayName("without empty strings")
@@ -228,7 +228,7 @@ class StringUtilsTest {
             List<String> values = List.of("foo", "bar");
             List<String> expected = List.of("foo", "bar", "");
 
-            MemorySegment segment = StringUtils.fromStringList(values, ALLOCATOR);
+            MemorySegment segment = WString.allocate(ALLOCATOR, values);
 
             byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
@@ -253,7 +253,7 @@ class StringUtilsTest {
             List<String> values = List.of("foo", "bar", "", "hello", "world");
             List<String> expected = List.of("foo", "bar", "", "hello", "world", "");
 
-            MemorySegment segment = StringUtils.fromStringList(values, ALLOCATOR);
+            MemorySegment segment = WString.allocate(ALLOCATOR, values);
 
             byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 

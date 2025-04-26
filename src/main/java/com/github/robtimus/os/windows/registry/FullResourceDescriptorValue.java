@@ -18,8 +18,9 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
+import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -31,9 +32,9 @@ public final class FullResourceDescriptorValue extends RegistryValue {
 
     private final byte[] data;
 
-    FullResourceDescriptorValue(String name, BytePointer data, int dataLength) {
+    FullResourceDescriptorValue(String name, MemorySegment data, long dataLength) {
         super(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR);
-        this.data = data.toByteArray(dataLength);
+        this.data = toByteArray(data.asSlice(0, dataLength));
     }
 
     @Override
