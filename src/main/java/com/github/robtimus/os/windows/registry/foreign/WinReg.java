@@ -18,22 +18,20 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import java.lang.foreign.MemorySegment;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
 @SuppressWarnings("javadoc")
 public final class WinReg {
 
-    public static final HKEY HKEY_CLASSES_ROOT = hKey(0x80000000);
-    public static final HKEY HKEY_CURRENT_USER = hKey(0x80000001);
-    public static final HKEY HKEY_LOCAL_MACHINE = hKey(0x80000002);
-    public static final HKEY HKEY_USERS = hKey(0x80000003);
-    public static final HKEY HKEY_CURRENT_CONFIG = hKey(0x80000005);
+    public static final MemorySegment HKEY_CLASSES_ROOT = hKey(0x80000000);
+    public static final MemorySegment HKEY_CURRENT_USER = hKey(0x80000001);
+    public static final MemorySegment HKEY_LOCAL_MACHINE = hKey(0x80000002);
+    public static final MemorySegment HKEY_USERS = hKey(0x80000003);
+    public static final MemorySegment HKEY_CURRENT_CONFIG = hKey(0x80000005);
 
     private WinReg() {
     }
 
-    private static HKEY hKey(int address) {
-        MemorySegment segment = MemorySegment.ofAddress(address);
-        return new HKEY(segment);
+    private static MemorySegment hKey(int address) {
+        return MemorySegment.ofAddress(address);
     }
 }

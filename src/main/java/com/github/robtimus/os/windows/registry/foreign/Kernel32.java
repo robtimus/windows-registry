@@ -17,6 +17,8 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import java.lang.foreign.MemorySegment;
+
 @SuppressWarnings("javadoc")
 public interface Kernel32 {
 
@@ -24,23 +26,23 @@ public interface Kernel32 {
 
     // The following functions all require GetLastError() to be called to retrieve any error that occurred
 
-    int ExpandEnvironmentStrings/* NOSONAR */(
-            StringPointer lpSrc,
-            StringPointer lpDst,
-            int nSize,
-            CaptureState captureState);
+    /* DWORD */ int ExpandEnvironmentStrings/* NOSONAR */(
+            /* LPCWSTR */ MemorySegment lpSrc,
+            /* LPWSTR */ MemorySegment lpDst,
+            /* DWORD */ int nSize,
+            MemorySegment captureState);
 
-    int FormatMessage/* NOSONAR */(
-            int dwFlags,
-            Pointer lpSource,
-            int dwMessageId,
-            int dwLanguageId,
-            StringPointer.Reference lpBuffer,
-            int nSize,
-            Pointer Arguments, // NOSONAR
-            CaptureState captureState);
+    /* DWORD */ int FormatMessage/* NOSONAR */(
+            /* DWORD */ int dwFlags,
+            /* LPCVOID */ MemorySegment lpSource,
+            /* DWORD */ int dwMessageId,
+            /* DWORD */ int dwLanguageId,
+            /* LPTSTR */ MemorySegment lpBuffer,
+            /* DWORD */ int nSize,
+            /* va_list * */ MemorySegment Arguments, // NOSONAR
+            MemorySegment captureState);
 
-    Pointer LocalFree/* NOSONAR */(
-            Pointer hMem,
-            CaptureState captureState);
+    /* HLOCAL */ MemorySegment LocalFree/* NOSONAR */(
+            /* HLOCAL */ MemorySegment hMem,
+            MemorySegment captureState);
 }

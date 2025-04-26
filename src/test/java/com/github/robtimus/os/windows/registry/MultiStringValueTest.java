@@ -17,14 +17,15 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytePointer;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsSegment;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.MemorySegment;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -32,7 +33,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class MultiStringValueTest {
@@ -54,10 +54,10 @@ class MultiStringValueTest {
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytePointer() {
-            BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
-            MultiStringValue value = new MultiStringValue("test", data, data.size());
+            MemorySegment data = textAsSegment(VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = new MultiStringValue("test", data, data.byteSize());
 
             assertEquals(List.of(VALUE1, VALUE2, VALUE3), value.values());
         }
@@ -72,16 +72,16 @@ class MultiStringValueTest {
         void testFromString() {
             MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
-            assertBytePointerEquals(textAsBytePointer(VALUE1, VALUE2, VALUE3), value.rawData(ALLOCATOR));
+            assertContentEquals(textAsSegment(VALUE1, VALUE2, VALUE3), value.rawData(ALLOCATOR));
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytes() {
-            BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
-            MultiStringValue value = new MultiStringValue("test", data, data.size());
+            MemorySegment data = textAsSegment(VALUE1, VALUE2, VALUE3);
+            MultiStringValue value = new MultiStringValue("test", data, data.byteSize());
 
-            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+            assertContentEquals(data, value.rawData(ALLOCATOR));
         }
     }
 
@@ -155,14 +155,14 @@ class MultiStringValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        BytePointer data = textAsBytePointer(VALUE1, VALUE2, VALUE3);
+        MemorySegment data = textAsSegment(VALUE1, VALUE2, VALUE3);
         MultiStringValue value = MultiStringValue.of("test", VALUE1, VALUE2, VALUE3);
 
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, MultiStringValue.of("test", VALUE1, VALUE2, VALUE3), true),
-                arguments(value, new MultiStringValue("test", data, data.size()), true),
-                arguments(value, new MultiStringValue("test", resized(data, data.size() + 10), data.size()), true),
+                arguments(value, new MultiStringValue("test", data, data.byteSize()), true),
+                arguments(value, new MultiStringValue("test", resized(data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, MultiStringValue.of("test2", VALUE1, VALUE2, VALUE3), false),
                 arguments(value, MultiStringValue.of("test", VALUE1, VALUE2), false),
                 arguments(value, "foo", false),

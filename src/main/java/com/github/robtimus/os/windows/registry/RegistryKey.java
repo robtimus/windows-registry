@@ -17,7 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.clear;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Cleaner;
 import java.time.Instant;
@@ -39,11 +45,9 @@ import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.github.robtimus.os.windows.registry.foreign.Advapi32;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
-import com.github.robtimus.os.windows.registry.foreign.IntPointer;
-import com.github.robtimus.os.windows.registry.foreign.StringPointer;
+import com.github.robtimus.os.windows.registry.foreign.ForeignUtils;
+import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
@@ -784,14 +788,14 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
     // utility
 
-    static void closeKey(HKEY hKey, String path, String machineName) {
+    static void closeKey(MemorySegment hKey, String path, String machineName) {
         int code = api.RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path, machineName);
         }
     }
 
-    static Cleaner.Cleanable closeOnClean(Object object, HKEY hKey, String path, String machineName) {
+    static Cleaner.Cleanable closeOnClean(Object object, MemorySegment hKey, String path, String machineName) {
         // Since this method is static, using a lambda does not capture any state except what's used inside it,
         // and therefore it's safe to use as action
         return CLEANER.register(object, () -> closeKey(hKey, path, machineName));
@@ -857,9 +861,9 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      */
     public abstract class Handle implements AutoCloseable {
 
-        final HKEY hKey;
+        final MemorySegment hKey;
 
-        Handle(HKEY hKey) {
+        Handle(MemorySegment hKey) {
             this.hKey = hKey;
         }
 
@@ -873,8 +877,20 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          */
         public Instant lastWriteTime() {
             try (Arena allocator = Arena.ofConfined()) {
-                FILETIME lpftLastWriteTime = new FILETIME(allocator);
-                int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, lpftLastWriteTime);
+                MemorySegment lpftLastWriteTime = FILETIME.allocate(allocator);
+                int code = api.RegQueryInfoKey(
+                        hKey,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        lpftLastWriteTime);
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, path(), machineName());
                 }
@@ -890,20 +906,32 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
          */
         public Attributes attributes() {
             try (Arena allocator = Arena.ofConfined()) {
-                IntPointer lpcSubKeys = IntPointer.uninitialized(allocator);
-                IntPointer lpcValues = IntPointer.uninitialized(allocator);
-                FILETIME lpftLastWriteTime = new FILETIME(allocator);
-                int code = api.RegQueryInfoKey(hKey, null, null, null, lpcSubKeys, null, null, lpcValues, null, null, null, lpftLastWriteTime);
+                MemorySegment lpcSubKeys = allocateInt(allocator);
+                MemorySegment lpcValues = allocateInt(allocator);
+                MemorySegment lpftLastWriteTime = FILETIME.allocate(allocator);
+                int code = api.RegQueryInfoKey(
+                        hKey,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        lpcSubKeys,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        lpcValues,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        lpftLastWriteTime);
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, path(), machineName());
                 }
-                return new Attributes(lpcSubKeys.value(), lpcValues.value(), toInstant(lpftLastWriteTime));
+                return new Attributes(ForeignUtils.getInt(lpcSubKeys), getInt(lpcValues), toInstant(lpftLastWriteTime));
             }
         }
 
-        private Instant toInstant(FILETIME lpFileTime) {
+        private Instant toInstant(MemorySegment lpFileTime) {
             // FILETIME "Contains a 64-bit value representing the number of 100-nanosecond intervals since January 1, 1601 (UTC)."
-            long intervals = ((long) lpFileTime.dwHighDateTime() << 32L) | (lpFileTime.dwLowDateTime() & 0xFFFF_FFFFL);
+            long intervals = ((long) FILETIME.dwHighDateTime(lpFileTime) << 32L) | (FILETIME.dwLowDateTime(lpFileTime) & 0xFFFF_FFFFL);
             if (intervals <= 0) {
                 // Conversion using Kernel32's FileTimeToSystemTime does not support this, which means we cannot test against this
                 // This is very unlikely though, as the time would be before the year 1601
@@ -946,15 +974,27 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         }
 
         private Iterator<String> subKeyIterator(SegmentAllocator allocator) {
-            IntPointer lpcMaxSubKeyLen = IntPointer.uninitialized(allocator);
+            MemorySegment lpcMaxSubKeyLen = allocateInt(allocator);
 
-            int code = api.RegQueryInfoKey(hKey, null, null, null, null, lpcMaxSubKeyLen, null, null, null, null, null, null);
+            int code = api.RegQueryInfoKey(
+                    hKey,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    lpcMaxSubKeyLen,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL);
             if (code != WinError.ERROR_SUCCESS) {
                 throw RegistryException.forKey(code, path(), machineName());
             }
 
-            StringPointer lpName = StringPointer.uninitialized(lpcMaxSubKeyLen.value(), allocator);
-            IntPointer lpcName = IntPointer.withValue(lpName.size(), allocator);
+            MemorySegment lpName = WString.allocate(allocator, getInt(lpcMaxSubKeyLen));
+            MemorySegment lpcName = allocateInt(allocator, lpName.byteSize());
 
             return new LookaheadIterator<>() {
 
@@ -962,12 +1002,20 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
                 @Override
                 protected String nextElement() {
-                    lpcName.value(lpName.size());
+                    setInt(lpcName, lpName.byteSize());
 
-                    int code = api.RegEnumKeyEx(hKey, index, lpName, lpcName, null, null, null, null);
+                    int code = api.RegEnumKeyEx(
+                            hKey,
+                            index,
+                            lpName,
+                            lpcName,
+                            MemorySegment.NULL,
+                            MemorySegment.NULL,
+                            MemorySegment.NULL,
+                            MemorySegment.NULL);
                     if (code == WinError.ERROR_SUCCESS) {
                         index++;
-                        return lpName.value();
+                        return WString.getString(lpName);
                     }
                     if (code == WinError.ERROR_NO_MORE_ITEMS) {
                         return null;
@@ -1027,22 +1075,34 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         }
 
         private Iterator<RegistryValue> valueIterator(RegistryValue.Filter filter, SegmentAllocator allocator) {
-            IntPointer lpcMaxValueNameLen = IntPointer.uninitialized(allocator);
-            IntPointer lpcMaxValueLen = IntPointer.uninitialized(allocator);
+            MemorySegment lpcMaxValueNameLen = allocateInt(allocator);
+            MemorySegment lpcMaxValueLen = allocateInt(allocator);
 
-            int code = api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, lpcMaxValueNameLen, lpcMaxValueLen, null, null);
+            int code = api.RegQueryInfoKey(
+                    hKey,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL,
+                    lpcMaxValueNameLen,
+                    lpcMaxValueLen,
+                    MemorySegment.NULL,
+                    MemorySegment.NULL);
             if (code != WinError.ERROR_SUCCESS) {
                 throw RegistryException.forKey(code, path(), machineName());
             }
 
-            StringPointer lpValueName = StringPointer.uninitialized(lpcMaxValueNameLen.value(), allocator);
-            IntPointer lpcchValueName = IntPointer.withValue(lpValueName.size(), allocator);
+            MemorySegment lpValueName = WString.allocate(allocator, getInt(lpcMaxValueNameLen));
+            MemorySegment lpcchValueName = allocateInt(allocator, lpValueName.byteSize());
 
-            IntPointer lpType = IntPointer.uninitialized(allocator);
+            MemorySegment lpType = allocateInt(allocator);
 
             // lpcMaxValueLen does not include the terminating null character so add one extra
-            BytePointer lpData = BytePointer.unitialized(lpcMaxValueLen.value() + StringPointer.CHAR_SIZE, allocator);
-            IntPointer lpcbData = IntPointer.withValue(lpData.size(), allocator);
+            MemorySegment lpData = allocateBytes(allocator, getInt(lpcMaxValueLen) + WString.CHAR_SIZE);
+            MemorySegment lpcbData = allocateInt(allocator, lpData.byteSize());
 
             return new LookaheadIterator<>() {
 
@@ -1051,19 +1111,27 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                 @Override
                 protected RegistryValue nextElement() {
                     while (true) {
-                        lpValueName.clear();
-                        lpcchValueName.value(lpValueName.size());
-                        lpType.value(0);
-                        lpData.clear();
-                        lpcbData.value(lpcMaxValueLen.value());
+                        clear(lpValueName);
+                        setInt(lpcchValueName, lpValueName.byteSize());
+                        setInt(lpType, 0);
+                        clear(lpData);
+                        setInt(lpcbData, getInt(lpcMaxValueLen));
 
-                        int code = api.RegEnumValue(hKey, index, lpValueName, lpcchValueName, null, lpType, lpData, lpcbData);
+                        int code = api.RegEnumValue(
+                                hKey,
+                                index,
+                                lpValueName,
+                                lpcchValueName,
+                                MemorySegment.NULL,
+                                lpType,
+                                lpData,
+                                lpcbData);
                         if (code == WinError.ERROR_SUCCESS) {
                             index++;
-                            String valueName = lpValueName.value();
-                            int valueType = lpType.value();
+                            String valueName = WString.getString(lpValueName);
+                            int valueType = getInt(lpType);
                             if (filter == null || filter.matches(valueName, valueType)) {
-                                return RegistryValue.of(valueName, valueType, lpData, lpcbData.value());
+                                return RegistryValue.of(valueName, valueType, lpData, getInt(lpcbData));
                             }
                             continue;
                         }
@@ -1095,21 +1163,33 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             Objects.requireNonNull(valueType);
 
             try (Arena allocator = Arena.ofConfined()) {
-                StringPointer lpValueName = StringPointer.withValue(name, allocator);
-                IntPointer lpType = IntPointer.uninitialized(allocator);
-                IntPointer lpcbData = IntPointer.uninitialized(allocator);
+                MemorySegment lpValueName = WString.allocate(allocator, name);
+                MemorySegment lpType = allocateInt(allocator);
+                MemorySegment lpcbData = allocateInt(allocator);
 
-                int code = api.RegQueryValueEx(hKey, lpValueName, null, lpType, null, lpcbData);
+                int code = api.RegQueryValueEx(
+                        hKey,
+                        lpValueName,
+                        MemorySegment.NULL,
+                        lpType,
+                        MemorySegment.NULL,
+                        lpcbData);
                 if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
                     // lpcbData includes the terminating null characters unless the data was stored without them
                     // Add not one but two chars, so for REG_MULTI_SZ both terminating null characters will be added
-                    BytePointer lpData = BytePointer.unitialized(lpcbData.value() + 2 * StringPointer.CHAR_SIZE, allocator);
-                    lpData.clear();
-                    lpcbData.value(lpData.size());
+                    MemorySegment lpData = allocateBytes(allocator, getInt(lpcbData) + 2 * WString.CHAR_SIZE);
+                    clear(lpData);
+                    setInt(lpcbData, lpData.byteSize());
 
-                    code = api.RegQueryValueEx(hKey, lpValueName, null, null, lpData, lpcbData);
+                    code = api.RegQueryValueEx(
+                            hKey,
+                            lpValueName,
+                            MemorySegment.NULL,
+                            MemorySegment.NULL,
+                            lpData,
+                            lpcbData);
                     if (code == WinError.ERROR_SUCCESS) {
-                        return valueType.cast(RegistryValue.of(name, lpType.value(), lpData, lpcbData.value()));
+                        return valueType.cast(RegistryValue.of(name, getInt(lpType), lpData, getInt(lpcbData)));
                     }
                 }
                 throw RegistryException.forValue(code, path(), machineName(), name);
@@ -1134,24 +1214,36 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             Objects.requireNonNull(valueType);
 
             try (Arena allocator = Arena.ofConfined()) {
-                StringPointer lpValueName = StringPointer.withValue(name, allocator);
-                IntPointer lpType = IntPointer.uninitialized(allocator);
-                IntPointer lpcbData = IntPointer.uninitialized(allocator);
+                MemorySegment lpValueName = WString.allocate(allocator, name);
+                MemorySegment lpType = allocateInt(allocator);
+                MemorySegment lpcbData = allocateInt(allocator);
 
-                int code = api.RegQueryValueEx(hKey, lpValueName, null, lpType, null, lpcbData);
+                int code = api.RegQueryValueEx(
+                        hKey,
+                        lpValueName,
+                        MemorySegment.NULL,
+                        lpType,
+                        MemorySegment.NULL,
+                        lpcbData);
                 if (code == WinError.ERROR_FILE_NOT_FOUND) {
                     return Optional.empty();
                 }
                 if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
                     // lpcbData includes the terminating null characters unless the data was stored without them
                     // Add not one but two chars, so for REG_MULTI_SZ both terminating null characters will be added
-                    BytePointer lpData = BytePointer.unitialized(lpcbData.value() + 2 * StringPointer.CHAR_SIZE, allocator);
-                    lpData.clear();
-                    lpcbData.value(lpData.size());
+                    MemorySegment lpData = allocateBytes(allocator, getInt(lpcbData) + 2 * WString.CHAR_SIZE);
+                    clear(lpData);
+                    setInt(lpcbData, lpData.byteSize());
 
-                    code = api.RegQueryValueEx(hKey, lpValueName, null, null, lpData, lpcbData);
+                    code = api.RegQueryValueEx(
+                            hKey,
+                            lpValueName,
+                            MemorySegment.NULL,
+                            MemorySegment.NULL,
+                            lpData,
+                            lpcbData);
                     if (code == WinError.ERROR_SUCCESS) {
-                        RegistryValue value = RegistryValue.of(name, lpType.value(), lpData, lpcbData.value());
+                        RegistryValue value = RegistryValue.of(name, getInt(lpType), lpData, getInt(lpcbData));
                         return Optional.of(valueType.cast(value));
                     }
                 }
@@ -1296,10 +1388,16 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             Objects.requireNonNull(value);
 
             try (Arena allocator = Arena.ofConfined()) {
-                StringPointer lpValueName = StringPointer.withValue(value.name(), allocator);
-                BytePointer lpData = value.rawData(allocator);
+                MemorySegment lpValueName = WString.allocate(allocator, value.name());
+                MemorySegment lpData = value.rawData(allocator);
 
-                int code = api.RegSetValueEx(hKey, lpValueName, 0, value.type(), lpData, lpData.size());
+                int code = api.RegSetValueEx(
+                        hKey,
+                        lpValueName,
+                        0,
+                        value.type(),
+                        lpData,
+                        Math.toIntExact(lpData.byteSize()));
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forValue(code, path(), machineName(), value.name());
                 }
@@ -1320,7 +1418,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             Objects.requireNonNull(name);
 
             try (Arena allocator = Arena.ofConfined()) {
-                StringPointer lpValueName = StringPointer.withValue(name, allocator);
+                MemorySegment lpValueName = WString.allocate(allocator, name);
 
                 int code = api.RegDeleteValue(hKey, lpValueName);
                 if (code != WinError.ERROR_SUCCESS) {
@@ -1343,7 +1441,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             Objects.requireNonNull(name);
 
             try (Arena allocator = Arena.ofConfined()) {
-                StringPointer lpValueName = StringPointer.withValue(name, allocator);
+                MemorySegment lpValueName = WString.allocate(allocator, name);
 
                 int code = api.RegDeleteValue(hKey, lpValueName);
                 if (code == WinError.ERROR_SUCCESS) {

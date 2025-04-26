@@ -18,9 +18,9 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.TEXT;
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsBytePointer;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsSegment;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -28,6 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.MemorySegment;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.DisplayName;
@@ -38,7 +39,6 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
@@ -57,10 +57,10 @@ class StringValueTest {
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytePointer() {
-            BytePointer data = textAsBytePointer();
-            StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.size());
+            MemorySegment data = textAsSegment();
+            StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
 
             assertEquals(TEXT, value.value());
         }
@@ -146,16 +146,16 @@ class StringValueTest {
         void testFromString() {
             StringValue value = StringValue.of("test", TEXT);
 
-            assertBytePointerEquals(textAsBytePointer(), value.rawData(ALLOCATOR));
+            assertContentEquals(textAsSegment(), value.rawData(ALLOCATOR));
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytePointer() {
-            BytePointer data = textAsBytePointer();
-            StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.size());
+            MemorySegment data = textAsSegment();
+            StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
 
-            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+            assertContentEquals(data, value.rawData(ALLOCATOR));
         }
     }
 
@@ -316,15 +316,15 @@ class StringValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        BytePointer data = textAsBytePointer();
+        MemorySegment data = textAsSegment();
         StringValue value = StringValue.of("test", TEXT);
 
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, StringValue.of("test", TEXT), true),
-                arguments(value, new StringValue("test", WinNT.REG_SZ, data, data.size()), true),
-                arguments(value, new StringValue("test", WinNT.REG_EXPAND_SZ, data, data.size()), false),
-                arguments(value, new StringValue("test", WinNT.REG_SZ, resized(data, data.size() + 10), data.size()), true),
+                arguments(value, new StringValue("test", WinNT.REG_SZ, data, data.byteSize()), true),
+                arguments(value, new StringValue("test", WinNT.REG_EXPAND_SZ, data, data.byteSize()), false),
+                arguments(value, new StringValue("test", WinNT.REG_SZ, resized(data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, StringValue.of("test2", TEXT), false),
                 arguments(value, StringValue.of("test", TEXT.substring(0, TEXT.length() - 1)), false),
                 arguments(value, "foo", false),

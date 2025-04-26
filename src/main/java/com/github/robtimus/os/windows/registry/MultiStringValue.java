@@ -17,12 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
+import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -35,9 +36,9 @@ public final class MultiStringValue extends SettableRegistryValue {
 
     private final List<String> values;
 
-    MultiStringValue(String name, BytePointer data, int dataLength) {
+    MultiStringValue(String name, MemorySegment data, long dataLength) {
         super(name, WinNT.REG_MULTI_SZ);
-        values = data.toStringList(dataLength);
+        values = WString.getStringList(data.asSlice(0, dataLength));
     }
 
     private MultiStringValue(String name, List<String> values) {
@@ -92,8 +93,8 @@ public final class MultiStringValue extends SettableRegistryValue {
     }
 
     @Override
-    BytePointer rawData(SegmentAllocator allocator) {
-        return BytePointer.withStringList(values, allocator);
+    MemorySegment rawData(SegmentAllocator allocator) {
+        return WString.allocate(allocator, values);
     }
 
     @Override

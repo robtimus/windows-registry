@@ -18,11 +18,11 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
 final class RemoteSubKey extends RegistryKey {
 
@@ -138,7 +138,7 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     Handle handle(int samDesired, boolean create) {
         try (Arena allocator = Arena.ofConfined()) {
-            HKEY hKey = hKey(samDesired, create, allocator);
+            MemorySegment hKey = hKey(samDesired, create, allocator);
             return new Handle(hKey);
         }
     }
@@ -146,17 +146,17 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
         try (Arena allocator = Arena.ofConfined()) {
-            HKEY hKey = hKey(samDesired, ignoreError, allocator);
+            MemorySegment hKey = hKey(samDesired, ignoreError, allocator);
             return Optional.ofNullable(hKey)
                     .map(Handle::new);
         }
     }
 
-    private HKEY hKey(int samDesired, boolean create, SegmentAllocator allocator) {
+    private MemorySegment hKey(int samDesired, boolean create, SegmentAllocator allocator) {
         return local.hKey(root.hKey(), samDesired, create, allocator, machineName());
     }
 
-    private HKEY hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator) {
+    private MemorySegment hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator) {
         return local.hKey(root.hKey(), samDesired, ignoreError, allocator, machineName());
     }
 
@@ -192,7 +192,7 @@ final class RemoteSubKey extends RegistryKey {
 
         private final Cleaner.Cleanable cleanable;
 
-        private Handle(HKEY hKey) {
+        private Handle(MemorySegment hKey) {
             super(hKey);
             this.cleanable = closeOnClean(this, hKey, path(), machineName());
         }

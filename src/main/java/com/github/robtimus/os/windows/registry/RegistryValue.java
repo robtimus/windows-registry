@@ -17,12 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.MemorySegment;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -74,7 +74,7 @@ public abstract sealed class RegistryValue
         return hash;
     }
 
-    static RegistryValue of(String name, int type, BytePointer data, int dataLength) {
+    static RegistryValue of(String name, int type, MemorySegment data, long dataLength) {
         switch (type) {
             case WinNT.REG_NONE:
                 return new NoneValue(name, data, dataLength);

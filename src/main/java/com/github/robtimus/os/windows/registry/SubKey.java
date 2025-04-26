@@ -17,7 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.ref.Cleaner;
 import java.util.ArrayDeque;
@@ -25,8 +28,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.github.robtimus.os.windows.registry.foreign.IntPointer;
-import com.github.robtimus.os.windows.registry.foreign.StringPointer;
+import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
@@ -112,7 +114,7 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    boolean exists(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
+    boolean exists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         int code = checkSubKey(rootHKey, allocator, machineName);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
@@ -130,7 +132,7 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    boolean isAccessible(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
+    boolean isAccessible(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         int code = checkSubKey(rootHKey, allocator, machineName);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
@@ -141,13 +143,17 @@ final class SubKey extends RegistryKey {
         throw RegistryException.forKey(code, path(), machineName);
     }
 
-    private int checkSubKey(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
-        StringPointer lpSubKey = StringPointer.withValue(path, allocator);
-        HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
+    private int checkSubKey(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
+        MemorySegment lpSubKey = WString.allocate(allocator, path);
+        MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = api.RegOpenKeyEx(rootHKey, lpSubKey, 0, WinNT.KEY_READ, phkResult);
+        int code = api.RegOpenKeyEx(rootHKey,
+                lpSubKey,
+                0,
+                WinNT.KEY_READ,
+                phkResult);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.value(), path(), machineName);
+            closeKey(HKEY.target(phkResult), path(), machineName);
         }
         return code;
     }
@@ -159,7 +165,7 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    void create(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
+    void create(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         if (createOrOpen(rootHKey, allocator, machineName) == WinNT.REG_OPENED_EXISTING_KEY) {
             throw new RegistryKeyAlreadyExistsException(path(), machineName);
         }
@@ -172,19 +178,28 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    boolean createIfNotExists(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
+    boolean createIfNotExists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         return createOrOpen(rootHKey, allocator, machineName) == WinNT.REG_CREATED_NEW_KEY;
     }
 
-    private int createOrOpen(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
-        StringPointer lpSubKey = StringPointer.withValue(path, allocator);
-        HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
-        IntPointer lpdwDisposition = IntPointer.uninitialized(allocator);
+    private int createOrOpen(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
+        MemorySegment lpSubKey = WString.allocate(allocator, path);
+        MemorySegment phkResult = HKEY.allocateRef(allocator);
+        MemorySegment lpdwDisposition = allocateInt(allocator);
 
-        int code = api.RegCreateKeyEx(rootHKey, lpSubKey, 0, null, WinNT.REG_OPTION_NON_VOLATILE, WinNT.KEY_READ, null, phkResult, lpdwDisposition);
+        int code = api.RegCreateKeyEx(
+                rootHKey,
+                lpSubKey,
+                0,
+                MemorySegment.NULL,
+                WinNT.REG_OPTION_NON_VOLATILE,
+                WinNT.KEY_READ,
+                MemorySegment.NULL,
+                phkResult,
+                lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
-            closeKey(phkResult.value(), path(), machineName);
-            return lpdwDisposition.value();
+            closeKey(HKEY.target(phkResult), path(), machineName);
+            return getInt(lpdwDisposition);
         }
         throw RegistryException.forKey(code, path(), machineName);
     }
@@ -196,7 +211,7 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    SubKey renameTo(HKEY rootHKey, String newName, SegmentAllocator allocator, String machineName) {
+    SubKey renameTo(MemorySegment rootHKey, String newName, SegmentAllocator allocator, String machineName) {
         if (newName.contains(SEPARATOR)) {
             throw new IllegalArgumentException(Messages.RegistryKey.nameContainsBackslash(newName));
         }
@@ -206,8 +221,8 @@ final class SubKey extends RegistryKey {
         newPathParts.addLast(newName);
         SubKey renamed = new SubKey(root, newPathParts);
 
-        StringPointer lpSubKeyName = StringPointer.withValue(path, allocator);
-        StringPointer lpNewKeyName = StringPointer.withValue(newName, allocator);
+        MemorySegment lpSubKeyName = WString.allocate(allocator, path);
+        MemorySegment lpNewKeyName = WString.allocate(allocator, newName);
 
         int code = api.RegRenameKey(rootHKey, lpSubKeyName, lpNewKeyName);
         if (code == WinError.ERROR_SUCCESS) {
@@ -226,8 +241,8 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    void delete(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
-        StringPointer lpSubKey = StringPointer.withValue(path, allocator);
+    void delete(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
+        MemorySegment lpSubKey = WString.allocate(allocator, path);
 
         int code = api.RegDeleteKey(rootHKey, lpSubKey);
         if (code != WinError.ERROR_SUCCESS) {
@@ -242,8 +257,8 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    boolean deleteIfExists(HKEY rootHKey, SegmentAllocator allocator, String machineName) {
-        StringPointer lpSubKey = StringPointer.withValue(path, allocator);
+    boolean deleteIfExists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
+        MemorySegment lpSubKey = WString.allocate(allocator, path);
 
         int code = api.RegDeleteKey(rootHKey, lpSubKey);
         if (code == WinError.ERROR_SUCCESS) {
@@ -260,7 +275,7 @@ final class SubKey extends RegistryKey {
     @Override
     RegistryKey.Handle handle(int samDesired, boolean create) {
         try (Arena allocator = Arena.ofConfined()) {
-            HKEY hKey = hKey(samDesired, create, allocator);
+            MemorySegment hKey = hKey(samDesired, create, allocator);
             return new Handle(hKey);
         }
     }
@@ -268,48 +283,62 @@ final class SubKey extends RegistryKey {
     @Override
     Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
         try (Arena allocator = Arena.ofConfined()) {
-            HKEY hKey = hKey(samDesired, ignoreError, allocator);
+            MemorySegment hKey = hKey(samDesired, ignoreError, allocator);
             return Optional.ofNullable(hKey)
                     .map(Handle::new);
         }
     }
 
-    private HKEY hKey(int samDesired, boolean create, SegmentAllocator allocator) {
+    private MemorySegment hKey(int samDesired, boolean create, SegmentAllocator allocator) {
         return hKey(root.hKey(), samDesired, create, allocator, machineName());
     }
 
-    private HKEY hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator) {
+    private MemorySegment hKey(int samDesired, IntPredicate ignoreError, SegmentAllocator allocator) {
         return hKey(root.hKey(), samDesired, ignoreError, allocator, machineName());
     }
 
-    HKEY hKey(HKEY rootHKEY, int samDesired, boolean create, SegmentAllocator allocator, String machineName) {
+    MemorySegment hKey(MemorySegment rootHKEY, int samDesired, boolean create, SegmentAllocator allocator, String machineName) {
         return create
                 ? createOrOpenKey(rootHKEY, samDesired, allocator, machineName)
                 : openKey(rootHKEY, samDesired, _ -> false, allocator, machineName);
     }
 
-    HKEY hKey(HKEY rootHKEY, int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, String machineName) {
+    MemorySegment hKey(MemorySegment rootHKEY, int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, String machineName) {
         return openKey(rootHKEY, samDesired, ignoreError, allocator, machineName);
     }
 
-    private HKEY createOrOpenKey(HKEY rootHKey, int samDesired, SegmentAllocator allocator, String machineName) {
-        StringPointer lpSubKey = StringPointer.withValue(path, allocator);
-        HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
+    private MemorySegment createOrOpenKey(MemorySegment rootHKey, int samDesired, SegmentAllocator allocator, String machineName) {
+        MemorySegment lpSubKey = WString.allocate(allocator, path);
+        MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = api.RegCreateKeyEx(rootHKey, lpSubKey, 0, null, WinNT.REG_OPTION_NON_VOLATILE, samDesired, null, phkResult, null);
+        int code = api.RegCreateKeyEx(
+                rootHKey,
+                lpSubKey,
+                0,
+                MemorySegment.NULL,
+                WinNT.REG_OPTION_NON_VOLATILE,
+                samDesired,
+                MemorySegment.NULL,
+                phkResult,
+                MemorySegment.NULL);
         if (code == WinError.ERROR_SUCCESS) {
-            return phkResult.value();
+            return HKEY.target(phkResult);
         }
         throw RegistryException.forKey(code, path(), machineName);
     }
 
-    private HKEY openKey(HKEY rootHKey, int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, String machineName) {
-        StringPointer lpSubKey = StringPointer.withValue(path, allocator);
-        HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
+    private MemorySegment openKey(MemorySegment rootHKey, int samDesired, IntPredicate ignoreError, SegmentAllocator allocator, String machineName) {
+        MemorySegment lpSubKey = WString.allocate(allocator, path);
+        MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = api.RegOpenKeyEx(rootHKey, lpSubKey, 0, samDesired, phkResult);
+        int code = api.RegOpenKeyEx(
+                rootHKey,
+                lpSubKey,
+                0,
+                samDesired,
+                phkResult);
         if (code == WinError.ERROR_SUCCESS) {
-            return phkResult.value();
+            return HKEY.target(phkResult);
         }
         if (ignoreError.test(code)) {
             return null;
@@ -343,7 +372,7 @@ final class SubKey extends RegistryKey {
 
         private final Cleaner.Cleanable cleanable;
 
-        private Handle(HKEY hKey) {
+        private Handle(MemorySegment hKey) {
             super(hKey);
             this.cleanable = closeOnClean(this, hKey, path(), machineName());
         }

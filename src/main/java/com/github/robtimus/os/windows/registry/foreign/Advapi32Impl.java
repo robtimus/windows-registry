@@ -18,16 +18,17 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalFunctionMethodHandle;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Optional;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
-final class Advapi32Impl extends ApiImpl implements Advapi32 {
+final class Advapi32Impl implements Advapi32 {
 
     private final MethodHandle regCloseKey;
     private final MethodHandle regConnectRegistry;
@@ -140,11 +141,11 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegCloseKey(
-            HKEY hKey) {
+            MemorySegment hKey) {
 
         try {
             return (int) regCloseKey.invokeExact(
-                    hKey.segment());
+                    hKey);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -152,15 +153,15 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegConnectRegistry(
-            StringPointer lpMachineName,
-            HKEY hKey,
-            HKEY.Reference phkResult) {
+            MemorySegment lpMachineName,
+            MemorySegment hKey,
+            MemorySegment phkResult) {
 
         try {
             return (int) regConnectRegistry.invokeExact(
-                    segment(lpMachineName),
-                    hKey.segment(),
-                    phkResult.segment());
+                    lpMachineName,
+                    hKey,
+                    phkResult);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -168,27 +169,27 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegCreateKeyEx(
-            HKEY hKey,
-            StringPointer lpSubKey,
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
             int Reserved, // NOSONAR
-            StringPointer lpClass,
+            MemorySegment lpClass,
             int dwOptions,
             int samDesired,
-            NullPointer lpSecurityAttributes,
-            HKEY.Reference phkResult,
-            IntPointer lpdwDisposition) {
+            MemorySegment lpSecurityAttributes,
+            MemorySegment phkResult,
+            MemorySegment lpdwDisposition) {
 
         try {
             return (int) regCreateKeyEx.invokeExact(
-                    hKey.segment(),
-                    lpSubKey.segment(),
+                    hKey,
+                    lpSubKey,
                     Reserved,
-                    segment(lpClass),
+                    lpClass,
                     dwOptions,
                     samDesired,
-                    segment(lpSecurityAttributes),
-                    phkResult.segment(),
-                    segment(lpdwDisposition));
+                    lpSecurityAttributes,
+                    phkResult,
+                    lpdwDisposition);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -196,13 +197,13 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegDeleteKey(
-            HKEY hKey,
-            StringPointer lpSubKey) {
+            MemorySegment hKey,
+            MemorySegment lpSubKey) {
 
         try {
             return (int) regDeleteKey.invokeExact(
-                    hKey.segment(),
-                    lpSubKey.segment());
+                    hKey,
+                    lpSubKey);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -210,13 +211,13 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegDeleteValue(
-            HKEY hKey,
-            StringPointer lpValueName) {
+            MemorySegment hKey,
+            MemorySegment lpValueName) {
 
         try {
             return (int) regDeleteValue.invokeExact(
-                    hKey.segment(),
-                    segment(lpValueName));
+                    hKey,
+                    lpValueName);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -224,25 +225,25 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegEnumKeyEx(
-            HKEY hKey,
+            MemorySegment hKey,
             int dwIndex,
-            StringPointer lpName,
-            IntPointer lpcchName,
-            NullPointer lpReserved,
-            StringPointer lpClass,
-            IntPointer lpcchClass,
-            FILETIME lpftLastWriteTime) {
+            MemorySegment lpName,
+            MemorySegment lpcchName,
+            MemorySegment lpReserved,
+            MemorySegment lpClass,
+            MemorySegment lpcchClass,
+            MemorySegment lpftLastWriteTime) {
 
         try {
             return (int) regEnumKeyEx.invokeExact(
-                    hKey.segment(),
+                    hKey,
                     dwIndex,
-                    lpName.segment(),
-                    lpcchName.segment(),
-                    segment(lpReserved),
-                    segment(lpClass),
-                    segment(lpcchClass),
-                    segment(lpftLastWriteTime));
+                    lpName,
+                    lpcchName,
+                    lpReserved,
+                    lpClass,
+                    lpcchClass,
+                    lpftLastWriteTime);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -250,25 +251,25 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegEnumValue(
-            HKEY hKey,
+            MemorySegment hKey,
             int dwIndex,
-            StringPointer lpValueName,
-            IntPointer lpcchValueName,
-            NullPointer lpReserved,
-            IntPointer lpType,
-            BytePointer lpData,
-            IntPointer lpcbData) {
+            MemorySegment lpValueName,
+            MemorySegment lpcchValueName,
+            MemorySegment lpReserved,
+            MemorySegment lpType,
+            MemorySegment lpData,
+            MemorySegment lpcbData) {
 
         try {
             return (int) regEnumValue.invokeExact(
-                    hKey.segment(),
+                    hKey,
                     dwIndex,
-                    lpValueName.segment(),
-                    lpcchValueName.segment(),
-                    segment(lpReserved),
-                    segment(lpType),
-                    segment(lpData),
-                    segment(lpcbData));
+                    lpValueName,
+                    lpcchValueName,
+                    lpReserved,
+                    lpType,
+                    lpData,
+                    lpcbData);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -276,19 +277,19 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegOpenKeyEx(
-            HKEY hKey,
-            StringPointer lpSubKey,
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
             int ulOptions,
             int samDesired,
-            HKEY.Reference phkResult) {
+            MemorySegment phkResult) {
 
         try {
             return (int) regOpenKeyEx.invokeExact(
-                    hKey.segment(),
-                    segment(lpSubKey),
+                    hKey,
+                    lpSubKey,
                     ulOptions,
                     samDesired,
-                    phkResult.segment());
+                    phkResult);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -296,33 +297,33 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegQueryInfoKey(
-            HKEY hKey,
-            StringPointer lpClass,
-            IntPointer lpcchClass,
-            NullPointer lpReserved,
-            IntPointer lpcSubKeys,
-            IntPointer lpcbMaxSubKeyLen,
-            IntPointer lpcbMaxClassLen,
-            IntPointer lpcValues,
-            IntPointer lpcbMaxValueNameLen,
-            IntPointer lpcbMaxValueLen,
-            IntPointer lpcbSecurityDescriptor,
-            FILETIME lpftLastWriteTime) {
+            MemorySegment hKey,
+            MemorySegment lpClass,
+            MemorySegment lpcchClass,
+            MemorySegment lpReserved,
+            MemorySegment lpcSubKeys,
+            MemorySegment lpcbMaxSubKeyLen,
+            MemorySegment lpcbMaxClassLen,
+            MemorySegment lpcValues,
+            MemorySegment lpcbMaxValueNameLen,
+            MemorySegment lpcbMaxValueLen,
+            MemorySegment lpcbSecurityDescriptor,
+            MemorySegment lpftLastWriteTime) {
 
         try {
             return (int) regQueryInfoKey.invokeExact(
-                    hKey.segment(),
-                    segment(lpClass),
-                    segment(lpcchClass),
-                    segment(lpReserved),
-                    segment(lpcSubKeys),
-                    segment(lpcbMaxSubKeyLen),
-                    segment(lpcbMaxClassLen),
-                    segment(lpcValues),
-                    segment(lpcbMaxValueNameLen),
-                    segment(lpcbMaxValueLen),
-                    segment(lpcbSecurityDescriptor),
-                    segment(lpftLastWriteTime));
+                    hKey,
+                    lpClass,
+                    lpcchClass,
+                    lpReserved,
+                    lpcSubKeys,
+                    lpcbMaxSubKeyLen,
+                    lpcbMaxClassLen,
+                    lpcValues,
+                    lpcbMaxValueNameLen,
+                    lpcbMaxValueLen,
+                    lpcbSecurityDescriptor,
+                    lpftLastWriteTime);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -330,21 +331,21 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegQueryValueEx(
-            HKEY hKey,
-            StringPointer lpValueName,
-            NullPointer lpReserved,
-            IntPointer lpType,
-            BytePointer lpData,
-            IntPointer lpcbData) {
+            MemorySegment hKey,
+            MemorySegment lpValueName,
+            MemorySegment lpReserved,
+            MemorySegment lpType,
+            MemorySegment lpData,
+            MemorySegment lpcbData) {
 
         try {
             return (int) regQueryValueEx.invokeExact(
-                    hKey.segment(),
-                    segment(lpValueName),
-                    segment(lpReserved),
-                    segment(lpType),
-                    segment(lpData),
-                    segment(lpcbData));
+                    hKey,
+                    lpValueName,
+                    lpReserved,
+                    lpType,
+                    lpData,
+                    lpcbData);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -352,16 +353,16 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegRenameKey(
-            HKEY hKey,
-            StringPointer lpSubKeyName,
-            StringPointer lpNewKeyName) {
+            MemorySegment hKey,
+            MemorySegment lpSubKeyName,
+            MemorySegment lpNewKeyName) {
 
         MethodHandle regRenameKeyHandle = regRenameKey.orElseThrow(UnsupportedOperationException::new);
         try {
             return (int) regRenameKeyHandle.invokeExact(
-                    hKey.segment(),
-                    segment(lpSubKeyName),
-                    lpNewKeyName.segment());
+                    hKey,
+                    lpSubKeyName,
+                    lpNewKeyName);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
@@ -374,20 +375,20 @@ final class Advapi32Impl extends ApiImpl implements Advapi32 {
 
     @Override
     public int RegSetValueEx(
-            HKEY hKey,
-            StringPointer lpValueName,
+            MemorySegment hKey,
+            MemorySegment lpValueName,
             int Reserved, // NOSONAR
             int dwType,
-            BytePointer lpData,
+            MemorySegment lpData,
             int cbData) {
 
         try {
             return (int) regSetValueEx.invokeExact(
-                    hKey.segment(),
-                    segment(lpValueName),
+                    hKey,
+                    lpValueName,
                     Reserved,
                     dwType,
-                    segment(lpData),
+                    lpData,
                     cbData);
         } catch (Throwable e) {
             throw new IllegalStateException(e);

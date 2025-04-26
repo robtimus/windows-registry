@@ -17,21 +17,21 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 final class RemoteRootKey extends RemoteRegistryKey {
 
     private final String machineName;
     private final RootKey rootKey;
-    private final HKEY hKey;
+    private final MemorySegment hKey;
     private final Handle handle;
     private final Cleaner.Cleanable cleanable;
 
-    RemoteRootKey(String machineName, RootKey rootKey, HKEY hKey) {
+    RemoteRootKey(String machineName, RootKey rootKey, MemorySegment hKey) {
         this.machineName = machineName;
         this.rootKey = rootKey;
         this.hKey = hKey;
@@ -39,7 +39,7 @@ final class RemoteRootKey extends RemoteRegistryKey {
         this.cleanable = closeOnClean(this, hKey, rootKey.name(), machineName);
     }
 
-    HKEY hKey() {
+    MemorySegment hKey() {
         return hKey;
     }
 
@@ -166,7 +166,19 @@ final class RemoteRootKey extends RemoteRegistryKey {
     }
 
     private int checkHKEY() {
-        return api.RegQueryInfoKey(hKey, null, null, null, null, null, null, null, null, null, null, null);
+        return api.RegQueryInfoKey(
+                hKey,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL,
+                MemorySegment.NULL);
     }
 
     // Comparable / Object

@@ -17,11 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
+import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Objects;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
@@ -38,11 +40,11 @@ public final class DWordValue extends SettableRegistryValue {
     private final int value;
     private final ValueLayout.OfInt layout;
 
-    DWordValue(String name, int type, BytePointer data) {
+    DWordValue(String name, int type, MemorySegment data) {
         super(name, type);
 
         this.layout = getLayout(type);
-        this.value = data.toInt(layout);
+        this.value = getInt(data, layout);
     }
 
     private DWordValue(String name, int type, int value, ValueLayout.OfInt layout) {
@@ -109,8 +111,8 @@ public final class DWordValue extends SettableRegistryValue {
     }
 
     @Override
-    BytePointer rawData(SegmentAllocator allocator) {
-        return BytePointer.withInt(value, layout, allocator);
+    MemorySegment rawData(SegmentAllocator allocator) {
+        return allocateInt(allocator, layout, value);
     }
 
     @Override

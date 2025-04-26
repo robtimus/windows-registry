@@ -33,70 +33,56 @@ public final class WinDef {
     private WinDef() {
     }
 
-    public static final class HKEY extends Pointer {
+    public static final class HKEY {
 
-        static final AddressLayout LAYOUT = ValueLayout.ADDRESS;
+        private static final AddressLayout LAYOUT = ValueLayout.ADDRESS;
+        private static final AddressLayout REFERENCE_LAYOUT = ValueLayout.ADDRESS.withTargetLayout(LAYOUT);
 
-        HKEY(MemorySegment segment) {
-            super(segment.asReadOnly());
+        private HKEY() {
         }
 
-        public static Reference uninitializedReference(SegmentAllocator allocator) {
-            MemorySegment segment = allocator.allocate(Reference.LAYOUT);
-            return new Reference(segment);
+        public static MemorySegment allocateRef(SegmentAllocator allocator) {
+            return allocator.allocate(REFERENCE_LAYOUT);
         }
 
-        public static final class Reference extends Pointer {
-
-            static final AddressLayout LAYOUT = ValueLayout.ADDRESS.withTargetLayout(HKEY.LAYOUT);
-
-            private Reference(MemorySegment segment) {
-                super(segment);
-            }
-
-            public HKEY value() {
-                MemorySegment segment = segment().get(HKEY.LAYOUT, 0);
-                return new HKEY(segment);
-            }
-
-            void value(HKEY value) {
-                segment().set(HKEY.LAYOUT, 0, value.segment());
-            }
+        public static MemorySegment target(MemorySegment ref) {
+            return ref.get(LAYOUT, 0);
         }
     }
 
-    public static final class FILETIME extends Structure {
+    public static final class FILETIME {
 
         private static final String DW_LOW_DATE_TIME_NAME = "dwLowDateTime"; //$NON-NLS-1$
         private static final String DW_HIGH_DATE_TIME_NAME = "dwHighDateTime"; //$NON-NLS-1$
 
-        static final StructLayout LAYOUT = MemoryLayout.structLayout(
+        private static final StructLayout LAYOUT = MemoryLayout.structLayout(
                 ValueLayout.JAVA_INT.withName(DW_LOW_DATE_TIME_NAME),
                 ValueLayout.JAVA_INT.withName(DW_HIGH_DATE_TIME_NAME));
 
         private static final VarHandle DW_LOW_DATE_TIME = insertCoordinates(LAYOUT.varHandle(groupElement(DW_LOW_DATE_TIME_NAME)), 1, 0L);
         private static final VarHandle DW_HIGH_DATE_TIME = insertCoordinates(LAYOUT.varHandle(groupElement(DW_HIGH_DATE_TIME_NAME)), 1, 0L);
 
-        public FILETIME(SegmentAllocator allocator) {
-            super(LAYOUT, allocator);
+        private FILETIME() {
         }
 
-        public int dwLowDateTime() {
-            return (int) DW_LOW_DATE_TIME.get(segment());
+        public static MemorySegment allocate(SegmentAllocator allocator) {
+            return allocator.allocate(LAYOUT);
         }
 
-        public FILETIME dwLowDateTime(int value) {
-            DW_LOW_DATE_TIME.set(segment(), value);
-            return this;
+        public static int dwLowDateTime(MemorySegment segment) {
+            return (int) DW_LOW_DATE_TIME.get(segment);
         }
 
-        public int dwHighDateTime() {
-            return (int) DW_HIGH_DATE_TIME.get(segment());
+        public static void dwLowDateTime(MemorySegment segment, int value) {
+            DW_LOW_DATE_TIME.set(segment, value);
         }
 
-        public FILETIME dwHighDateTime(int value) {
-            DW_HIGH_DATE_TIME.set(segment(), value);
-            return this;
+        public static int dwHighDateTime(MemorySegment segment) {
+            return (int) DW_HIGH_DATE_TIME.get(segment);
+        }
+
+        public static void dwHighDateTime(MemorySegment segment, int value) {
+            DW_HIGH_DATE_TIME.set(segment, value);
         }
     }
 }

@@ -21,12 +21,12 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDa
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class ResourceRequirementsListValueTest {
@@ -39,15 +39,15 @@ class ResourceRequirementsListValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        BytePointer data = randomDataBytePointer();
-        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.size());
+        MemorySegment data = randomDataBytePointer();
+        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.byteSize());
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new ResourceRequirementsListValue("test", data, data.size()), true),
-                arguments(value, new ResourceRequirementsListValue("test", resized(data, data.size() + 10), data.size()), true),
-                arguments(value, new ResourceRequirementsListValue("test2", data, data.size()), false),
-                arguments(value, new ResourceRequirementsListValue("test", data, data.size() - 1), false),
+                arguments(value, new ResourceRequirementsListValue("test", data, data.byteSize()), true),
+                arguments(value, new ResourceRequirementsListValue("test", resized(data, data.byteSize() + 10), data.byteSize()), true),
+                arguments(value, new ResourceRequirementsListValue("test2", data, data.byteSize()), false),
+                arguments(value, new ResourceRequirementsListValue("test", data, data.byteSize() - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };
@@ -56,10 +56,10 @@ class ResourceRequirementsListValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        BytePointer data = randomDataBytePointer();
-        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.size());
+        MemorySegment data = randomDataBytePointer();
+        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.byteSize());
 
         assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new ResourceRequirementsListValue("test", data, data.size()).hashCode());
+        assertEquals(value.hashCode(), new ResourceRequirementsListValue("test", data, data.byteSize()).hashCode());
     }
 }

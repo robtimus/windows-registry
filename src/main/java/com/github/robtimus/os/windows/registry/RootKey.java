@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import java.lang.foreign.MemorySegment;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Collections;
@@ -24,7 +25,6 @@ import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 final class RootKey extends RegistryKey {
@@ -41,17 +41,17 @@ final class RootKey extends RegistryKey {
 
     private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 
-    private final HKEY hKey;
+    private final MemorySegment hKey;
     private final String name;
     private final Handle handle;
 
-    RootKey(HKEY hKey, String name) {
+    RootKey(MemorySegment hKey, String name) {
         this.hKey = hKey;
         this.name = name;
         this.handle = new Handle();
     }
 
-    HKEY hKey() {
+    MemorySegment hKey() {
         return hKey;
     }
 

@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
@@ -25,7 +26,7 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
-final class Kernel32Impl extends ApiImpl implements Kernel32 {
+final class Kernel32Impl implements Kernel32 {
 
     private final MethodHandle expandEnvironmentStrings;
     private final MethodHandle formatMessage;
@@ -59,16 +60,16 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
 
     @Override
     public int ExpandEnvironmentStrings(
-            StringPointer lpSrc,
-            StringPointer lpDst,
+            MemorySegment lpSrc,
+            MemorySegment lpDst,
             int nSize,
-            CaptureState captureState) {
+            MemorySegment captureState) {
 
         try {
             return (int) expandEnvironmentStrings.invokeExact(
-                    captureState.segment(),
-                    lpSrc.segment(),
-                    segment(lpDst),
+                    captureState,
+                    lpSrc,
+                    lpDst,
                     nSize);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
@@ -78,51 +79,49 @@ final class Kernel32Impl extends ApiImpl implements Kernel32 {
     @Override
     public int FormatMessage(
             int dwFlags,
-            Pointer lpSource,
+            MemorySegment lpSource,
             int dwMessageId,
             int dwLanguageId,
-            StringPointer.Reference lpBuffer,
+            MemorySegment lpBuffer,
             int nSize,
-            Pointer Arguments, // NOSONAR
-            CaptureState captureState) {
+            MemorySegment Arguments, // NOSONAR
+            MemorySegment captureState) {
 
         try {
             return (int) formatMessage.invokeExact(
-                    captureState.segment(),
+                    captureState,
                     dwFlags,
-                    segment(lpSource),
+                    lpSource,
                     dwMessageId,
                     dwLanguageId,
-                    lpBuffer.segment(),
+                    lpBuffer,
                     nSize,
-                    segment(Arguments));
+                    Arguments);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }
     }
 
     @Override
-    public Pointer LocalFree(
-            Pointer hMem,
-            CaptureState captureState) {
+    public MemorySegment LocalFree(
+            MemorySegment hMem,
+            MemorySegment captureState) {
 
-        MemorySegment segment = segment(hMem);
-
-        MemorySegment result = invokeLocalFree(segment, captureState);
+        MemorySegment result = invokeLocalFree(hMem, captureState);
 
         if (result == null || MemorySegment.NULL.equals(result)) {
             return null;
         }
-        if (result.equals(segment)) {
+        if (result.equals(hMem)) {
             return hMem;
         }
-        throw new IllegalStateException(Messages.Kernel32.localFreeUnexpectedResult(segment, result));
+        throw new IllegalStateException(Messages.Kernel32.localFreeUnexpectedResult(hMem, result));
     }
 
-    private MemorySegment invokeLocalFree(MemorySegment segment, CaptureState captureState) {
+    private MemorySegment invokeLocalFree(MemorySegment segment, MemorySegment captureState) {
         try {
             return (MemorySegment) localFree.invokeExact(
-                    captureState.segment(),
+                    captureState,
                     segment);
         } catch (Throwable e) {
             throw new IllegalStateException(e);

@@ -18,11 +18,90 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.util.Optional;
 
-final class ForeignUtils {
+@SuppressWarnings("javadoc")
+public final class ForeignUtils {
 
     static final Arena ARENA = Arena.ofAuto();
 
     private ForeignUtils() {
+    }
+
+    static MethodHandle functionMethodHandle(Linker linker, SymbolLookup symbolLookup, String name,
+            FunctionDescriptor function, Linker.Option... options) {
+
+        return optionalFunctionMethodHandle(linker, symbolLookup, name, function, options)
+                .orElseThrow(() -> new IllegalStateException(Messages.ApiImpl.functionNotFound(name)));
+    }
+
+    static Optional<MethodHandle> optionalFunctionMethodHandle(Linker linker, SymbolLookup symbolLookup, String name,
+            FunctionDescriptor function, Linker.Option... options) {
+
+        return symbolLookup.find(name)
+                .map(address -> linker.downcallHandle(address, function, options));
+    }
+
+    public static MemorySegment allocateBytes(SegmentAllocator allocator, byte[] bytes) {
+        return allocator.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+    }
+
+    public static MemorySegment allocateBytes(SegmentAllocator allocator, long byteCount) {
+        return allocator.allocate(ValueLayout.JAVA_BYTE, byteCount);
+    }
+
+    public static MemorySegment allocateInt(SegmentAllocator allocator) {
+        return allocator.allocate(ValueLayout.JAVA_INT);
+    }
+
+    public static MemorySegment allocateInt(SegmentAllocator allocator, int value) {
+        return allocateInt(allocator, ValueLayout.JAVA_INT, value);
+    }
+
+    public static MemorySegment allocateInt(SegmentAllocator allocator, long value) {
+        return allocateInt(allocator, Math.toIntExact(value));
+    }
+
+    public static MemorySegment allocateInt(SegmentAllocator allocator, ValueLayout.OfInt layout, int value) {
+        return allocator.allocateFrom(layout, value);
+    }
+
+    public static MemorySegment allocateLong(SegmentAllocator allocator, ValueLayout.OfLong layout, long value) {
+        return allocator.allocateFrom(layout, value);
+    }
+
+    public static byte[] toByteArray(MemorySegment segment) {
+        return segment.toArray(ValueLayout.JAVA_BYTE);
+    }
+
+    public static int getInt(MemorySegment segment) {
+        return getInt(segment, ValueLayout.JAVA_INT);
+    }
+
+    public static int getInt(MemorySegment segment, ValueLayout.OfInt layout) {
+        return segment.get(layout, 0);
+    }
+
+    public static void setInt(MemorySegment segment, int value) {
+        segment.set(ValueLayout.JAVA_INT, 0, value);
+    }
+
+    public static void setInt(MemorySegment segment, long value) {
+        setInt(segment, Math.toIntExact(value));
+    }
+
+    public static long getLong(MemorySegment segment, ValueLayout.OfLong layout) {
+        return segment.get(layout, 0);
+    }
+
+    public static void clear(MemorySegment segment) {
+        segment.fill((byte) 0);
     }
 }

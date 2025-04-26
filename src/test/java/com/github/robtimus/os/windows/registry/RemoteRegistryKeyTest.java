@@ -17,21 +17,20 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqHKEY;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
@@ -50,27 +49,27 @@ class RemoteRegistryKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("succes")
             void testSuccess() {
-                HKEY hKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
+                MemorySegment hKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
 
                 try (RemoteRegistryKey _ = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine")) {
                     // No need to do anything
                 }
 
-                verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), any());
-                verify(RegistryKey.api).RegCloseKey(eqHKEY(hKey));
+                verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
+                verify(RegistryKey.api).RegCloseKey(hKey);
             }
 
             @Test
             @DisplayName("failure")
             void testFailure() {
                 doReturn(WinError.ERROR_BAD_NETPATH).when(RegistryKey.api)
-                        .RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), any());
+                        .RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
 
                 RegistryException exception = assertThrows(RegistryException.class, () -> RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine"));
                 assertEquals("HKEY_LOCAL_MACHINE", exception.path());
 
-                verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), any());
-                verify(RegistryKey.api, never()).RegCloseKey(any());
+                verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
+                verify(RegistryKey.api, never()).RegCloseKey(notNull());
             }
         }
     }
