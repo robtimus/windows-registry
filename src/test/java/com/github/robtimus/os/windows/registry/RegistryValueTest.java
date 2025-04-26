@@ -18,12 +18,15 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.lang.foreign.MemorySegment;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
@@ -32,7 +35,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.sun.jna.win32.W32APITypeMapper;
 
@@ -56,9 +58,9 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_NONE")
         void testNone() {
-            BytePointer data = randomDataBytePointer();
+            MemorySegment data = randomDataBytePointer();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_NONE, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_NONE, data, data.byteSize());
             assertInstanceOf(NoneValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_NONE, value.type());
@@ -67,81 +69,81 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_SZ")
         void testString() {
-            BytePointer data = textAsBytePointer();
+            MemorySegment data = textAsSegment();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_SZ, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_SZ, data, data.byteSize());
             StringValue stringValue = assertInstanceOf(StringValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_SZ, value.type());
-            assertBytePointerEquals(data, stringValue.rawData(ALLOCATOR));
+            assertContentEquals(data, stringValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_EXPAND_SZ")
         void testExpandableString() {
-            BytePointer data = textAsBytePointer();
+            MemorySegment data = textAsSegment();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.byteSize());
             StringValue expandableStringValue = assertInstanceOf(StringValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_EXPAND_SZ, value.type());
-            assertBytePointerEquals(data, expandableStringValue.rawData(ALLOCATOR));
+            assertContentEquals(data, expandableStringValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_BINARY")
         void testBinary() {
-            BytePointer data = randomDataBytePointer();
+            MemorySegment data = randomDataBytePointer();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_BINARY, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_BINARY, data, data.byteSize());
             BinaryValue binaryValue = assertInstanceOf(BinaryValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_BINARY, value.type());
-            assertBytePointerEquals(data, binaryValue.rawData(ALLOCATOR));
+            assertContentEquals(data, binaryValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_DWORD")
         void testDWord() {
-            BytePointer data = bytePointer(1, 2, 3, 4);
+            MemorySegment data = bytesSegment(1, 2, 3, 4);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD, data, data.byteSize());
             DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_DWORD, value.type());
-            assertBytePointerEquals(data, dWordValue.rawData(ALLOCATOR));
+            assertContentEquals(data, dWordValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_DWORD_LITTLE_ENDIAN")
         void testLittleEndianDWord() {
-            BytePointer data = bytePointer(1, 2, 3, 4);
+            MemorySegment data = bytesSegment(1, 2, 3, 4);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data, data.byteSize());
             DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_DWORD_LITTLE_ENDIAN, value.type());
-            assertBytePointerEquals(data, dWordValue.rawData(ALLOCATOR));
+            assertContentEquals(data, dWordValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_DWORD_BIG_ENDIAN")
         void testBigEndianDWord() {
-            BytePointer data = bytePointer(1, 2, 3, 4);
+            MemorySegment data = bytesSegment(1, 2, 3, 4);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_BIG_ENDIAN, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_BIG_ENDIAN, data, data.byteSize());
             DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_DWORD_BIG_ENDIAN, value.type());
-            assertBytePointerEquals(data, dWordValue.rawData(ALLOCATOR));
+            assertContentEquals(data, dWordValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_LINK")
         void testLink() {
-            BytePointer data = randomDataBytePointer();
+            MemorySegment data = randomDataBytePointer();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_LINK, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_LINK, data, data.byteSize());
             assertInstanceOf(LinkValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_LINK, value.type());
@@ -150,21 +152,21 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_MULTI_SZ")
         void testMultiString() {
-            BytePointer data = textAsBytePointer("value1", "value2", "value3");
+            MemorySegment data = textAsSegment("value1", "value2", "value3");
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_MULTI_SZ, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_MULTI_SZ, data, data.byteSize());
             MultiStringValue multiStringValue = assertInstanceOf(MultiStringValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_MULTI_SZ, value.type());
-            assertBytePointerEquals(data, multiStringValue.rawData(ALLOCATOR));
+            assertContentEquals(data, multiStringValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_RESOURCE_LIST")
         void testResourceList() {
-            BytePointer data = randomDataBytePointer();
+            MemorySegment data = randomDataBytePointer();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_LIST, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_LIST, data, data.byteSize());
             assertInstanceOf(ResourceListValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_RESOURCE_LIST, value.type());
@@ -173,9 +175,9 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
         void testFullResourceDescriptor() {
-            BytePointer data = randomDataBytePointer();
+            MemorySegment data = randomDataBytePointer();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_FULL_RESOURCE_DESCRIPTOR, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_FULL_RESOURCE_DESCRIPTOR, data, data.byteSize());
             assertInstanceOf(FullResourceDescriptorValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_FULL_RESOURCE_DESCRIPTOR, value.type());
@@ -184,9 +186,9 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
         void testResourceRequirementsList() {
-            BytePointer data = randomDataBytePointer();
+            MemorySegment data = randomDataBytePointer();
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_REQUIREMENTS_LIST, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_REQUIREMENTS_LIST, data, data.byteSize());
             assertInstanceOf(ResourceRequirementsListValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_RESOURCE_REQUIREMENTS_LIST, value.type());
@@ -195,32 +197,32 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_QWORD")
         void testQWord() {
-            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD, data, data.byteSize());
             QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_QWORD, value.type());
-            assertBytePointerEquals(data, qWordValue.rawData(ALLOCATOR));
+            assertContentEquals(data, qWordValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("REG_QWORD_LITTLE_ENDIAN")
         void testLittleEndianQWord() {
-            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD_LITTLE_ENDIAN, data, data.size());
+            RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD_LITTLE_ENDIAN, data, data.byteSize());
             QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
             assertEquals("test", value.name());
             assertEquals(WinNT.REG_QWORD_LITTLE_ENDIAN, value.type());
-            assertBytePointerEquals(data, qWordValue.rawData(ALLOCATOR));
+            assertContentEquals(data, qWordValue.rawData(ALLOCATOR));
         }
 
         @Test
         @DisplayName("unsupported type")
         void testUnsupportedType() {
-            BytePointer data = randomDataBytePointer();
-            int dataLength = data.size();
+            MemorySegment data = randomDataBytePointer();
+            long dataLength = data.byteSize();
 
             assertThrows(IllegalStateException.class, () -> RegistryValue.of("test", -1, data, dataLength));
         }
@@ -1169,26 +1171,26 @@ final class RegistryValueTest {
         return data;
     }
 
-    static BytePointer randomDataBytePointer() {
+    static MemorySegment randomDataBytePointer() {
         byte[] bytes = randomData();
-        return BytePointer.withBytes(bytes, ALLOCATOR);
+        return allocateBytes(ALLOCATOR, bytes);
     }
 
-    static BytePointer bytePointer(int... values) {
+    static MemorySegment bytesSegment(int... values) {
         byte[] data = new byte[values.length];
         for (int i = 0; i < values.length; i++) {
             data[i] = (byte) values[i];
         }
-        return BytePointer.withBytes(data, ALLOCATOR);
+        return allocateBytes(ALLOCATOR, data);
     }
 
     static byte[] textAsBytes() {
         return textAsBytes(TEXT);
     }
 
-    static BytePointer textAsBytePointer() {
+    static MemorySegment textAsSegment() {
         byte[] bytes = textAsBytes();
-        return BytePointer.withBytes(bytes, ALLOCATOR);
+        return allocateBytes(ALLOCATOR, bytes);
     }
 
     static byte[] textAsBytes(String... texts) {
@@ -1202,9 +1204,9 @@ final class RegistryValueTest {
         return Arrays.copyOf(result, result.length + 2);
     }
 
-    static BytePointer textAsBytePointer(String... texts) {
+    static MemorySegment textAsSegment(String... texts) {
         byte[] bytes = textAsBytes(texts);
-        return BytePointer.withBytes(bytes, ALLOCATOR);
+        return allocateBytes(ALLOCATOR, bytes);
     }
 
     private static byte[] textAsBytes(String text) {
@@ -1216,16 +1218,16 @@ final class RegistryValueTest {
         return result;
     }
 
-    static BytePointer resized(BytePointer data, int newSize) {
-        byte[] bytes = Arrays.copyOf(data.toByteArray(), newSize);
-        return BytePointer.withBytes(bytes, ALLOCATOR);
+    static MemorySegment resized(MemorySegment data, long newSize) {
+        byte[] bytes = Arrays.copyOf(toByteArray(data), Math.toIntExact(newSize));
+        return allocateBytes(ALLOCATOR, bytes);
     }
 
-    static void assertBytePointerEquals(BytePointer expected, BytePointer actual) {
-        assertBytePointerEquals(expected, actual, expected.size());
+    static void assertContentEquals(MemorySegment expected, MemorySegment actual) {
+        assertContentEquals(expected, actual, expected.byteSize());
     }
 
-    static void assertBytePointerEquals(BytePointer expected, BytePointer actual, int dataLength) {
-        assertArrayEquals(expected.toByteArray(dataLength), actual.toByteArray(dataLength));
+    static void assertContentEquals(MemorySegment expected, MemorySegment actual, long dataLength) {
+        assertArrayEquals(toByteArray(expected.asSlice(0, dataLength)), toByteArray(actual.asSlice(0, dataLength)));
     }
 }

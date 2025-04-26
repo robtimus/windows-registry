@@ -18,7 +18,8 @@
 package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.Arena;
-import com.github.robtimus.os.windows.registry.foreign.StringPointer;
+import java.lang.foreign.MemorySegment;
+import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 
@@ -59,14 +60,14 @@ public abstract class RemoteRegistryKey extends RegistryKey implements AutoClose
          */
         public RemoteRegistryKey at(String machineName) {
             try (Arena allocator = Arena.ofConfined()) {
-                StringPointer lpMachineName = StringPointer.withValue(machineName, allocator);
-                HKEY.Reference phkResult = HKEY.uninitializedReference(allocator);
+                MemorySegment lpMachineName = WString.allocate(allocator, machineName);
+                MemorySegment phkResult = HKEY.allocateRef(allocator);
 
                 int code = api.RegConnectRegistry(lpMachineName, rootKey.hKey(), phkResult);
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, rootKey.path(), machineName);
                 }
-                return new RemoteRootKey(machineName, rootKey, phkResult.value());
+                return new RemoteRootKey(machineName, rootKey, HKEY.target(phkResult));
             }
         }
     }
