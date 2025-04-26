@@ -19,25 +19,24 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.copyData;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqHKEY;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.newHKEY;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.notNULL;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setHKEY;
-import static org.mockito.ArgumentMatchers.any;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
+import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import com.github.robtimus.os.windows.registry.foreign.Advapi32;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
-import com.github.robtimus.os.windows.registry.foreign.IntPointer;
-import com.github.robtimus.os.windows.registry.foreign.StringPointer;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 abstract class RegistryKeyTestBase {
@@ -52,17 +51,17 @@ abstract class RegistryKeyTestBase {
         RegistryKey.api = Advapi32.INSTANCE;
     }
 
-    static HKEY mockOpenAndClose(HKEY hKey, String path) {
-        HKEY result = mockOpen(hKey, path);
+    static MemorySegment mockOpenAndClose(MemorySegment hKey, String path) {
+        MemorySegment result = mockOpen(hKey, path);
         mockClose(hKey);
         return result;
     }
 
-    static HKEY mockOpen(HKEY hKey, String path) {
-        HKEY result = newHKEY();
+    static MemorySegment mockOpen(MemorySegment hKey, String path) {
+        MemorySegment result = newHKEY();
 
-        when(RegistryKey.api.RegOpenKeyEx(eqHKEY(hKey), eqPointer(path), anyInt(), anyInt(), any())).thenAnswer(i -> {
-            setHKEY(i.getArgument(4, HKEY.Reference.class), result);
+        when(RegistryKey.api.RegOpenKeyEx(eq(hKey), eqPointer(path), anyInt(), anyInt(), notNull())).thenAnswer(i -> {
+            setHKEY(i.getArgument(4, MemorySegment.class), result);
 
             return WinError.ERROR_SUCCESS;
         });
@@ -70,21 +69,21 @@ abstract class RegistryKeyTestBase {
         return result;
     }
 
-    static void mockOpenFailure(HKEY hKey, String path, int result) {
-        doReturn(result).when(RegistryKey.api).RegOpenKeyEx(eqHKEY(hKey), eqPointer(path), anyInt(), anyInt(), any());
+    static void mockOpenFailure(MemorySegment hKey, String path, int result) {
+        doReturn(result).when(RegistryKey.api).RegOpenKeyEx(eq(hKey), eqPointer(path), anyInt(), anyInt(), notNull());
     }
 
-    static HKEY mockConnectAndClose(HKEY hKey, String machineName) {
-        HKEY result = mockConnect(hKey, machineName);
+    static MemorySegment mockConnectAndClose(MemorySegment hKey, String machineName) {
+        MemorySegment result = mockConnect(hKey, machineName);
         mockClose(hKey);
         return result;
     }
 
-    static HKEY mockConnect(HKEY hKey, String machineName) {
-        HKEY result = newHKEY();
+    static MemorySegment mockConnect(MemorySegment hKey, String machineName) {
+        MemorySegment result = newHKEY();
 
-        when(RegistryKey.api.RegConnectRegistry(eqPointer(machineName), eqHKEY(hKey), any())).thenAnswer(i -> {
-            setHKEY(i.getArgument(2, HKEY.Reference.class), result);
+        when(RegistryKey.api.RegConnectRegistry(eqPointer(machineName), eq(hKey), notNull())).thenAnswer(i -> {
+            setHKEY(i.getArgument(2, MemorySegment.class), result);
 
             return WinError.ERROR_SUCCESS;
         });
@@ -92,94 +91,97 @@ abstract class RegistryKeyTestBase {
         return result;
     }
 
-    static void mockClose(HKEY hKey) {
+    static void mockClose(MemorySegment hKey) {
         mockClose(hKey, WinError.ERROR_SUCCESS);
     }
 
-    static void mockClose(HKEY hKey, int result) {
-        doReturn(result).when(RegistryKey.api).RegCloseKey(eqHKEY(hKey));
+    static void mockClose(MemorySegment hKey, int result) {
+        doReturn(result).when(RegistryKey.api).RegCloseKey(hKey);
     }
 
-    static void mockSubKeys(HKEY hKey, String... names) {
+    static void mockSubKeys(MemorySegment hKey, String... names) {
         int maxLength = Arrays.stream(names)
                 .mapToInt(String::length)
                 .max()
                 .orElse(0);
 
-        when(RegistryKey.api.RegQueryInfoKey(eqHKEY(hKey), any(), any(), any(), any(), notNull(), any(), any(), any(), any(), any(), any()))
+        when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNULL(), notNull(), notNull(), notNull(),
+                notNull(), notNull(), notNull()))
                 .thenAnswer(i -> {
-                    i.getArgument(5, IntPointer.class).value(maxLength);
+                    setInt(i.getArgument(5, MemorySegment.class), maxLength);
                     return WinError.ERROR_SUCCESS;
                 });
-        when(RegistryKey.api.RegEnumKeyEx(eqHKEY(hKey), anyInt(), any(), any(), any(), any(), any(), any())).thenAnswer(i -> {
+        when(RegistryKey.api.RegEnumKeyEx(eq(hKey), anyInt(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull())).thenAnswer(i -> {
             int index = i.getArgument(1, Integer.class);
             if (index >= names.length) {
                 return WinError.ERROR_NO_MORE_ITEMS;
             }
             String name = names[index];
 
-            StringPointer lpName = i.getArgument(2, StringPointer.class);
-            lpName.value(name);
+            MemorySegment lpName = i.getArgument(2, MemorySegment.class);
+            WString.copy(name, lpName, 0);
 
             return WinError.ERROR_SUCCESS;
         });
     }
 
-    static void mockValues(HKEY hKey, SettableRegistryValue... values) {
+    static void mockValues(MemorySegment hKey, SettableRegistryValue... values) {
         int maxNameLength = Arrays.stream(values)
                 .map(RegistryValue::name)
                 .mapToInt(String::length)
                 .max()
                 .orElseThrow();
-        BytePointer[] datas = Arrays.stream(values)
+        MemorySegment[] datas = Arrays.stream(values)
                 .map(value -> value.rawData(ALLOCATOR))
-                .toArray(BytePointer[]::new);
+                .toArray(MemorySegment[]::new);
         int maxValueLength = Arrays.stream(datas)
-                .mapToInt(BytePointer::size)
+                .mapToLong(MemorySegment::byteSize)
+                .mapToInt(Math::toIntExact)
                 .max()
                 .orElseThrow();
 
-        when(RegistryKey.api.RegQueryInfoKey(eqHKEY(hKey), any(), any(), any(), any(), any(), any(), any(), notNull(), notNull(), any(), any()))
+        when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNULL(),
+                notNULL(), notNull(), notNull()))
                 .thenAnswer(i -> {
-                    i.getArgument(8, IntPointer.class).value(maxNameLength);
-                    i.getArgument(9, IntPointer.class).value(maxValueLength);
+                    setInt(i.getArgument(8, MemorySegment.class), maxNameLength);
+                    setInt(i.getArgument(9, MemorySegment.class), maxValueLength);
                     return WinError.ERROR_SUCCESS;
                 });
-        when(RegistryKey.api.RegEnumValue(eqHKEY(hKey), anyInt(), any(), any(), any(), any(), any(), any())).thenAnswer(i -> {
+        when(RegistryKey.api.RegEnumValue(eq(hKey), anyInt(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull())).thenAnswer(i -> {
             int index = i.getArgument(1, Integer.class);
             if (index >= values.length) {
                 return WinError.ERROR_NO_MORE_ITEMS;
             }
             String name = values[index].name();
-            BytePointer data = datas[index];
+            MemorySegment data = datas[index];
 
-            StringPointer lpValueName = i.getArgument(2, StringPointer.class);
-            lpValueName.value(name);
+            MemorySegment lpValueName = i.getArgument(2, MemorySegment.class);
+            WString.copy(name, lpValueName, 0);
 
-            i.getArgument(5, IntPointer.class).value(values[index].type());
-            copyData(data, i.getArgument(6, BytePointer.class));
-            i.getArgument(7, IntPointer.class).value(data.size());
+            setInt(i.getArgument(5, MemorySegment.class), values[index].type());
+            copyData(data, i.getArgument(6, MemorySegment.class));
+            setInt(i.getArgument(7, MemorySegment.class), data.byteSize());
 
             return WinError.ERROR_SUCCESS;
         });
     }
 
-    static void mockValue(HKEY hKey, SettableRegistryValue value) {
+    static void mockValue(MemorySegment hKey, SettableRegistryValue value) {
         mockValue(hKey, value, WinError.ERROR_SUCCESS);
     }
 
-    static void mockValue(HKEY hKey, SettableRegistryValue value, int returnCode) {
-        BytePointer data = value.rawData(ALLOCATOR);
+    static void mockValue(MemorySegment hKey, SettableRegistryValue value, int returnCode) {
+        MemorySegment data = value.rawData(ALLOCATOR);
 
-        when(RegistryKey.api.RegQueryValueEx(eqHKEY(hKey), eqPointer(value.name()), any(), any(), isNull(), any())).thenAnswer(i -> {
-            i.getArgument(3, IntPointer.class).value(value.type());
-            i.getArgument(5, IntPointer.class).value(data.size());
+        when(RegistryKey.api.RegQueryValueEx(eq(hKey), eqPointer(value.name()), notNull(), notNull(), isNULL(), notNull())).thenAnswer(i -> {
+            setInt(i.getArgument(3, MemorySegment.class), value.type());
+            setInt(i.getArgument(5, MemorySegment.class), data.byteSize());
 
             return WinError.ERROR_MORE_DATA;
         });
-        when(RegistryKey.api.RegQueryValueEx(eqHKEY(hKey), eqPointer(value.name()), any(), isNull(), any(), any())).thenAnswer(i -> {
-            copyData(data, i.getArgument(4, BytePointer.class));
-            i.getArgument(5, IntPointer.class).value(data.size());
+        when(RegistryKey.api.RegQueryValueEx(eq(hKey), eqPointer(value.name()), notNull(), isNULL(), notNull(), notNull())).thenAnswer(i -> {
+            copyData(data, i.getArgument(4, MemorySegment.class));
+            setInt(i.getArgument(5, MemorySegment.class), data.byteSize());
 
             return returnCode;
         });

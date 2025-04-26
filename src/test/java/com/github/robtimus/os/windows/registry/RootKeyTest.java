@@ -19,7 +19,10 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqBytes;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqSize;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,15 +30,15 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.lang.foreign.MemorySegment;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -49,7 +52,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
@@ -60,9 +62,10 @@ class RootKeyTest extends RegistryKeyTestBase {
     @Override
     @AfterEach
     void teardown() {
-        verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
-        verify(RegistryKey.api, never()).RegCreateKeyEx(any(), any(), anyInt(), any(), anyInt(), anyInt(), any(), any(), any());
-        verify(RegistryKey.api, never()).RegCloseKey(any());
+        verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
+        verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
+                notNull());
+        verify(RegistryKey.api, never()).RegCloseKey(notNull());
 
         super.teardown();
     }
@@ -145,7 +148,8 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("query failure")
         void testQueryFailure() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull(), notNull(), notNull());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -156,9 +160,10 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("enum failure")
         void testEnumFailure() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull(), notNull(), notNull());
 
-            when(RegistryKey.api.RegEnumKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq(0), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegEnumKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -185,8 +190,8 @@ class RootKeyTest extends RegistryKeyTestBase {
                 assertEquals(expected, registryKeys);
             }
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(any(), any(), anyInt(), anyInt(), any());
-            verify(RegistryKey.api, never()).RegCloseKey(any());
+            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
+            verify(RegistryKey.api, never()).RegCloseKey(notNull());
         }
 
         @Nested
@@ -316,7 +321,8 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("query failure")
         void testQueryFailure() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull(), notNull(), notNull());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -327,9 +333,10 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("enum failure")
         void testEnumFailure() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any());
+                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                            notNull(), notNull(), notNull(), notNull());
 
-            when(RegistryKey.api.RegEnumValue(eq(WinReg.HKEY_CURRENT_USER), eq(0), any(), any(), any(), any(), any(), any()))
+            when(RegistryKey.api.RegEnumValue(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -360,7 +367,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("non-existing value")
         void testNonExistingValue() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
@@ -412,7 +419,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("non-existing value")
         void testNonExistingValue() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), any(), any(), any(), isNull(), any());
+                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
@@ -450,16 +457,16 @@ class RootKeyTest extends RegistryKeyTestBase {
         @DisplayName("success")
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
-            BytePointer data = stringValue.rawData(ALLOCATOR);
+            MemorySegment data = stringValue.rawData(ALLOCATOR);
 
-            when(RegistryKey.api.RegSetValueEx(any(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqPointer(data), anyInt()))
+            when(RegistryKey.api.RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             registryKey.setValue(stringValue);
 
             verify(RegistryKey.api)
-                    .RegSetValueEx(any(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqPointer(data), eq(data.size()));
+                    .RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data));
         }
 
         @Test
@@ -467,7 +474,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            when(RegistryKey.api.RegSetValueEx(any(), any(), anyInt(), anyInt(), any(), anyInt()))
+            when(RegistryKey.api.RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
@@ -483,18 +490,18 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             registryKey.deleteValue("string");
 
-            verify(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+            verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(any(), any());
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -514,30 +521,30 @@ class RootKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("value existed")
             void testExisted() {
-                doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
             }
 
             @Test
             @DisplayName("value didn't exist")
             void testValueDidntExist() {
-                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(any(), eqPointer("string"));
+                verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
             }
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteValue(any(), any());
+            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
