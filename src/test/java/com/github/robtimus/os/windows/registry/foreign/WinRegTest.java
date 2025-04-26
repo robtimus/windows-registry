@@ -27,7 +27,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.sun.jna.Pointer;
 
 class WinRegTest {
@@ -35,11 +34,10 @@ class WinRegTest {
     @ParameterizedTest(name = "HKEY = {0}, expected = {1}")
     @ArgumentsSource(HKEYArgumentsProvider.class)
     @DisplayName("HKEY constants")
-    void testHKEY(HKEY hKey, com.sun.jna.platform.win32.WinReg.HKEY expected) {
-        MemorySegment segment = hKey.segment();
+    void testHKEY(MemorySegment hKey, com.sun.jna.platform.win32.WinReg.HKEY expected) {
         Pointer pointer = expected.getPointer();
 
-        assertEquals(Pointer.nativeValue(pointer), segment.address());
+        assertEquals(Pointer.nativeValue(pointer), hKey.address());
     }
 
     private static final class HKEYArgumentsProvider implements ArgumentsProvider {

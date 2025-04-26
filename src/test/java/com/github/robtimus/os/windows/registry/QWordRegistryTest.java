@@ -17,19 +17,19 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytePointer;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytesSegment;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class QWordRegistryTest {
@@ -47,9 +47,9 @@ class QWordRegistryTest {
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytes() {
-            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
             QWordValue value = new QWordValue("test", data);
 
             assertEquals(578437695752307201L, value.value());
@@ -63,19 +63,19 @@ class QWordRegistryTest {
         @Test
         @DisplayName("from long")
         void testFromLong() {
-            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
             QWordValue value = QWordValue.of("test", 578437695752307201L);
 
-            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+            assertContentEquals(data, value.rawData(ALLOCATOR));
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytes() {
-            BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
+            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
             QWordValue value = new QWordValue("test", data);
 
-            assertBytePointerEquals(data, value.rawData(ALLOCATOR));
+            assertContentEquals(data, value.rawData(ALLOCATOR));
         }
     }
 
@@ -141,8 +141,8 @@ class QWordRegistryTest {
     }
 
     static Arguments[] equalsArguments() {
-        BytePointer data = bytePointer(1, 2, 3, 4, 5, 6, 7, 8);
-        BytePointer otherData = bytePointer(1, 2, 3, 4, 5, 6, 7, 0);
+        MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
+        MemorySegment otherData = bytesSegment(1, 2, 3, 4, 5, 6, 7, 0);
         QWordValue value = new QWordValue("test", data);
 
         return new Arguments[] {

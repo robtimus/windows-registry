@@ -18,6 +18,7 @@
 package com.github.robtimus.os.windows.registry.foreign;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
 
 @SuppressWarnings("javadoc")
 public final class Kernel32Utils {
@@ -31,22 +32,28 @@ public final class Kernel32Utils {
         }
 
         try (Arena allocator = Arena.ofConfined()) {
-            StringPointer lpSrc = StringPointer.withValue(input, allocator);
-            CaptureState captureState = CaptureState.allocate(allocator);
+            MemorySegment lpSrc = WString.allocate(allocator, input);
+            MemorySegment captureState = CaptureState.allocate(allocator);
 
-            int result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc, null, 0, captureState);
+            int result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc,
+                    MemorySegment.NULL,
+                    0,
+                    captureState);
             if (result == 0) {
-                throw new IllegalStateException(formatMessage(captureState.getLastError()));
+                throw new IllegalStateException(formatMessage(CaptureState.getLastError(captureState)));
             }
 
-            StringPointer lpDst = StringPointer.uninitialized(result, allocator);
+            MemorySegment lpDst = WString.allocate(allocator, result);
 
-            result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc, lpDst, result, captureState);
+            result = Kernel32.INSTANCE.ExpandEnvironmentStrings(lpSrc,
+                    lpDst,
+                    result,
+                    captureState);
             if (result == 0) {
-                throw new IllegalStateException(formatMessage(captureState.getLastError()));
+                throw new IllegalStateException(formatMessage(CaptureState.getLastError(captureState)));
             }
 
-            return lpDst.value();
+            return WString.getString(lpDst);
         }
     }
 
@@ -54,18 +61,24 @@ public final class Kernel32Utils {
         try (Arena allocator = Arena.ofConfined()) {
             int dwFlags = WinBase.FORMAT_MESSAGE_ALLOCATE_BUFFER | WinBase.FORMAT_MESSAGE_FROM_SYSTEM | WinBase.FORMAT_MESSAGE_IGNORE_INSERTS;
             int dwLanguageId = 0;
-            StringPointer.Reference lpBuffer = StringPointer.uninitializedReference(allocator);
-            CaptureState captureState = CaptureState.allocate(allocator);
+            MemorySegment lpBuffer = WString.allocateRef(allocator);
+            MemorySegment captureState = CaptureState.allocate(allocator);
 
-            int result = Kernel32.INSTANCE.FormatMessage(dwFlags, null, code, dwLanguageId, lpBuffer, 0, null, captureState);
+            int result = Kernel32.INSTANCE.FormatMessage(dwFlags,
+                    MemorySegment.NULL,
+                    code,
+                    dwLanguageId,
+                    lpBuffer,
+                    0,
+                    MemorySegment.NULL,
+                    captureState);
             if (result == 0) {
-                throw new IllegalStateException(Messages.Kernel32.formatMessageError(code, captureState.getLastError()));
+                throw new IllegalStateException(Messages.Kernel32.formatMessageError(code, CaptureState.getLastError(captureState)));
             }
 
-            StringPointer pointer = lpBuffer.value(result);
+            MemorySegment pointer = WString.target(lpBuffer, result);
             try {
-                return pointer
-                        .value()
+                return WString.getString(pointer)
                         .strip();
             } finally {
                 free(pointer, captureState);
@@ -73,9 +86,9 @@ public final class Kernel32Utils {
         }
     }
 
-    private static void free(StringPointer pointer, CaptureState captureState) {
+    private static void free(MemorySegment pointer, MemorySegment captureState) {
         if (Kernel32.INSTANCE.LocalFree(pointer, captureState) != null) {
-            throw new IllegalStateException(Messages.Kernel32.localFreeError(captureState.getLastError()));
+            throw new IllegalStateException(Messages.Kernel32.localFreeError(CaptureState.getLastError(captureState)));
         }
     }
 }

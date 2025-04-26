@@ -17,8 +17,7 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import java.lang.foreign.MemorySegment;
 
 @SuppressWarnings("javadoc")
 public interface Advapi32 {
@@ -27,94 +26,94 @@ public interface Advapi32 {
 
     // The following functions all return any error and do not require GetLastError() to be called; CaptureState is therefore not needed
 
-    int RegCloseKey/* NOSONAR */(
-            HKEY hKey);
+    /* LSTATUS */ int RegCloseKey/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey);
 
-    int RegConnectRegistry/* NOSONAR */(
-            StringPointer lpMachineName,
-            HKEY hKey,
-            HKEY.Reference phkResult);
+    /* LSTATUS */ int RegConnectRegistry/* NOSONAR */(
+            /* LPCWSTR */ MemorySegment lpMachineName,
+            /* HKEY */ MemorySegment hKey,
+            /* PHKEY */ MemorySegment phkResult);
 
-    int RegCreateKeyEx/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpSubKey,
-            int Reserved, // NOSONAR
-            StringPointer lpClass,
-            int dwOptions,
-            int samDesired,
-            NullPointer /* SECURITY_ATTRIBUTES */ lpSecurityAttributes, // no need to implement SECURITY_ATTRIBUTES as they are never used
-            HKEY.Reference phkResult,
-            IntPointer lpdwDisposition);
+    /* LSTATUS */ int RegCreateKeyEx/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKey,
+            /* DWORD */ int Reserved, // NOSONAR
+            /* LPWSTR */ MemorySegment lpClass,
+            /* DWORD */ int dwOptions,
+            /* REGSAM */ int samDesired,
+            /* const LPSECURITY_ATTRIBUTES */ MemorySegment lpSecurityAttributes,
+            /* PHKEY */ MemorySegment phkResult,
+            /* LPDWORD */ MemorySegment lpdwDisposition);
 
-    int RegDeleteKey/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpSubKey);
+    /* LSTATUS */ int RegDeleteKey/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKey);
 
-    int RegDeleteValue/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpValueName);
+    /* LSTATUS */ int RegDeleteValue/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpValueName);
 
-    int RegEnumKeyEx/* NOSONAR */(
-            HKEY hKey,
-            int dwIndex,
-            StringPointer lpName,
-            IntPointer lpcchName,
-            NullPointer /* IntPointer */ lpReserved, // force to be null
-            StringPointer lpClass,
-            IntPointer lpcchClass,
-            FILETIME lpftLastWriteTime);
+    /* LSTATUS */ int RegEnumKeyEx/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* DWORD */ int dwIndex,
+            /* LPWSTR  */ MemorySegment lpName,
+            /* LPDWORD */ MemorySegment lpcchName,
+            /* LPDWORD */ MemorySegment lpReserved,
+            /* LPWSTR */ MemorySegment lpClass,
+            /* LPDWORD */ MemorySegment lpcchClass,
+            /* PFILETIME */ MemorySegment lpftLastWriteTime);
 
-    int RegEnumValue/* NOSONAR */(
-            HKEY hKey,
-            int dwIndex,
-            StringPointer lpValueName,
-            IntPointer lpcchValueName,
-            NullPointer /* IntPointer */ lpReserved, // force to be null
-            IntPointer lpType,
-            BytePointer lpData,
-            IntPointer lpcbData);
+    /* LSTATUS */ int RegEnumValue/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* DWORD */ int dwIndex,
+            /* LPWSTR */ MemorySegment lpValueName,
+            /* LPDWORD */ MemorySegment lpcchValueName,
+            /* LPDWORD */ MemorySegment lpReserved,
+            /* LPDWORD */ MemorySegment lpType,
+            /* LPBYTE */ MemorySegment lpData,
+            /* LPDWORD */ MemorySegment lpcbData);
 
-    int RegOpenKeyEx/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpSubKey,
-            int ulOptions,
-            int samDesired,
-            HKEY.Reference phkResult);
+    /* LSTATUS */ int RegOpenKeyEx/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKey,
+            /* DWORD */ int ulOptions,
+            /* REGSAM */ int samDesired,
+            /* PHKEY */ MemorySegment phkResult);
 
-    int RegQueryInfoKey/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpClass,
-            IntPointer lpcchClass,
-            NullPointer /* IntPointer */ lpReserved, // force to be null
-            IntPointer lpcSubKeys,
-            IntPointer lpcbMaxSubKeyLen,
-            IntPointer lpcbMaxClassLen,
-            IntPointer lpcValues,
-            IntPointer lpcbMaxValueNameLen,
-            IntPointer lpcbMaxValueLen,
-            IntPointer lpcbSecurityDescriptor,
-            FILETIME lpftLastWriteTime);
+    /* LSTATUS */ int RegQueryInfoKey/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPWSTR */ MemorySegment lpClass,
+            /* LPDWORD */ MemorySegment lpcchClass,
+            /* LPDWORD */ MemorySegment lpReserved,
+            /* LPDWORD */ MemorySegment lpcSubKeys,
+            /* LPDWORD */ MemorySegment lpcbMaxSubKeyLen,
+            /* LPDWORD */ MemorySegment lpcbMaxClassLen,
+            /* LPDWORD */ MemorySegment lpcValues,
+            /* LPDWORD */ MemorySegment lpcbMaxValueNameLen,
+            /* LPDWORD */ MemorySegment lpcbMaxValueLen,
+            /* LPDWORD */ MemorySegment lpcbSecurityDescriptor,
+            /* PFILETIME */ MemorySegment lpftLastWriteTime);
 
-    int RegQueryValueEx(// NOSONAR
-            HKEY hKey,
-            StringPointer lpValueName,
-            NullPointer /* IntPointer */ lpReserved, // force to be null
-            IntPointer lpType,
-            BytePointer lpData,
-            IntPointer lpcbData);
+    /* LSTATUS */ int RegQueryValueEx(// NOSONAR
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpValueName,
+            /* LPDWORD */ MemorySegment lpReserved,
+            /* LPDWORD */ MemorySegment lpType,
+            /* LPBYTE */ MemorySegment lpData,
+            /* LPDWORD */ MemorySegment lpcbData);
 
-    int RegRenameKey/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpSubKeyName,
-            StringPointer lpNewKeyName);
+    /* LSTATUS */ int RegRenameKey/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpSubKeyName,
+            /* LPCWSTR */ MemorySegment lpNewKeyName);
 
     boolean isRegRenameKeyEnabled();
 
-    int RegSetValueEx/* NOSONAR */(
-            HKEY hKey,
-            StringPointer lpValueName,
-            int Reserved, // NOSONAR
-            int dwType,
-            BytePointer lpData,
-            int cbData);
+    /* LSTATUS */ int RegSetValueEx/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey,
+            /* LPCWSTR */ MemorySegment lpValueName,
+            /* DWORD */ int Reserved, // NOSONAR
+            /* DWORD */ int dwType,
+            /* const BYTE * */ MemorySegment lpData,
+            /* DWORD */ int cbData);
 }

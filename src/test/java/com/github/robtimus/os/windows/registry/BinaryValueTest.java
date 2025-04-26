@@ -17,11 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertBytePointerEquals;
+import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDataBytePointer;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -30,6 +31,7 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -37,7 +39,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.BytePointer;
 
 @SuppressWarnings("nls")
 class BinaryValueTest {
@@ -65,12 +66,12 @@ class BinaryValueTest {
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytesWithLength() {
-            BytePointer data = randomDataBytePointer();
-            BinaryValue value = new BinaryValue("test", data, data.size() - 10);
+            MemorySegment data = randomDataBytePointer();
+            BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
 
-            assertArrayEquals(data.toByteArray(data.size() - 10), value.data());
+            assertArrayEquals(toByteArray(data.asSlice(0, data.byteSize() - 10)), value.data());
         }
     }
 
@@ -84,8 +85,8 @@ class BinaryValueTest {
             byte[] data = randomData();
             BinaryValue value = BinaryValue.of("test", data);
 
-            BytePointer rawData = value.rawData(ALLOCATOR);
-            assertArrayEquals(data, rawData.toByteArray());
+            MemorySegment rawData = value.rawData(ALLOCATOR);
+            assertArrayEquals(data, toByteArray(rawData));
         }
 
         @Test
@@ -94,29 +95,29 @@ class BinaryValueTest {
             byte[] data = randomData();
             BinaryValue value = assertDoesNotThrow(() -> BinaryValue.of("test", new ByteArrayInputStream(data)));
 
-            BytePointer rawData = value.rawData(ALLOCATOR);
-            assertArrayEquals(data, rawData.toByteArray());
+            MemorySegment rawData = value.rawData(ALLOCATOR);
+            assertArrayEquals(data, toByteArray(rawData));
         }
 
         @Test
-        @DisplayName("from byte pointer")
+        @DisplayName("from memory segment")
         void testFromBytesWithLength() {
-            BytePointer data = randomDataBytePointer();
-            BinaryValue value = new BinaryValue("test", data, data.size() - 10);
+            MemorySegment data = randomDataBytePointer();
+            BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
 
-            BytePointer rawData = value.rawData(ALLOCATOR);
-            assertBytePointerEquals(data, rawData, data.size() - 10);
-            assertEquals(data.size() - 10, rawData.size());
+            MemorySegment rawData = value.rawData(ALLOCATOR);
+            assertContentEquals(data, rawData, data.byteSize() - 10);
+            assertEquals(data.byteSize() - 10, rawData.byteSize());
         }
     }
 
     @Test
     @DisplayName("inputStream")
     void testInputStream() throws IOException {
-        BytePointer data = randomDataBytePointer();
-        BinaryValue value = new BinaryValue("test", data, data.size() - 10);
+        MemorySegment data = randomDataBytePointer();
+        BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
 
-        byte[] content = new byte[data.size() - 10];
+        byte[] content = new byte[Math.toIntExact(data.byteSize()) - 10];
         try (InputStream inputStream = value.inputStream()) {
             int offset = 0;
             int remaining = content.length;
@@ -124,7 +125,7 @@ class BinaryValueTest {
                 // Nothing to do
             }
         }
-        assertArrayEquals(data.toByteArray(data.size() - 10), content);
+        assertArrayEquals(toByteArray(data.asSlice(0, data.byteSize() - 10)), content);
     }
 
     @Nested
@@ -206,17 +207,17 @@ class BinaryValueTest {
     }
 
     static Arguments[] equalsArguments() {
-        BytePointer data = randomDataBytePointer();
-        byte[] dataBytes = data.toByteArray();
+        MemorySegment data = randomDataBytePointer();
+        byte[] dataBytes = toByteArray(data);
         BinaryValue value = BinaryValue.of("test", dataBytes);
 
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, BinaryValue.of("test", dataBytes), true),
-                arguments(value, new BinaryValue("test", data, data.size()), true),
-                arguments(value, new BinaryValue("test", resized(data, data.size() + 10), data.size()), true),
+                arguments(value, new BinaryValue("test", data, data.byteSize()), true),
+                arguments(value, new BinaryValue("test", resized(data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, BinaryValue.of("test2", dataBytes), false),
-                arguments(value, new BinaryValue("test", data, data.size() - 1), false),
+                arguments(value, new BinaryValue("test", data, data.byteSize() - 1), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),
         };

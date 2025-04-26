@@ -17,19 +17,20 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.ArgumentMatchers.eq;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import java.util.HexFormat;
+import java.util.IdentityHashMap;
 import java.util.Map;
-import java.util.WeakHashMap;
 import org.mockito.ArgumentMatcher;
 import org.mockito.internal.matchers.ContainsExtraTypeInfo;
 import org.mockito.internal.matchers.text.ValuePrinter;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
 @SuppressWarnings("javadoc")
 public final class ForeignTestUtils {
@@ -41,9 +42,8 @@ public final class ForeignTestUtils {
     private ForeignTestUtils() {
     }
 
-    public static HKEY newHKEY() {
-        MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_LONG, ++hKeyValue);
-        HKEY hKey = new HKEY(segment);
+    public static MemorySegment newHKEY() {
+        MemorySegment hKey = ALLOCATOR.allocateFrom(ValueLayout.JAVA_LONG, ++hKeyValue);
 
         assertHKEYNotEquals(WinReg.HKEY_CLASSES_ROOT, hKey);
         assertHKEYNotEquals(WinReg.HKEY_CURRENT_USER, hKey);
@@ -53,56 +53,49 @@ public final class ForeignTestUtils {
         return hKey;
     }
 
-    private static void assertHKEYNotEquals(HKEY unexpected, HKEY actual) {
-        assertNotEquals(unexpected.segment().address(), actual.segment().address());
+    private static void assertHKEYNotEquals(MemorySegment unexpected, MemorySegment actual) {
+        assertNotEquals(unexpected.address(), actual.address());
     }
 
-    public static void setHKEY(HKEY.Reference reference, HKEY hKey) {
-        reference.value(hKey);
+    public static void setHKEY(MemorySegment reference, MemorySegment hKey) {
+        reference.set(ValueLayout.ADDRESS, 0, hKey);
     }
 
-    public static void copyData(BytePointer source, BytePointer dest) {
-        MemorySegment.copy(source.segment(), 0, dest.segment(), 0, source.size());
+    public static void copyData(MemorySegment source, MemorySegment dest) {
+        MemorySegment.copy(source, 0, dest, 0, source.byteSize());
     }
 
-    public static HKEY eqHKEY(HKEY value) {
-        return argThat(new HKEYMatcher(value));
+    public static MemorySegment notNULL() {
+        return argThat(new NotNullMatcher());
     }
 
-    private static final class HKEYMatcher implements ArgumentMatcher<HKEY> {
+    private static final class NotNullMatcher implements ArgumentMatcher<MemorySegment> {
 
-        private final HKEY wanted;
-
-        private HKEYMatcher(HKEY wanted) {
-            this.wanted = wanted;
+        @Override
+        public boolean matches(MemorySegment argument) {
+            return !MemorySegment.NULL.equals(argument);
         }
 
         @Override
-        public boolean matches(HKEY argument) {
-            if (argument == null && wanted == null) {
-                return true;
-            }
-            if (argument == null || wanted == null) {
-                return false;
-            }
-            return argument.segment().equals(wanted.segment());
-        }
-
-        @Override
+        @SuppressWarnings("nls")
         public String toString() {
-            return ValuePrinter.print(wanted);
+            return "not NULL";
         }
     }
 
-    public static StringPointer eqPointer(String value) {
+    public static MemorySegment isNULL() {
+        return eq(MemorySegment.NULL);
+    }
+
+    public static MemorySegment eqPointer(String value) {
         return argThat(new StringPointerMatcher(value));
     }
 
-    private static final class StringPointerMatcher implements ArgumentMatcher<StringPointer>, ContainsExtraTypeInfo {
+    private static final class StringPointerMatcher implements ArgumentMatcher<MemorySegment>, ContainsExtraTypeInfo {
 
-        // Matchers used in verify steps are called with pointers that are no longer in scope
+        // Matchers used in verify steps are called with memory segments that are no longer in scope
         // Therefore, cache their values
-        private static final Map<StringPointer, String> VALUES = new WeakHashMap<>();
+        private static final Map<MemorySegment, String> VALUES = new IdentityHashMap<>();
 
         private final String wanted;
 
@@ -111,12 +104,12 @@ public final class ForeignTestUtils {
         }
 
         @Override
-        public boolean matches(StringPointer argument) {
+        public boolean matches(MemorySegment argument) {
             if (argument == null) {
                 return wanted == null;
             }
-            if (argument.segment().scope().isAlive()) {
-                String pointerValue = argument.value();
+            if (argument.scope().isAlive()) {
+                String pointerValue = WString.getString(argument);
                 VALUES.put(argument, pointerValue);
                 return wanted.equals(pointerValue);
             }
@@ -127,7 +120,7 @@ public final class ForeignTestUtils {
         @Override
         @SuppressWarnings("nls")
         public String toString() {
-            return "string pointer containing " + ValuePrinter.print(wanted);
+            return "memory segment containing " + ValuePrinter.print(wanted);
         }
 
         @Override
@@ -138,7 +131,7 @@ public final class ForeignTestUtils {
 
         @Override
         public boolean typeMatches(Object target) {
-            return target instanceof StringPointer;
+            return target instanceof MemorySegment;
         }
 
         @Override
@@ -147,29 +140,29 @@ public final class ForeignTestUtils {
         }
     }
 
-    public static BytePointer eqPointer(BytePointer value) {
-        return argThat(new BytePointerMatcher(value));
+    public static MemorySegment eqBytes(MemorySegment value) {
+        return argThat(new BytesMatcher(value));
     }
 
-    private static final class BytePointerMatcher implements ArgumentMatcher<BytePointer>, ContainsExtraTypeInfo {
+    private static final class BytesMatcher implements ArgumentMatcher<MemorySegment>, ContainsExtraTypeInfo {
 
-        // Matchers used in verify steps are called with pointers that are no longer in scope
+        // Matchers used in verify steps are called with memory segments that are no longer in scope
         // Therefore, cache their values
-        private static final Map<BytePointer, byte[]> VALUES = new WeakHashMap<>();
+        private static final Map<MemorySegment, byte[]> VALUES = new IdentityHashMap<>();
 
         private final byte[] wanted;
 
-        private BytePointerMatcher(BytePointer wanted) {
-            this.wanted = wanted.toByteArray();
+        private BytesMatcher(MemorySegment wanted) {
+            this.wanted = toByteArray(wanted);
         }
 
         @Override
-        public boolean matches(BytePointer argument) {
+        public boolean matches(MemorySegment argument) {
             if (argument == null) {
                 return wanted == null;
             }
-            if (argument.segment().scope().isAlive()) {
-                byte[] pointerValue = argument.toByteArray();
+            if (argument.scope().isAlive()) {
+                byte[] pointerValue = toByteArray(argument);
                 VALUES.put(argument, pointerValue);
                 return Arrays.equals(wanted, pointerValue);
             }
@@ -180,7 +173,7 @@ public final class ForeignTestUtils {
         @Override
         @SuppressWarnings("nls")
         public String toString() {
-            return "byte pointer containing " + ValuePrinter.print(wantedAsHex());
+            return "memory segment containing bytes " + ValuePrinter.print(wantedAsHex());
         }
 
         @Override
@@ -196,12 +189,16 @@ public final class ForeignTestUtils {
 
         @Override
         public boolean typeMatches(Object target) {
-            return target instanceof BytePointer;
+            return target instanceof MemorySegment;
         }
 
         @Override
         public Object getWanted() {
             return wanted;
         }
+    }
+
+    public static int eqSize(MemorySegment segment) {
+        return eq(Math.toIntExact(segment.byteSize()));
     }
 }
