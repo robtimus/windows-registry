@@ -382,14 +382,24 @@ class RegistryIT {
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
                 subKey2.deleteIfExists();
 
+                Transaction[] t = new Transaction[1];
                 RegistryKey.transactional().run(transaction -> {
+                    t[0] = transaction;
+
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     registryKey.setValue(StringValue.of("test", "foo"));
 
                     subKey1.delete();
                     subKey2.createIfNotExists();
 
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     transaction.commit();
+
+                    assertEquals(Transaction.Status.COMMITTED, transaction.status());
                 });
+                assertEquals(Transaction.Status.CLOSED, t[0].status());
 
                 assertTrue(registryKey.exists());
                 assertEquals(Optional.of("foo"), registryKey.findStringValue("test"));
@@ -409,12 +419,18 @@ class RegistryIT {
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(transaction -> {
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     registryKey.setValue(StringValue.of("test", "foo"));
 
                     subKey1.delete();
                     subKey2.createIfNotExists();
 
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     transaction.rollback();
+
+                    assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
                 });
 
                 assertTrue(registryKey.exists());
@@ -434,12 +450,19 @@ class RegistryIT {
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
 
-                RegistryKey.transactional().run(_ -> {
+                Transaction[] t = new Transaction[1];
+                RegistryKey.transactional().run(transaction -> {
+                    t[0] = transaction;
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     registryKey.setValue(StringValue.of("test", "foo"));
 
                     subKey1.delete();
                     subKey2.createIfNotExists();
+
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
                 });
+                assertEquals(Transaction.Status.CLOSED, t[0].status());
 
                 assertTrue(registryKey.exists());
                 assertEquals(Optional.empty(), registryKey.findStringValue("test"));
@@ -460,14 +483,24 @@ class RegistryIT {
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(transaction -> {
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     RegistryKey.nonTransactional().run(() -> {
+                        assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                         registryKey.setValue(StringValue.of("test", "foo"));
 
                         subKey1.delete();
                         subKey2.createIfNotExists();
+
+                        assertEquals(Transaction.Status.ACTIVE, transaction.status());
                     });
 
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     transaction.rollback();
+
+                    assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
                 });
 
                 assertTrue(registryKey.exists());
@@ -488,16 +521,27 @@ class RegistryIT {
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
 
                 RegistryKey.transactional().run(transaction -> {
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                     registryKey.setValue(StringValue.of("test", "bar"));
 
                     RegistryKey.nonTransactional().run(() -> {
+                        assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
                         registryKey.setValue(StringValue.of("test", "foo"));
+
+                        // By changing the same registry key the transaction gets rolled back
+                        assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
 
                         subKey1.delete();
                         subKey2.createIfNotExists();
                     });
 
+                    assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
+
                     assertThrows(TransactionException.class, transaction::commit);
+
+                    assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
                 });
 
                 assertTrue(registryKey.exists());
