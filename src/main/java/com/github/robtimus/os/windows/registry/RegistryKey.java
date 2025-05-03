@@ -1612,7 +1612,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             }
         }
 
-        static final class NonTransactional extends Context {
+        private static final class NonTransactional extends Context {
 
             private NonTransactional() {
             }
