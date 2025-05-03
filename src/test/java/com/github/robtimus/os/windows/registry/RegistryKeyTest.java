@@ -17,16 +17,28 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.newHKEY;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setHKEY;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
@@ -35,14 +47,20 @@ import java.util.GregorianCalendar;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import com.github.robtimus.os.windows.registry.foreign.Kernel32;
+import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
+import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
+import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
-import com.sun.jna.platform.win32.Kernel32;
 import com.sun.jna.platform.win32.WinBase.SYSTEMTIME;
 
 @SuppressWarnings("nls")
@@ -904,13 +922,458 @@ class RegistryKeyTest extends RegistryKeyTestBase {
         }
     }
 
+    @Nested
+    @DisplayName("transactional")
+    class Transactional {
+
+        @BeforeEach
+        void setup() {
+            Transaction.ktmW32 = mock(KtmW32.class);
+            Transaction.kernel32 = mock(Kernel32.class);
+        }
+
+        @AfterEach
+        void teardown() {
+            Transaction.ktmW32 = KtmW32.INSTANCE;
+            Transaction.kernel32 = Kernel32.INSTANCE;
+        }
+
+        @Test
+        @DisplayName("default non-transactional")
+        void testDefaultNonTransactional() {
+            String path = "path\\non-transactional";
+
+            MemorySegment hKey = newHKEY();
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            registryKey.create();
+            assertTrue(registryKey.exists());
+            registryKey.delete();
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull());
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull());
+            verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoInteractions(Transaction.ktmW32);
+            verifyNoInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("non-transactional")
+        void testNonTransactional() {
+            String path = "path\\non-transactional";
+
+            MemorySegment hKey = newHKEY();
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            RegistryKey.nonTransactional().run(() -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+            });
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull());
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull());
+            verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoInteractions(Transaction.ktmW32);
+            verifyNoInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("transactional")
+        void testTransactional() {
+            String path = "path\\transactional";
+
+            MemorySegment hKey = newHKEY();
+            MemorySegment transaction = ALLOCATOR.allocate(0);
+
+            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
+                    .thenReturn(transaction);
+            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+
+            when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            RegistryKey.transactional().run(_ -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+            });
+
+            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
+                    notNull(), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
+
+            verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL());
+            verify(RegistryKey.api).RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL());
+            verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoMoreInteractions(Transaction.ktmW32);
+            verifyNoMoreInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("non-transactional in transactional")
+        void testNonTransactionalInTransactional() {
+            String path = "path\\transactional";
+
+            MemorySegment hKey = newHKEY();
+            MemorySegment transaction = ALLOCATOR.allocate(0);
+
+            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
+                    .thenReturn(transaction);
+            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+
+            when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            String expectedResult = UUID.randomUUID().toString();
+            String result = RegistryKey.transactional().call(_ -> RegistryKey.nonTransactional().call(() -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+
+                return expectedResult;
+            }));
+            assertEquals(expectedResult, result);
+
+            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
+                    notNull(), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
+
+            verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull());
+            verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull());
+            verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoMoreInteractions(Transaction.ktmW32);
+            verifyNoMoreInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("nestedd transactional")
+        void testNestedTransactional() {
+            String path = "path\\transactional";
+
+            MemorySegment hKey = newHKEY();
+            MemorySegment transaction1 = ALLOCATOR.allocate(0);
+            MemorySegment transaction2 = ALLOCATOR.allocate(0);
+
+            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
+                    .thenReturn(transaction1, transaction2);
+            when(Transaction.kernel32.CloseHandle(eq(transaction1), notNull())).thenReturn(true);
+            when(Transaction.kernel32.CloseHandle(eq(transaction2), notNull())).thenReturn(true);
+
+            when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction2), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            String expectedResult = UUID.randomUUID().toString();
+            String result = RegistryKey.transactional().call(_ -> RegistryKey.transactional().call(_ -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+
+                return expectedResult;
+            }));
+            assertEquals(expectedResult, result);
+
+            verify(Transaction.ktmW32, times(2)).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
+                    notNull(), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction1), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction2), notNull());
+
+            verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL());
+            verify(RegistryKey.api).RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction2), isNULL());
+            verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL());
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoMoreInteractions(Transaction.ktmW32);
+            verifyNoMoreInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("transactional with custom timeout")
+        void testTransactionalWithCustomTimeout() {
+            String path = "path\\transactional";
+
+            MemorySegment hKey = newHKEY();
+            MemorySegment transaction = ALLOCATOR.allocate(0);
+
+            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), notNull(), notNull()))
+                    .thenReturn(transaction);
+            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+
+            when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            RegistryKey.transactional()
+                    .withTimeout(Duration.ofMillis(100))
+                    .run(_ -> {
+                        registryKey.create();
+                        assertTrue(registryKey.exists());
+                        registryKey.delete();
+                    });
+
+            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100),
+                    notNull(), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
+
+            verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL());
+            verify(RegistryKey.api).RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL());
+            verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoMoreInteractions(Transaction.ktmW32);
+            verifyNoMoreInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("transactional with infinite timeout")
+        void testTransactionalWithInfiniteTimeout() {
+            String path = "path\\transactional";
+
+            MemorySegment hKey = newHKEY();
+            MemorySegment transaction = ALLOCATOR.allocate(0);
+
+            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
+                    .thenReturn(transaction);
+            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+
+            when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            RegistryKey.transactional()
+                    .withInfiniteTimeout()
+                    .run(_ -> {
+                        registryKey.create();
+                        assertTrue(registryKey.exists());
+                        registryKey.delete();
+                    });
+
+            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
+                    notNull(), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
+
+            verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL());
+            verify(RegistryKey.api).RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL());
+            verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoMoreInteractions(Transaction.ktmW32);
+            verifyNoMoreInteractions(Transaction.kernel32);
+        }
+
+        @Test
+        @DisplayName("transactional with description")
+        void testTransactionalWithDescription() {
+            String path = "path\\transactional";
+
+            MemorySegment hKey = newHKEY();
+            MemorySegment transaction = ALLOCATOR.allocate(0);
+
+            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull()))
+                    .thenReturn(transaction);
+            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+
+            when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(7, MemorySegment.class), hKey);
+                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL()))
+                    .thenAnswer(i -> {
+                        setHKEY(i.getArgument(4, MemorySegment.class), hKey);
+
+                        return WinError.ERROR_SUCCESS;
+                    });
+            when(RegistryKey.api.RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
+
+            RegistryKey.transactional()
+                    .withDescription("test")
+                    .run(_ -> {
+                        registryKey.create();
+                        assertTrue(registryKey.exists());
+                        registryKey.delete();
+                    });
+
+            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
+                    eqPointer("test"), notNull());
+            verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
+
+            verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL());
+            verify(RegistryKey.api).RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+                    eq(transaction), isNULL());
+            verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
+            // Closed as part of create and exist calls
+            verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
+            verifyNoMoreInteractions(RegistryKey.api);
+            verifyNoMoreInteractions(Transaction.ktmW32);
+            verifyNoMoreInteractions(Transaction.kernel32);
+        }
+    }
+
     private void copyInstantToFileTime(Instant instant, MemorySegment fileTime) {
         com.sun.jna.platform.win32.WinBase.FILETIME jnaFileTime = new com.sun.jna.platform.win32.WinBase.FILETIME();
         jnaFileTime.dwLowDateTime = FILETIME.dwLowDateTime(fileTime);
         jnaFileTime.dwHighDateTime = FILETIME.dwHighDateTime(fileTime);
 
         SYSTEMTIME systemTime = new SYSTEMTIME(GregorianCalendar.from(instant.atZone(ZoneId.of("UTC"))));
-        Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, jnaFileTime);
+        com.sun.jna.platform.win32.Kernel32.INSTANCE.SystemTimeToFileTime(systemTime, jnaFileTime);
 
         FILETIME.dwLowDateTime(fileTime, jnaFileTime.dwLowDateTime);
         FILETIME.dwHighDateTime(fileTime, jnaFileTime.dwHighDateTime);

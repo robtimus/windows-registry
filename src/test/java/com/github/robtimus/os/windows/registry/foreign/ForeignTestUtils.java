@@ -17,6 +17,8 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.CaptureState.LAST_ERROR_LAYOUT;
+import static com.github.robtimus.os.windows.registry.foreign.CaptureState.LAST_ERROR_OFFSET;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.argThat;
@@ -200,5 +202,9 @@ public final class ForeignTestUtils {
 
     public static int eqSize(MemorySegment segment) {
         return eq(Math.toIntExact(segment.byteSize()));
+    }
+
+    public static void setLastError(MemorySegment captureState, int errorCode) {
+        captureState.set(LAST_ERROR_LAYOUT, LAST_ERROR_OFFSET, errorCode);
     }
 }
