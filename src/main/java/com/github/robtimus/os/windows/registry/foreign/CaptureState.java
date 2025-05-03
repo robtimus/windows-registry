@@ -30,13 +30,13 @@ import java.util.Optional;
 public final class CaptureState {
 
     @SuppressWarnings("nls")
-    private static final String GET_LAST_ERROR = "GetLastError";
+    static final String GET_LAST_ERROR = "GetLastError";
 
-    private static final StructLayout LAYOUT = Linker.Option.captureStateLayout();
+    static final StructLayout LAYOUT = Linker.Option.captureStateLayout();
 
-    private static final long LAST_ERROR_OFFSET = LAYOUT.byteOffset(groupElement(GET_LAST_ERROR));
+    static final long LAST_ERROR_OFFSET = LAYOUT.byteOffset(groupElement(GET_LAST_ERROR));
 
-    private static final ValueLayout.OfInt LAST_ERROR_LAYOUT = (ValueLayout.OfInt) LAYOUT.select(groupElement(GET_LAST_ERROR));
+    static final ValueLayout.OfInt LAST_ERROR_LAYOUT = (ValueLayout.OfInt) LAYOUT.select(groupElement(GET_LAST_ERROR));
 
     static final Linker.Option LINKER_OPTION = Linker.Option.captureCallState(LAYOUT.memberLayouts()
             .stream()
