@@ -1097,7 +1097,7 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         void testNoArguments() {
             RegistryKey registryKey = remoteRoot;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle _ = registryKey.handle()) {
+                try (var _ = registryKey.handle()) {
                     // Do nothing
                 }
             });
@@ -1108,7 +1108,7 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         void testWithCreate() {
             RegistryKey registryKey = remoteRoot;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
+                try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                     // Do nothing
                 }
             });
@@ -1119,7 +1119,7 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         void testWithManageValues() {
             RegistryKey registryKey = remoteRoot;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
+                try (var _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                     // Do nothing
                 }
             });
@@ -1130,7 +1130,7 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         void testWithCreateAndManageValues() {
             RegistryKey registryKey = remoteRoot;
             assertDoesNotThrow(() -> {
-                try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
+                try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                     // Do nothing
                 }
             });
