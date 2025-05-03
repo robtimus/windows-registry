@@ -17,9 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.matchesRegex;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
@@ -32,6 +35,7 @@ import java.io.Reader;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
@@ -547,6 +551,19 @@ class RegistryIT {
                 assertEquals(Optional.of("foo"), registryKey.findStringValue("test"));
                 assertFalse(subKey1.exists());
                 assertTrue(subKey2.exists());
+            }
+
+            @Test
+            @DisplayName("transaction timed out")
+            void testTransactionTimedOut() {
+                RegistryKey.transactional().withTimeout(Duration.ofMillis(100)).run(transaction -> {
+                    await()
+                            .with().pollInterval(Duration.ofMillis(5))
+                            .atMost(Duration.ofMillis(120))
+                            .until(transaction::status,not(is(Transaction.Status.ACTIVE)));
+
+                    assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
+                });
             }
         }
     }
