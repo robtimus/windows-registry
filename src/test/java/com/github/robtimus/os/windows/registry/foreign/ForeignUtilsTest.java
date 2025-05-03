@@ -20,21 +20,48 @@ package com.github.robtimus.os.windows.registry.foreign;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalFunctionMethodHandle;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalSymbolLookup;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledOnOs;
+import org.junit.jupiter.api.condition.OS;
 
 @SuppressWarnings("nls")
 final class ForeignUtilsTest {
 
     private ForeignUtilsTest() {
+    }
+
+    @Nested
+    @DisplayName("optionalSymbolLookup")
+    class OptionalSymbolLookup {
+
+        @Test
+        @DisplayName("library found")
+        @EnabledOnOs(OS.WINDOWS)
+        void testLibraryFound() {
+            String name = "Kernel32";
+
+            assertNotEquals(Optional.empty(), optionalSymbolLookup(name, ARENA));
+        }
+
+        @Test
+        @DisplayName("library not found")
+        void testLibraryNotFound() {
+            String name = UUID.randomUUID().toString();
+
+            assertEquals(Optional.empty(), optionalSymbolLookup(name, ARENA));
+        }
     }
 
     @Nested
