@@ -1843,7 +1843,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle()) {
+            try (var _ = registryKey.handle()) {
                 // Do nothing
             }
 
@@ -1868,7 +1868,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
+            try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                 // Do nothing
             }
 
@@ -1884,7 +1884,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
+            try (var _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
 
@@ -1910,7 +1910,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
+            try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
 
