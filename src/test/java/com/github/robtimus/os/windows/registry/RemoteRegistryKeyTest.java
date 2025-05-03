@@ -51,7 +51,7 @@ class RemoteRegistryKeyTest extends RegistryKeyTestBase {
             void testSuccess() {
                 MemorySegment hKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
 
-                try (RemoteRegistryKey _ = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine")) {
+                try (var _ = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine")) {
                     // No need to do anything
                 }
 
