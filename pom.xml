@@ -64,6 +64,7 @@
   <properties>
     <version.java>25</version.java>
 
+    <version.awaitility>4.3.0</version.awaitility>
     <version.jna>5.13.0</version.jna>
     <version.mockito>5.17.0</version.mockito>
   </properties>
@@ -98,6 +99,13 @@
     <dependency>
       <groupId>org.mockito</groupId>
       <artifactId>mockito-core</artifactId>
+      <scope>test</scope>
+    </dependency>
+
+    <dependency>
+      <groupId>org.awaitility</groupId>
+      <artifactId>awaitility</artifactId>
+      <version>${version.awaitility}</version>
       <scope>test</scope>
     </dependency>
   </dependencies>
