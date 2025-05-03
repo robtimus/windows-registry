@@ -486,7 +486,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
                         notNull(), notNull(), notNull(), notNull());
 
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
-                try (RegistryKey.Handle _ = registryKey.handle()) {
+                try (var _ = registryKey.handle()) {
                     assertEquals(RegistryKey.FILETIME_BASE, registryKey.lastWriteTime());
                 }
             }

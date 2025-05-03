@@ -1886,7 +1886,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle()) {
+            try (var _ = registryKey.handle()) {
                 // Do nothing
             }
 
@@ -1912,7 +1912,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                     });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
+            try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                 // Do nothing
             }
 
@@ -1928,7 +1928,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
+            try (var _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
 
@@ -1954,7 +1954,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                     });
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
-            try (RegistryKey.Handle _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
+            try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
 

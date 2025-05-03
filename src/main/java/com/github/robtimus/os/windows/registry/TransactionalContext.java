@@ -127,7 +127,7 @@ public final class TransactionalContext {
         }
 
         Transaction transaction = Transaction.create(timeout, description);
-        try (CloseableTransaction _ = new CloseableTransaction(transaction)) {
+        try (var _ = new CloseableTransaction(transaction)) {
             return RegistryKey.callWithTransaction(transaction, action::call);
         }
     }
