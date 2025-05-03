@@ -382,10 +382,7 @@ class RegistryIT {
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
                 subKey2.deleteIfExists();
 
-                Transaction[] t = new Transaction[1];
-                RegistryKey.transactional().run(transaction -> {
-                    t[0] = transaction;
-
+                Transaction t = RegistryKey.transactional().call(transaction -> {
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -398,8 +395,10 @@ class RegistryIT {
                     transaction.commit();
 
                     assertEquals(Transaction.Status.COMMITTED, transaction.status());
+
+                    return transaction;
                 });
-                assertEquals(Transaction.Status.CLOSED, t[0].status());
+                assertEquals(Transaction.Status.CLOSED, t.status());
 
                 assertTrue(registryKey.exists());
                 assertEquals(Optional.of("foo"), registryKey.findStringValue("test"));
@@ -450,9 +449,7 @@ class RegistryIT {
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
 
-                Transaction[] t = new Transaction[1];
-                RegistryKey.transactional().run(transaction -> {
-                    t[0] = transaction;
+                Transaction t = RegistryKey.transactional().call(transaction -> {
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -461,8 +458,10 @@ class RegistryIT {
                     subKey2.createIfNotExists();
 
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
+                    return transaction;
                 });
-                assertEquals(Transaction.Status.CLOSED, t[0].status());
+                assertEquals(Transaction.Status.CLOSED, t.status());
 
                 assertTrue(registryKey.exists());
                 assertEquals(Optional.empty(), registryKey.findStringValue("test"));
