@@ -36,6 +36,7 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of transactions for working with the Windows registry.
+ * Transaction can be started or by-passed using {@link TransactionalState}.
  *
  * @author Rob Spoor
  * @since 2.0
