@@ -17,7 +17,9 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
+import static com.github.robtimus.os.windows.registry.TransactionOption.description;
+import static com.github.robtimus.os.windows.registry.TransactionOption.infiniteTimeout;
+import static com.github.robtimus.os.windows.registry.TransactionOption.timeout;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.newHKEY;
@@ -31,7 +33,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -44,19 +45,16 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoField;
 import java.util.GregorianCalendar;
+import java.util.List;
 import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.OptionalLong;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
 import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
-import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
@@ -924,19 +922,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
     @Nested
     @DisplayName("transactional")
-    class Transactional {
-
-        @BeforeEach
-        void setup() {
-            Transaction.ktmW32 = mock(KtmW32.class);
-            Transaction.kernel32 = mock(Kernel32.class);
-        }
-
-        @AfterEach
-        void teardown() {
-            Transaction.ktmW32 = KtmW32.INSTANCE;
-            Transaction.kernel32 = Kernel32.INSTANCE;
-        }
+    class Transactional extends TransactionTestBase {
 
         @Test
         @DisplayName("default non-transactional")
@@ -1005,7 +991,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
-            RegistryKey.nonTransactional().run(() -> {
+            TransactionalState.notSupported().run(() -> {
                 registryKey.create();
                 assertTrue(registryKey.exists());
                 registryKey.delete();
@@ -1018,8 +1004,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
             verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoInteractions(Transaction.ktmW32);
-            verifyNoInteractions(Transaction.kernel32);
+            verifyNoInteractions(Transaction.ktmW32, Transaction.kernel32);
         }
 
         @Test
@@ -1028,11 +1013,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             String path = "path\\transactional";
 
             MemorySegment hKey = newHKEY();
-            MemorySegment transaction = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
-                    .thenReturn(transaction);
-            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+            MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
+            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction);
+            mockCloseHandle(transaction);
 
             when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
@@ -1055,7 +1040,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
-            RegistryKey.transactional().run(_ -> {
+            TransactionalState.requiresNew().run(() -> {
                 registryKey.create();
                 assertTrue(registryKey.exists());
                 registryKey.delete();
@@ -1063,6 +1048,9 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
                     notNull(), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
 
             verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
@@ -1072,9 +1060,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
-            verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoMoreInteractions(Transaction.ktmW32);
-            verifyNoMoreInteractions(Transaction.kernel32);
+            verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
         }
 
         @Test
@@ -1083,11 +1069,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             String path = "path\\transactional";
 
             MemorySegment hKey = newHKEY();
-            MemorySegment transaction = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
-                    .thenReturn(transaction);
-            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+            MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
+            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction);
+            mockCloseHandle(transaction);
 
             when(RegistryKey.api.RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
@@ -1109,7 +1095,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
             String expectedResult = UUID.randomUUID().toString();
-            String result = RegistryKey.transactional().call(_ -> RegistryKey.nonTransactional().call(() -> {
+            String result = TransactionalState.requiresNew().call(() -> TransactionalState.notSupported().call(() -> {
                 registryKey.create();
                 assertTrue(registryKey.exists());
                 registryKey.delete();
@@ -1120,6 +1106,9 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
                     notNull(), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
@@ -1128,19 +1117,25 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
-            verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoMoreInteractions(Transaction.ktmW32);
-            verifyNoMoreInteractions(Transaction.kernel32);
+            verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
         }
 
         @Test
-        @DisplayName("nestedd transactional")
+        @DisplayName("nested transactional")
         void testNestedTransactional() {
             String path = "path\\transactional";
 
             MemorySegment hKey = newHKEY();
-            MemorySegment transaction1 = ALLOCATOR.allocate(0);
-            MemorySegment transaction2 = ALLOCATOR.allocate(0);
+
+            List<MemorySegment> transactions = mockCreateTransactions(Duration.ofMillis(0), null, 2);
+            MemorySegment transaction1 = transactions.get(0);
+            mockGetTransactionStatus(transaction1, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction1);
+            mockCloseHandle(transaction1);
+            MemorySegment transaction2 = transactions.get(1);
+            mockGetTransactionStatus(transaction2, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction2);
+            mockCloseHandle(transaction2);
 
             when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
                     .thenReturn(transaction1, transaction2);
@@ -1169,7 +1164,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
             String expectedResult = UUID.randomUUID().toString();
-            String result = RegistryKey.transactional().call(_ -> RegistryKey.transactional().call(_ -> {
+            String result = TransactionalState.required().call(() -> TransactionalState.requiresNew().call(() -> {
                 registryKey.create();
                 assertTrue(registryKey.exists());
                 registryKey.delete();
@@ -1180,7 +1175,13 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             verify(Transaction.ktmW32, times(2)).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
                     notNull(), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction1), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction1), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction1), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction2), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction2), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction2), notNull());
 
             verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
@@ -1190,9 +1191,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL());
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
-            verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoMoreInteractions(Transaction.ktmW32);
-            verifyNoMoreInteractions(Transaction.kernel32);
+            verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
         }
 
         @Test
@@ -1201,11 +1200,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             String path = "path\\transactional";
 
             MemorySegment hKey = newHKEY();
-            MemorySegment transaction = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), notNull(), notNull()))
-                    .thenReturn(transaction);
-            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+            MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(100), null);
+            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction);
+            mockCloseHandle(transaction);
 
             when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
@@ -1228,16 +1227,17 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
-            RegistryKey.transactional()
-                    .withTimeout(Duration.ofMillis(100))
-                    .run(_ -> {
-                        registryKey.create();
-                        assertTrue(registryKey.exists());
-                        registryKey.delete();
-                    });
+            TransactionalState.required(timeout(Duration.ofMillis(100))).run(() -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+            });
 
             verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100),
                     notNull(), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
 
             verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
@@ -1247,9 +1247,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
-            verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoMoreInteractions(Transaction.ktmW32);
-            verifyNoMoreInteractions(Transaction.kernel32);
+            verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
         }
 
         @Test
@@ -1258,11 +1256,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             String path = "path\\transactional";
 
             MemorySegment hKey = newHKEY();
-            MemorySegment transaction = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), notNull(), notNull()))
-                    .thenReturn(transaction);
-            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+            MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
+            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction);
+            mockCloseHandle(transaction);
 
             when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
@@ -1285,16 +1283,17 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
-            RegistryKey.transactional()
-                    .withInfiniteTimeout()
-                    .run(_ -> {
-                        registryKey.create();
-                        assertTrue(registryKey.exists());
-                        registryKey.delete();
-                    });
+            TransactionalState.required(infiniteTimeout()).run(() -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+            });
 
             verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
                     notNull(), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
 
             verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
@@ -1304,9 +1303,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
-            verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoMoreInteractions(Transaction.ktmW32);
-            verifyNoMoreInteractions(Transaction.kernel32);
+            verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
         }
 
         @Test
@@ -1315,11 +1312,11 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             String path = "path\\transactional";
 
             MemorySegment hKey = newHKEY();
-            MemorySegment transaction = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull()))
-                    .thenReturn(transaction);
-            when(Transaction.kernel32.CloseHandle(eq(transaction), notNull())).thenReturn(true);
+            MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), "test");
+            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockCommitTransaction(transaction);
+            mockCloseHandle(transaction);
 
             when(RegistryKey.api.RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
@@ -1342,16 +1339,17 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
 
-            RegistryKey.transactional()
-                    .withDescription("test")
-                    .run(_ -> {
-                        registryKey.create();
-                        assertTrue(registryKey.exists());
-                        registryKey.delete();
-                    });
+            TransactionalState.required(description("test")).run(() -> {
+                registryKey.create();
+                assertTrue(registryKey.exists());
+                registryKey.delete();
+            });
 
             verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
                     eqPointer("test"), notNull());
+            verify(Transaction.ktmW32).GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull());
+            verify(Transaction.ktmW32).CommitTransaction(eq(transaction), notNull());
             verify(Transaction.kernel32).CloseHandle(eq(transaction), notNull());
 
             verify(RegistryKey.api).RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
@@ -1361,9 +1359,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL());
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
-            verifyNoMoreInteractions(RegistryKey.api);
-            verifyNoMoreInteractions(Transaction.ktmW32);
-            verifyNoMoreInteractions(Transaction.kernel32);
+            verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
         }
     }
 

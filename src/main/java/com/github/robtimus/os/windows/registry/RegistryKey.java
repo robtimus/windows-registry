@@ -790,39 +790,22 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         return path();
     }
 
-    // transactional
-
-    /**
-     * Returns a context for running actions inside a transactions.
-     *
-     * @return A context for running actions inside a transactions.
-     * @since 2.0
-     */
-    public static TransactionalContext transactional() {
-        return new TransactionalContext();
-    }
-
-    /**
-     * Returns a context for running actions without any transaction.
-     * This method can be used inside a {@link #transactional() transactional context} to temporarily disable transactions.
-     *
-     * @return A context for running actions without any transaction.
-     * @since 2.0
-     */
-    public static NonTransactionalContext nonTransactional() {
-        return new NonTransactionalContext();
-    }
+    // transactional support
 
     static Context currentContext() {
         return CONTEXT.orElse(NO_TRANSACTION);
     }
 
-    static <R, X extends Throwable> R callWithTransaction(Transaction transaction, TransactionalContext.Callable<R, X> action) throws X {
-        return ScopedValue.where(CONTEXT, new Context.Transactional(transaction)).call(() -> action.call(transaction));
+    static <R, X extends Throwable> R callWithTransaction(Transaction transaction, TransactionalState.Callable<R, X> action) throws X {
+        return callWithContext(new Context.Transactional(transaction), action);
     }
 
-    static <R, X extends Throwable> R callWithoutTransaction(NonTransactionalContext.Callable<R, X> action) throws X {
-        return ScopedValue.where(CONTEXT, NO_TRANSACTION).call(action::call);
+    static <R, X extends Throwable> R callWithoutTransaction(TransactionalState.Callable<R, X> action) throws X {
+        return callWithContext(NO_TRANSACTION, action);
+    }
+
+    private static <R, X extends Throwable> R callWithContext(Context context, TransactionalState.Callable<R, X> action) throws X {
+        return ScopedValue.where(CONTEXT, context).call(action::call);
     }
 
     // utility
@@ -1526,7 +1509,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         }
     }
 
-    abstract static class Context {
+    abstract static sealed class Context {
 
         abstract int createKey(
                 MemorySegment hKey,
@@ -1547,12 +1530,16 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
                 int samDesired,
                 MemorySegment phkResult);
 
-        private static final class Transactional extends Context {
+        static final class Transactional extends Context {
 
             private final Transaction transaction;
 
             private Transactional(Transaction transaction) {
                 this.transaction = transaction;
+            }
+
+            Transaction transaction() {
+                return transaction;
             }
 
             @Override
@@ -1612,7 +1599,7 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             }
         }
 
-        private static final class NonTransactional extends Context {
+        static final class NonTransactional extends Context {
 
             private NonTransactional() {
             }

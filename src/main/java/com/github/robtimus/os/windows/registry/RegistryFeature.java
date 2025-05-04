@@ -28,16 +28,10 @@ import com.github.robtimus.os.windows.registry.foreign.KtmW32;
  */
 public enum RegistryFeature {
 
-    /**
-     * {@link RegistryKey#renameTo(String) Renaming} registry keys.
-     */
+    /** {@link RegistryKey#renameTo(String) Renaming} registry keys. */
     RENAME_KEY(Advapi32.INSTANCE.isRegRenameKeyEnabled()),
 
-    /**
-     * {@link Transaction transactions}.
-     *
-     * @since 2.0
-     */
+    /** {@link Transaction transactions}. */
     TRANSACTIONS(Advapi32.INSTANCE.isRegCreateKeyTransactedEnabled()
             && Advapi32.INSTANCE.isRegDeleteKeyTransactedEnabled()
             && Advapi32.INSTANCE.isRegOpenKeyTransactedEnabled()
