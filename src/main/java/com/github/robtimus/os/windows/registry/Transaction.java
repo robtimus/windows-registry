@@ -49,10 +49,14 @@ public final class Transaction {
     private final Duration timeout;
     private final String description;
 
+    private boolean autoCommit;
+
     private Transaction(MemorySegment handle, Duration timeout, String description) {
         this.handle = handle;
         this.timeout = timeout;
         this.description = description;
+
+        this.autoCommit = true;
     }
 
     MemorySegment handle() {
@@ -126,6 +130,24 @@ public final class Transaction {
     }
 
     /**
+     * Returns whether the transaction will be automatically committed when it ends. The default is {@code true}.
+     *
+     * @return {@code true} if the transaction will be automatically committed when it ends, or {@code false} otherwise.
+     */
+    public boolean autoCommit() {
+        return autoCommit;
+    }
+
+    /**
+     * Sets whether to automatically commit the transaction when it ends. The default is {@code true}.
+     *
+     * @param autoCommit {@code true} to automatically commit the transaction when it ends, or {@code false} otherwise.
+     */
+    public void autoCommit(boolean autoCommit) {
+        this.autoCommit = autoCommit;
+    }
+
+    /**
      * Commits the transaction.
      *
      * @throws TransactionException If the transaction could not be committed.
@@ -161,7 +183,11 @@ public final class Transaction {
         if (description != null) {
             sb.append(",description=").append(description);
         }
-        sb.append(",status=").append(statusString());
+        String statusString = statusString();
+        sb.append(",status=").append(statusString);
+        if (Status.ACTIVE.name().equals(statusString)) {
+            sb.append(",autoCommit=").append(autoCommit);
+        }
         sb.append(']');
         return sb.toString();
     }
@@ -199,6 +225,17 @@ public final class Transaction {
     }
 
     /**
+     * Returns the current transaction, if one exists.
+     *
+     * @return An {@link Optional} describing the current transaction if one exists, or {@link Optional#empty()} otherwise.
+     */
+    public static Optional<Transaction> current() {
+        return RegistryKey.currentContext() instanceof RegistryKey.Context.Transactional transactionalContext
+                ? Optional.of(transactionalContext.transaction())
+                : Optional.empty();
+    }
+
+    /**
      * The possible transaction statuses.
      *
      * @author Rob Spoor
@@ -206,7 +243,7 @@ public final class Transaction {
      */
     public enum Status {
         /** Indicates the transaction is still active. */
-        ACTIVE(),
+        ACTIVE,
 
         /** Indicates the transaction has been committed. */
         COMMITTED,

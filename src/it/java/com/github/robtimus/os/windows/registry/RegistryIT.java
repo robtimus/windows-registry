@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.TransactionOption.timeout;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -49,6 +50,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -125,6 +127,17 @@ class RegistryIT {
     @Nested
     @DisplayName("HKEY_CURRENT_USER")
     class HKCU {
+
+        @BeforeAll
+        static void deleteTestTree() {
+            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry");
+            if (registryKey.exists()) {
+                registryKey.traverse(TraverseOption.SUB_KEYS_FIRST)
+                        // use toList to make sure we aren't deleting while traversing
+                        .toList()
+                        .forEach(RegistryKey::delete);
+            }
+        }
 
         @Test
         @DisplayName("registry")
@@ -380,13 +393,17 @@ class RegistryIT {
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\committed");
                 registryKey.createIfNotExists();
 
+                registryKey.deleteValueIfExists("test");
+
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
                 subKey2.deleteIfExists();
 
-                Transaction t = RegistryKey.transactional().call(transaction -> {
+                Transaction t = TransactionalState.required().call(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -416,12 +433,17 @@ class RegistryIT {
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\rolled-back");
                 registryKey.createIfNotExists();
 
+                registryKey.deleteValueIfExists("test");
+
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
+                subKey2.deleteIfExists();
 
-                RegistryKey.transactional().run(transaction -> {
+                TransactionalState.required().run(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -443,17 +465,59 @@ class RegistryIT {
             }
 
             @Test
-            @DisplayName("transaction not committed or rolled back")
-            void testTransactionNotCommittedOrRolledBack() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions");
+            @DisplayName("transaction auto-committed")
+            void testTransactionAutoCommitted() {
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\auto-committed");
                 registryKey.createIfNotExists();
+
+                registryKey.deleteValueIfExists("test");
 
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
+                subKey2.deleteIfExists();
 
-                Transaction t = RegistryKey.transactional().call(transaction -> {
+                Transaction t = TransactionalState.required().call(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
+                    registryKey.setValue(StringValue.of("test", "foo"));
+
+                    subKey1.delete();
+                    subKey2.createIfNotExists();
+
+                    assertEquals(Transaction.Status.ACTIVE, transaction.status());
+
+                    return transaction;
+                });
+                assertEquals(Transaction.Status.CLOSED, t.status());
+
+                assertTrue(registryKey.exists());
+                assertEquals(Optional.of("foo"), registryKey.findStringValue("test"));
+                assertFalse(subKey1.exists());
+                assertTrue(subKey2.exists());
+            }
+
+            @Test
+            @DisplayName("transaction not committed or rolled back")
+            void testTransactionNotCommittedOrRolledBack() {
+                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\no-auto-commit");
+                registryKey.createIfNotExists();
+
+                registryKey.deleteValueIfExists("test");
+
+                RegistryKey subKey1 = registryKey.resolve("subKey1");
+                subKey1.createIfNotExists();
+
+                RegistryKey subKey2 = registryKey.resolve("subKey2");
+                subKey2.deleteIfExists();
+
+                Transaction t = TransactionalState.required().call(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+                    transaction.autoCommit(false);
+
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                     registryKey.setValue(StringValue.of("test", "foo"));
@@ -480,15 +544,20 @@ class RegistryIT {
                         .resolve("Software\\JavaSoft\\windows-registry\\transactions\\non-transactional");
                 registryKey.createIfNotExists();
 
+                registryKey.deleteValueIfExists("test");
+
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
+                subKey2.deleteIfExists();
 
-                RegistryKey.transactional().run(transaction -> {
+                TransactionalState.required().run(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
-                    RegistryKey.nonTransactional().run(() -> {
+                    TransactionalState.notSupported().run(() -> {
                         assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                         registryKey.setValue(StringValue.of("test", "foo"));
@@ -518,17 +587,22 @@ class RegistryIT {
                 RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\commit-failure");
                 registryKey.createIfNotExists();
 
+                registryKey.deleteValueIfExists("test");
+
                 RegistryKey subKey1 = registryKey.resolve("subKey1");
                 subKey1.createIfNotExists();
 
                 RegistryKey subKey2 = registryKey.resolve("subKey2");
+                subKey2.deleteIfExists();
 
-                RegistryKey.transactional().run(transaction -> {
+                TransactionalState.required().run(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+
                     assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                     registryKey.setValue(StringValue.of("test", "bar"));
 
-                    RegistryKey.nonTransactional().run(() -> {
+                    TransactionalState.notSupported().run(() -> {
                         assertEquals(Transaction.Status.ACTIVE, transaction.status());
 
                         registryKey.setValue(StringValue.of("test", "foo"));
@@ -556,11 +630,13 @@ class RegistryIT {
             @Test
             @DisplayName("transaction timed out")
             void testTransactionTimedOut() {
-                RegistryKey.transactional().withTimeout(Duration.ofMillis(100)).run(transaction -> {
+                TransactionalState.required(timeout(Duration.ofMillis(100))).run(() -> {
+                    Transaction transaction = Transaction.current().orElseThrow();
+
                     await()
                             .with().pollInterval(Duration.ofMillis(5))
                             .atMost(Duration.ofMillis(120))
-                            .until(transaction::status,not(is(Transaction.Status.ACTIVE)));
+                            .until(transaction::status, not(is(Transaction.Status.ACTIVE)));
 
                     assertEquals(Transaction.Status.ROLLED_BACK, transaction.status());
                 });
