@@ -110,6 +110,9 @@ public final class ForeignTestUtils {
             if (argument == null) {
                 return wanted == null;
             }
+            if (wanted == null) {
+                return MemorySegment.NULL.equals(argument);
+            }
             if (argument.scope().isAlive()) {
                 String pointerValue = WString.getString(argument);
                 VALUES.put(argument, pointerValue);

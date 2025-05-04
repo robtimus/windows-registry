@@ -29,40 +29,25 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
 import java.time.Duration;
 import java.util.Optional;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
+import org.junit.jupiter.params.provider.ValueSource;
 import com.github.robtimus.os.windows.registry.foreign.Kernel32Utils;
 import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
-import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
-class TransactionTest {
-
-    @BeforeEach
-    void setup() {
-        Transaction.ktmW32 = mock(KtmW32.class);
-        Transaction.kernel32 = mock(Kernel32.class);
-    }
-
-    @AfterEach
-    void teardown() {
-        Transaction.ktmW32 = KtmW32.INSTANCE;
-        Transaction.kernel32 = mock(Kernel32.class);
-    }
+class TransactionTest extends TransactionTestBase {
 
     @Nested
     @DisplayName("create")
@@ -294,9 +279,32 @@ class TransactionTest {
     class ToString {
 
         @ParameterizedTest
+        @DisplayName("active")
+        @ValueSource(booleans = { true, false })
+        void testActiveStatus(boolean autoCommit) {
+            Transaction transaction = createTransaction();
+            transaction.autoCommit(autoCommit);
+            assertEquals(autoCommit, transaction.autoCommit());
+
+            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+                    notNull()))
+                    .thenAnswer(i -> {
+                        MemorySegment outcomeSegment = i.getArgument(1);
+                        setInt(outcomeSegment, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+
+                        return true;
+                    });
+
+            String actual = transaction.toString();
+
+            String expected = "Transaction[timeout=%s,status=ACTIVE,autoCommit=%b]".formatted(transaction.timeout(), autoCommit);
+
+            assertEquals(expected, actual);
+        }
+
+        @ParameterizedTest
         @DisplayName("valid status")
         @CsvSource({
-                "1, ACTIVE",
                 "2, COMMITTED",
                 "3, ROLLED_BACK"
         })
@@ -442,23 +450,39 @@ class TransactionTest {
         }
     }
 
-    private Transaction createTransaction() {
-        return createTransaction(null);
-    }
+    @Nested
+    @DisplayName("current")
+    class Current {
 
-    private Transaction createTransaction(String description) {
-        return createTransaction(Duration.ofMillis(100), description);
-    }
+        private Transaction transaction;
 
-    private Transaction createTransaction(Duration timeout, String description) {
-        MemorySegment handle = ALLOCATOR.allocate(0);
+        @BeforeEach
+        void setup() {
+            transaction = createTransaction();
+        }
 
-        int timeoutInMillis = Math.toIntExact(timeout.toMillis());
+        @Test
+        @DisplayName("no current transaction initially")
+        void testNoCurrentTransactionInitially() {
+            assertEquals(Optional.empty(), Transaction.current());
+        }
 
-        when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
-                notNull(), notNull()))
-                .thenReturn(handle);
+        @Test
+        @DisplayName("current transaction exists when running with transaction")
+        void testCurrentTransactionExistsWhenRunningWithTransaction() {
+            RegistryKey.callWithTransaction(transaction, () -> {
+                assertEquals(Optional.of(transaction), Transaction.current());
+                return null;
+            });
+        }
 
-        return Transaction.create(timeout, description);
+        @Test
+        @DisplayName("current transaction does not exists when transaction is paused")
+        void testCurrentTransactionDoesNotExistsWhenTransactionIsPaused() {
+            RegistryKey.callWithTransaction(transaction, () -> RegistryKey.callWithoutTransaction(() -> {
+                assertEquals(Optional.empty(), Transaction.current());
+                return null;
+            }));
+        }
     }
 }
