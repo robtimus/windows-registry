@@ -27,6 +27,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
+import org.junit.jupiter.params.support.ParameterDeclarations;
 import com.sun.jna.Pointer;
 
 class WinRegTest {
@@ -43,7 +44,7 @@ class WinRegTest {
     private static final class HKEYArgumentsProvider implements ArgumentsProvider {
 
         @Override
-        public Stream<? extends Arguments> provideArguments(ExtensionContext context) throws Exception {
+        public Stream<? extends Arguments> provideArguments(ParameterDeclarations parameters, ExtensionContext context) {
             return Stream.of(
                     arguments(WinReg.HKEY_CLASSES_ROOT, com.sun.jna.platform.win32.WinReg.HKEY_CLASSES_ROOT),
                     arguments(WinReg.HKEY_CURRENT_USER, com.sun.jna.platform.win32.WinReg.HKEY_CURRENT_USER),
