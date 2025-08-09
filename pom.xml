@@ -109,6 +109,13 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-dependency-plugin</artifactId>
+        <executions>
+          <execution>
+            <goals>
+              <goal>properties</goal>
+            </goals>
+          </execution>
+        </executions>
       </plugin>
 
       <plugin>
@@ -183,9 +190,10 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <configuration>
-          <!-- Allow JUnit to access the test classes -->
           <argLine>
             @{argLine}
+            -javaagent:${org.mockito:mockito-core:jar}
+            <!-- Allow JUnit to access the test classes -->
             --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
           </argLine>
         </configuration>
