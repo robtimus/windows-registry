@@ -1,5 +1,5 @@
 /*
- * SubKeyTest.java
+ * LocalSubKeyTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -65,7 +65,9 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
-class SubKeyTest extends RegistryKeyTestBase {
+class LocalSubKeyTest extends RegistryKeyTestBase {
+
+    private static final LocalRegistry REGISTRY = Registry.local();
 
     @Nested
     @DisplayName("resolved")
@@ -74,35 +76,35 @@ class SubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("name")
         void testName() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertEquals("Prefs", registryKey.name());
         }
 
         @Test
         @DisplayName("path")
         void testPath() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertEquals("HKEY_CURRENT_USER\\Software\\JavaSoft\\Prefs", registryKey.path());
         }
 
         @Test
         @DisplayName("isRoot")
         void testIsRoot() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertFalse(registryKey.isRoot());
         }
 
         @Test
         @DisplayName("root")
         void testRoot() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
-            assertSame(RegistryKey.HKEY_CURRENT_USER, registryKey.root());
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            assertSame(REGISTRY.HKEY_CURRENT_USER, registryKey.root());
         }
 
         @Test
         @DisplayName("parent")
         void testParent() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
 
             Optional<RegistryKey> parent = registryKey.parent();
             assertEquals(Optional.of("HKEY_CURRENT_USER\\Software\\JavaSoft"), parent.map(RegistryKey::path));
@@ -111,7 +113,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             assertEquals(Optional.of("HKEY_CURRENT_USER\\Software"), parent.map(RegistryKey::path));
 
             parent = parent.flatMap(RegistryKey::parent);
-            assertEquals(Optional.of(RegistryKey.HKEY_CURRENT_USER), parent);
+            assertEquals(Optional.of(REGISTRY.HKEY_CURRENT_USER), parent);
         }
 
         @ParameterizedTest(name = "{0} => {1}")
@@ -131,7 +133,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         })
         @DisplayName("resolve")
         void testResolve(String relativePath, String expectedPath) {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             RegistryKey resolved = registryKey.resolve(relativePath != null ? relativePath : "");
             assertEquals(expectedPath, resolved.path());
         }
@@ -166,7 +168,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         @DisplayName("root")
         void testRoot() {
             RegistryKey registryKey = testKey();
-            assertSame(RegistryKey.HKEY_CURRENT_USER, registryKey.root());
+            assertSame(REGISTRY.HKEY_CURRENT_USER, registryKey.root());
         }
 
         @Test
@@ -181,7 +183,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             assertEquals(Optional.of("HKEY_CURRENT_USER\\Software"), parent.map(RegistryKey::path));
 
             parent = parent.flatMap(RegistryKey::parent);
-            assertEquals(Optional.of(RegistryKey.HKEY_CURRENT_USER), parent);
+            assertEquals(Optional.of(REGISTRY.HKEY_CURRENT_USER), parent);
         }
 
         @ParameterizedTest(name = "{0} => {1}")
@@ -211,7 +213,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockSubKeys(hKey, "Prefs");
 
-            try (Stream<RegistryKey> stream = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft").subKeys()) {
+            try (Stream<RegistryKey> stream = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft").subKeys()) {
                 return stream.findFirst()
                         .orElseThrow();
             }
@@ -229,7 +231,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockSubKeys(hKey, "child1", "child2", "child3");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
                 List<RegistryKey> subKeys = stream.toList();
 
@@ -251,7 +253,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -272,7 +274,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         notNull(), notNull(), notNull()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -291,7 +293,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         notNull(), notNull(), notNull()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
                 assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
@@ -313,7 +315,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegEnumKeyEx(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, stream::toList);
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -331,7 +333,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("maxDepth == 0")
         void testMaxDepthIsZero() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path");
             try (Stream<RegistryKey> stream = registryKey.traverse(0)) {
                 List<RegistryKey> registryKeys = stream.toList();
 
@@ -355,7 +357,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(1, RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
                     List<RegistryKey> registryKeys = stream.toList();
 
@@ -382,7 +384,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(1)) {
                     List<RegistryKey> registryKeys = stream.toList();
 
@@ -438,7 +440,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                 mockSubKeys(subKey32);
                 mockSubKeys(subKey33);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
                     List<RegistryKey> registryKeys = stream.toList();
 
@@ -531,7 +533,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                 mockSubKeys(subKey32);
                 mockSubKeys(subKey33);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path");
                 try (Stream<RegistryKey> stream = registryKey.traverse(Integer.MAX_VALUE)) {
                     List<RegistryKey> registryKeys = stream.toList();
 
@@ -597,7 +599,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("negative maxDepth")
         void testNegativeMaxDepth() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path");
             assertThrows(IllegalArgumentException.class, () -> registryKey.traverse(-1));
         }
     }
@@ -621,7 +623,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 mockValues(hKey, stringValue, binaryValue, wordValue);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 try (Stream<RegistryValue> stream = registryKey.values()) {
                     List<RegistryValue> values = stream.toList();
 
@@ -646,7 +648,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 mockValues(hKey, stringValue, binaryValue, wordValue);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.contains("i"));
                 try (Stream<RegistryValue> stream = registryKey.values(filter)) {
                     List<RegistryValue> values = stream.toList();
@@ -672,7 +674,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 mockValues(hKey, stringValue, binaryValue, wordValue);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 RegistryValue.Filter filter = RegistryValue.filter().strings().words();
                 try (Stream<RegistryValue> stream = registryKey.values(filter)) {
                     List<RegistryValue> values = stream.toList();
@@ -693,7 +695,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -718,7 +720,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -737,7 +739,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
@@ -760,7 +762,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -780,7 +782,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                    RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                    RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -804,7 +806,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegEnumValue(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             try (Stream<RegistryValue> stream = registryKey.values()) {
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, stream::toList);
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -828,7 +830,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
 
@@ -841,7 +843,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
@@ -858,7 +860,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
@@ -875,7 +877,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -893,7 +895,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
@@ -914,7 +916,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
 
@@ -927,7 +929,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
@@ -944,7 +946,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
 
@@ -959,7 +961,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -977,7 +979,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
@@ -1000,7 +1002,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             registryKey.setValue(stringValue);
 
             verify(RegistryKey.api).RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data));
@@ -1016,7 +1018,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -1035,7 +1037,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), notNull(), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1055,7 +1057,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             registryKey.deleteValue("string");
 
             verify(RegistryKey.api).RegDeleteValue(eq(hKey), eqPointer("string"));
@@ -1069,7 +1071,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -1085,7 +1087,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             assertEquals("string", exception.name());
@@ -1110,7 +1112,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
                 verify(RegistryKey.api).RegDeleteValue(eq(hKey), eqPointer("string"));
@@ -1127,7 +1129,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
                 when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
                 verify(RegistryKey.api).RegDeleteValue(eq(hKey), eqPointer("string"));
@@ -1143,7 +1145,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExistingKey() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -1159,7 +1161,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -1178,7 +1180,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testExisting() {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.exists());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
@@ -1190,7 +1192,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExisting() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.exists());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
@@ -1202,7 +1204,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::exists);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1225,7 +1227,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testSuccess() {
                 MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1244,7 +1246,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testNonExisting() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\not-found");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\not-found");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1263,7 +1265,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testFailure() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1287,7 +1289,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testSuccess() {
                 MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
                 Function<RegistryKey.Handle, String> action = _ -> "new handle";
 
@@ -1305,7 +1307,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testNonExisting() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\not-found");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\not-found");
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1324,7 +1326,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testFailure() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1349,7 +1351,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testExisting() {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.isAccessible());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
@@ -1361,7 +1363,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonExisting() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.isAccessible());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
@@ -1373,7 +1375,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNonAccessible() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-accessible");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-accessible");
             assertFalse(registryKey.isAccessible());
 
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-accessible"), anyInt(), anyInt(), notNull());
@@ -1385,7 +1387,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::isAccessible);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1408,7 +1410,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testSuccess() {
                 MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1427,7 +1429,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testNonExisting() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1446,7 +1448,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testAccessDenied() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\access-denied");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\access-denied");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1465,7 +1467,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testFailure() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -1489,7 +1491,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testSuccess() {
                 MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
                 Function<RegistryKey.Handle, String> action = _ -> "new handle";
 
@@ -1507,7 +1509,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testNonExisting() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1526,7 +1528,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testAccessDenied() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\access-denied");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\access-denied");
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1545,7 +1547,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             void testFailure() {
                 mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1579,7 +1581,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         return WinError.ERROR_SUCCESS;
                     });
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\new");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\new");
             registryKey.create();
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
@@ -1601,7 +1603,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         return WinError.ERROR_SUCCESS;
                     });
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, registryKey::create);
             assertEquals("HKEY_CURRENT_USER\\path\\existing", exception.path());
 
@@ -1616,7 +1618,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::create);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1644,7 +1646,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         return WinError.ERROR_SUCCESS;
                     });
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\new");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\new");
             assertTrue(registryKey.createIfNotExists());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
@@ -1666,7 +1668,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         return WinError.ERROR_SUCCESS;
                     });
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertFalse(registryKey.createIfNotExists());
 
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
@@ -1680,7 +1682,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1700,7 +1702,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
                     .RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo"));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKey renamed = registryKey.renameTo("foo");
             assertEquals(registryKey.resolve("..\\foo"), renamed);
 
@@ -1715,7 +1717,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
                     .RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eqPointer("foo"));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -1732,7 +1734,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             MemorySegment targetHkey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\foo");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\foo", exception.path());
 
@@ -1749,7 +1751,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\foo", WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\existing", exception.path());
 
@@ -1765,7 +1767,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
                     .RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo"));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\existing", exception.path());
 
@@ -1780,7 +1782,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("invalid name")
         void testInvalidName() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
             assertThrows(IllegalArgumentException.class, () -> registryKey.renameTo("\\foo"));
 
@@ -1798,7 +1800,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
                     .RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             registryKey.delete();
 
             verify(RegistryKey.api).RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0));
@@ -1812,7 +1814,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
                     .RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::delete);
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
@@ -1826,7 +1828,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
                     .RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), eq(0), eq(0));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1845,7 +1847,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
                     .RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.deleteIfExists());
 
             verify(RegistryKey.api).RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0));
@@ -1859,7 +1861,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
                     .RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\non-existing");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.deleteIfExists());
 
             verify(RegistryKey.api).RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0));
@@ -1873,7 +1875,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
                     .RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), eq(0), eq(0));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -1891,7 +1893,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testNoArguments() {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (var _ = registryKey.handle()) {
                 // Do nothing
             }
@@ -1917,7 +1919,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         return WinError.ERROR_SUCCESS;
                     });
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                 // Do nothing
             }
@@ -1933,7 +1935,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testWithManageValues() {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (var _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
@@ -1959,7 +1961,7 @@ class SubKeyTest extends RegistryKeyTestBase {
                         return WinError.ERROR_SUCCESS;
                     });
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                 // Do nothing
             }
@@ -1975,7 +1977,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testCloseTwice() {
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (RegistryKey.Handle handle = registryKey.handle()) {
                 handle.close();
             }
@@ -1992,7 +1994,7 @@ class SubKeyTest extends RegistryKeyTestBase {
         void testOpenFailure() {
             mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::handle);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
@@ -2008,7 +2010,7 @@ class SubKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class,
                     () -> registryKey.handle(RegistryKey.HandleOption.CREATE));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
@@ -2028,7 +2030,7 @@ class SubKeyTest extends RegistryKeyTestBase {
 
             mockValue(hKey, StringValue.of("test", "test"), WinError.ERROR_ACCESS_DENIED);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("path\\failure");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
@@ -2048,26 +2050,26 @@ class SubKeyTest extends RegistryKeyTestBase {
     @DisplayName("compareTo")
     void testCompareTo() {
         List<RegistryKey> registryKeys = Arrays.asList(
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software"),
-                RegistryKey.HKEY_CURRENT_USER,
-                RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs"),
-                RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft"),
-                RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software"),
-                RegistryKey.HKEY_LOCAL_MACHINE
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software"),
+                REGISTRY.HKEY_CURRENT_USER,
+                REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs"),
+                REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft"),
+                REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software"),
+                REGISTRY.HKEY_LOCAL_MACHINE
         );
         registryKeys.sort(null);
 
         List<RegistryKey> expected = List.of(
-                RegistryKey.HKEY_CURRENT_USER,
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
-                RegistryKey.HKEY_LOCAL_MACHINE,
-                RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software"),
-                RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft"),
-                RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs")
+                REGISTRY.HKEY_CURRENT_USER,
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
+                REGISTRY.HKEY_LOCAL_MACHINE,
+                REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software"),
+                REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft"),
+                REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs")
         );
 
         assertEquals(expected, registryKeys);
@@ -2081,13 +2083,13 @@ class SubKeyTest extends RegistryKeyTestBase {
     }
 
     static Arguments[] equalsArguments() {
-        RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+        RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
 
         return new Arguments[] {
                 arguments(registryKey, registryKey, true),
-                arguments(registryKey, RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"), true),
-                arguments(registryKey, RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\prefs"), false),
-                arguments(registryKey, RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs"), false),
+                arguments(registryKey, REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"), true),
+                arguments(registryKey, REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\prefs"), false),
+                arguments(registryKey, REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs"), false),
                 arguments(registryKey, "foo", false),
                 arguments(registryKey, null, false),
         };
@@ -2096,9 +2098,9 @@ class SubKeyTest extends RegistryKeyTestBase {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
+        RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
 
         assertEquals(registryKey.hashCode(), registryKey.hashCode());
-        assertEquals(registryKey.hashCode(), RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs").hashCode());
+        assertEquals(registryKey.hashCode(), REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs").hashCode());
     }
 }
