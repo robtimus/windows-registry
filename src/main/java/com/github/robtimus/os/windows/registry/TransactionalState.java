@@ -197,7 +197,7 @@ public abstract sealed class TransactionalState {
 
         Transaction transaction = Transaction.create(timeout, description);
         try (var _ = new TransactionCloseable(transaction)) {
-            return RegistryKey.callWithTransaction(transaction, () -> {
+            return Registry.callWithTransaction(transaction, () -> {
                 R result = action.call();
                 if (transaction.autoCommit() && transaction.status() == Status.ACTIVE) {
                     transaction.commit();
@@ -251,7 +251,7 @@ public abstract sealed class TransactionalState {
 
         @Override
         <R, X extends Throwable> R callAction(Callable<? extends R, X> action) throws X {
-            if (RegistryKey.currentContext() instanceof RegistryKey.Context.NonTransactional) {
+            if (Registry.currentContext() instanceof Registry.Context.NonTransactional) {
                 throw new TransactionRequiredException(Messages.Transaction.transactionRequired());
             }
             return action.call();
@@ -274,7 +274,7 @@ public abstract sealed class TransactionalState {
 
         @Override
         <R, X extends Throwable> R callAction(Callable<? extends R, X> action) throws X {
-            if (RegistryKey.currentContext() instanceof RegistryKey.Context.Transactional) {
+            if (Registry.currentContext() instanceof Registry.Context.Transactional) {
                 return action.call();
             }
             return callActionWithNewTransaction(action, options);
@@ -325,7 +325,7 @@ public abstract sealed class TransactionalState {
 
         @Override
         <R, X extends Throwable> R callAction(Callable<? extends R, X> action) throws X {
-            return RegistryKey.callWithoutTransaction(action);
+            return Registry.callWithoutTransaction(action);
         }
 
         @Override
@@ -339,7 +339,7 @@ public abstract sealed class TransactionalState {
 
         @Override
         <R, X extends Throwable> R callAction(Callable<? extends R, X> action) throws X {
-            if (RegistryKey.currentContext() instanceof RegistryKey.Context.Transactional) {
+            if (Registry.currentContext() instanceof Registry.Context.Transactional) {
                 throw new TransactionNotAllowedException(Messages.Transaction.transactionNotAllowed());
             }
             return action.call();

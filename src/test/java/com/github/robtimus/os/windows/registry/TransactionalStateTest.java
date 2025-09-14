@@ -71,7 +71,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
             String expectedResult = UUID.randomUUID().toString();
 
-            String result = RegistryKey.callWithTransaction(transaction, () -> TransactionalState.mandatory().call(() -> {
+            String result = Registry.callWithTransaction(transaction, () -> TransactionalState.mandatory().call(() -> {
                 assertEquals(Optional.of(transaction), Transaction.current());
 
                 return expectedResult;
@@ -131,7 +131,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction, () -> TransactionalState.required().call(() -> {
+                String result = Registry.callWithTransaction(transaction, () -> TransactionalState.required().call(() -> {
                     assertEquals(Optional.of(transaction), Transaction.current());
 
                     return expectedResult;
@@ -190,7 +190,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction,
+                String result = Registry.callWithTransaction(transaction,
                         () -> TransactionalState.required(timeout(Duration.ofMillis(100))).call(() -> {
                             assertEquals(Optional.of(transaction), Transaction.current());
 
@@ -252,7 +252,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction,
+                String result = Registry.callWithTransaction(transaction,
                         () -> TransactionalState.required(description("test")).call(() -> {
                             assertEquals(Optional.of(transaction), Transaction.current());
 
@@ -312,7 +312,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction,
+                String result = Registry.callWithTransaction(transaction,
                         () -> TransactionalState.required(timeout(Duration.ofMillis(100)), description("test")).call(() -> {
                             assertEquals(Optional.of(transaction), Transaction.current());
 
@@ -400,7 +400,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction, () -> TransactionalState.requiresNew().call(() -> {
+                String result = Registry.callWithTransaction(transaction, () -> TransactionalState.requiresNew().call(() -> {
                     Transaction currentTransaction = Transaction.current().orElse(null);
                     assertNotNull(currentTransaction);
                     assertNotEquals(transaction, currentTransaction);
@@ -471,7 +471,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction,
+                String result = Registry.callWithTransaction(transaction,
                         () -> TransactionalState.requiresNew(timeout(Duration.ofMillis(100))).call(() -> {
                             Transaction currentTransaction = Transaction.current().orElse(null);
                             assertNotNull(currentTransaction);
@@ -545,7 +545,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction,
+                String result = Registry.callWithTransaction(transaction,
                         () -> TransactionalState.requiresNew(description("test")).call(() -> {
                             Transaction currentTransaction = Transaction.current().orElse(null);
                             assertNotNull(currentTransaction);
@@ -617,7 +617,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 String expectedResult = UUID.randomUUID().toString();
 
-                String result = RegistryKey.callWithTransaction(transaction,
+                String result = Registry.callWithTransaction(transaction,
                         () -> TransactionalState.requiresNew(timeout(Duration.ofMillis(100)), description("test")).call(() -> {
                             Transaction currentTransaction = Transaction.current().orElse(null);
                             assertNotNull(currentTransaction);
@@ -690,7 +690,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
             String expectedResult = UUID.randomUUID().toString();
 
-            String result = RegistryKey.callWithTransaction(transaction, () -> TransactionalState.supports().call(() -> {
+            String result = Registry.callWithTransaction(transaction, () -> TransactionalState.supports().call(() -> {
                 assertEquals(Optional.of(transaction), Transaction.current());
 
                 return expectedResult;
@@ -733,7 +733,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
             String expectedResult = UUID.randomUUID().toString();
 
-            String result = RegistryKey.callWithTransaction(transaction, () -> TransactionalState.notSupported().call(() -> {
+            String result = Registry.callWithTransaction(transaction, () -> TransactionalState.notSupported().call(() -> {
                 assertEquals(Optional.empty(), Transaction.current());
 
                 return expectedResult;
@@ -778,7 +778,7 @@ class TransactionalStateTest extends TransactionTestBase {
 
             TransactionalState.Action<?> action = mock();
 
-            TransactionNotAllowedException exception = RegistryKey.callWithTransaction(transaction,
+            TransactionNotAllowedException exception = Registry.callWithTransaction(transaction,
                     () -> assertThrows(TransactionNotAllowedException.class, () -> transactionalState.run(action)));
             assertEquals(Messages.Transaction.transactionNotAllowed(), exception.getMessage());
 

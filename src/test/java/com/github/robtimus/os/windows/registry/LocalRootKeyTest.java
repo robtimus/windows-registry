@@ -1,5 +1,5 @@
 /*
- * RootKeyTest.java
+ * LocalRootKeyTest.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -57,7 +57,9 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
-class RootKeyTest extends RegistryKeyTestBase {
+class LocalRootKeyTest extends RegistryKeyTestBase {
+
+    private static final LocalRegistry REGISTRY = Registry.local();
 
     @Override
     @AfterEach
@@ -73,31 +75,31 @@ class RootKeyTest extends RegistryKeyTestBase {
     @Test
     @DisplayName("name")
     void testName() {
-        assertEquals("HKEY_CURRENT_USER", RegistryKey.HKEY_CURRENT_USER.name());
+        assertEquals("HKEY_CURRENT_USER", REGISTRY.HKEY_CURRENT_USER.name());
     }
 
     @Test
     @DisplayName("path")
     void testPath() {
-        assertEquals("HKEY_CURRENT_USER", RegistryKey.HKEY_CURRENT_USER.path());
+        assertEquals("HKEY_CURRENT_USER", REGISTRY.HKEY_CURRENT_USER.path());
     }
 
     @Test
     @DisplayName("isRoot")
     void testIsRoot() {
-        assertTrue(RegistryKey.HKEY_CURRENT_USER.isRoot());
+        assertTrue(REGISTRY.HKEY_CURRENT_USER.isRoot());
     }
 
     @Test
     @DisplayName("root")
     void testRoot() {
-        assertSame(RegistryKey.HKEY_CURRENT_USER, RegistryKey.HKEY_CURRENT_USER.root());
+        assertSame(REGISTRY.HKEY_CURRENT_USER, REGISTRY.HKEY_CURRENT_USER.root());
     }
 
     @Test
     @DisplayName("parent")
     void testParent() {
-        assertEquals(Optional.empty(), RegistryKey.HKEY_CURRENT_USER.parent());
+        assertEquals(Optional.empty(), REGISTRY.HKEY_CURRENT_USER.parent());
     }
 
     @ParameterizedTest(name = "{0} => {1}")
@@ -117,7 +119,7 @@ class RootKeyTest extends RegistryKeyTestBase {
     })
     @DisplayName("resolve")
     void testResolve(String relativePath, String expectedPath) {
-        RegistryKey resolved = RegistryKey.HKEY_CURRENT_USER.resolve(relativePath != null ? relativePath : "");
+        RegistryKey resolved = REGISTRY.HKEY_CURRENT_USER.resolve(relativePath != null ? relativePath : "");
         assertEquals(expectedPath, resolved.path());
     }
 
@@ -130,7 +132,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testSuccess() {
             mockSubKeys(WinReg.HKEY_CURRENT_USER, "child1", "child2", "child3");
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
                 List<RegistryKey> subKeys = stream.toList();
 
@@ -151,7 +153,7 @@ class RootKeyTest extends RegistryKeyTestBase {
                     .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
             assertEquals("HKEY_CURRENT_USER", exception.path());
         }
@@ -166,7 +168,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegEnumKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, stream::toList);
                 assertEquals("HKEY_CURRENT_USER", exception.path());
@@ -181,7 +183,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("maxDepth == 0")
         void testMaxDepthIsZero() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             try (Stream<RegistryKey> stream = registryKey.traverse(0)) {
                 List<RegistryKey> registryKeys = stream.toList();
 
@@ -203,7 +205,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             void testSubKeysFirst() {
                 mockSubKeys(WinReg.HKEY_CURRENT_USER, "subKey1", "subKey2", "subKey3");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (Stream<RegistryKey> stream = registryKey.traverse(1, RegistryKey.TraverseOption.SUB_KEYS_FIRST)) {
                     List<RegistryKey> registryKeys = stream.toList();
 
@@ -223,7 +225,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             void testSubKeysNotFirst() {
                 mockSubKeys(WinReg.HKEY_CURRENT_USER, "subKey1", "subKey2", "subKey3");
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (Stream<RegistryKey> stream = registryKey.traverse(1)) {
                     List<RegistryKey> registryKeys = stream.toList();
 
@@ -244,7 +246,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("negative maxDepth")
         void testNegativeMaxDepth() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(IllegalArgumentException.class, () -> registryKey.traverse(-1));
         }
     }
@@ -266,7 +268,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
                 mockValues(WinReg.HKEY_CURRENT_USER, stringValue, binaryValue, wordValue);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (Stream<RegistryValue> stream = registryKey.values()) {
                     List<RegistryValue> values = stream.toList();
 
@@ -285,7 +287,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
                 mockValues(WinReg.HKEY_CURRENT_USER, stringValue, binaryValue, wordValue);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.contains("i"));
                 try (Stream<RegistryValue> stream = registryKey.values(filter)) {
                     List<RegistryValue> values = stream.toList();
@@ -305,7 +307,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
                 mockValues(WinReg.HKEY_CURRENT_USER, stringValue, binaryValue, wordValue);
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 RegistryValue.Filter filter = RegistryValue.filter().strings().words();
                 try (Stream<RegistryValue> stream = registryKey.values(filter)) {
                     List<RegistryValue> values = stream.toList();
@@ -324,7 +326,7 @@ class RootKeyTest extends RegistryKeyTestBase {
                     .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
             assertEquals("HKEY_CURRENT_USER", exception.path());
         }
@@ -339,7 +341,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegEnumValue(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             try (Stream<RegistryValue> stream = registryKey.values()) {
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, stream::toList);
                 assertEquals("HKEY_CURRENT_USER", exception.path());
@@ -358,7 +360,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
         }
@@ -369,7 +371,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
                     .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER", exception.path());
@@ -381,7 +383,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER", exception.path());
@@ -394,7 +396,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
         }
     }
@@ -410,7 +412,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
         }
@@ -421,7 +423,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
                     .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
         }
@@ -431,7 +433,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER", exception.path());
@@ -444,7 +446,7 @@ class RootKeyTest extends RegistryKeyTestBase {
 
             mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
         }
     }
@@ -462,7 +464,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             registryKey.setValue(stringValue);
 
             verify(RegistryKey.api)
@@ -477,7 +479,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             when(RegistryKey.api.RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_CURRENT_USER", exception.path());
         }
@@ -492,7 +494,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testSuccess() {
             doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             registryKey.deleteValue("string");
 
             verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
@@ -503,7 +505,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_CURRENT_USER", exception.path());
             assertEquals("string", exception.name());
@@ -523,7 +525,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             void testExisted() {
                 doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
                 verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
@@ -534,7 +536,7 @@ class RootKeyTest extends RegistryKeyTestBase {
             void testValueDidntExist() {
                 doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
 
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
                 verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
@@ -546,7 +548,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
 
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_CURRENT_USER", exception.path());
@@ -556,7 +558,7 @@ class RootKeyTest extends RegistryKeyTestBase {
     @Test
     @DisplayName("exists")
     void testExists() {
-        assertTrue(RegistryKey.HKEY_CURRENT_USER.exists());
+        assertTrue(REGISTRY.HKEY_CURRENT_USER.exists());
     }
 
     @Nested
@@ -569,9 +571,9 @@ class RootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("unchecked")
             Consumer<RegistryKey.Handle> action = mock(Consumer.class);
 
-            RegistryKey.HKEY_CURRENT_USER.ifExists(action);
+            REGISTRY.HKEY_CURRENT_USER.ifExists(action);
 
-            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+            try (RegistryKey.Handle handle = REGISTRY.HKEY_CURRENT_USER.handle()) {
                 verify(action).accept(handle);
             }
         }
@@ -581,9 +583,9 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testWithFunction() {
             Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
-            Optional<String> result = RegistryKey.HKEY_CURRENT_USER.ifExists(action);
+            Optional<String> result = REGISTRY.HKEY_CURRENT_USER.ifExists(action);
 
-            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+            try (RegistryKey.Handle handle = REGISTRY.HKEY_CURRENT_USER.handle()) {
                 assertEquals(Optional.of(handle.toString()), result);
             }
         }
@@ -592,7 +594,7 @@ class RootKeyTest extends RegistryKeyTestBase {
     @Test
     @DisplayName("isAccessible")
     void testIsAccessible() {
-        assertTrue(RegistryKey.HKEY_CURRENT_USER.isAccessible());
+        assertTrue(REGISTRY.HKEY_CURRENT_USER.isAccessible());
     }
 
     @Nested
@@ -605,9 +607,9 @@ class RootKeyTest extends RegistryKeyTestBase {
             @SuppressWarnings("unchecked")
             Consumer<RegistryKey.Handle> action = mock(Consumer.class);
 
-            RegistryKey.HKEY_CURRENT_USER.ifAccessible(action);
+            REGISTRY.HKEY_CURRENT_USER.ifAccessible(action);
 
-            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+            try (RegistryKey.Handle handle = REGISTRY.HKEY_CURRENT_USER.handle()) {
                 verify(action).accept(handle);
             }
         }
@@ -617,9 +619,9 @@ class RootKeyTest extends RegistryKeyTestBase {
         void testWithFunction() {
             Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
-            Optional<String> result = RegistryKey.HKEY_CURRENT_USER.ifAccessible(action);
+            Optional<String> result = REGISTRY.HKEY_CURRENT_USER.ifAccessible(action);
 
-            try (RegistryKey.Handle handle = RegistryKey.HKEY_CURRENT_USER.handle()) {
+            try (RegistryKey.Handle handle = REGISTRY.HKEY_CURRENT_USER.handle()) {
                 assertEquals(Optional.of(handle.toString()), result);
             }
         }
@@ -628,14 +630,14 @@ class RootKeyTest extends RegistryKeyTestBase {
     @Test
     @DisplayName("create")
     void testCreate() {
-        RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, RegistryKey.HKEY_CURRENT_USER::create);
+        RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, REGISTRY.HKEY_CURRENT_USER::create);
         assertEquals("HKEY_CURRENT_USER", exception.path());
     }
 
     @Test
     @DisplayName("createIfNotExists")
     void testCreateIfNotExists() {
-        assertFalse(RegistryKey.HKEY_CURRENT_USER::createIfNotExists);
+        assertFalse(REGISTRY.HKEY_CURRENT_USER::createIfNotExists);
     }
 
     @Nested
@@ -645,26 +647,26 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("valid name")
         void testValidName() {
-            assertThrows(UnsupportedOperationException.class, () -> RegistryKey.HKEY_CURRENT_USER.renameTo("foo"));
+            assertThrows(UnsupportedOperationException.class, () -> REGISTRY.HKEY_CURRENT_USER.renameTo("foo"));
         }
 
         @Test
         @DisplayName("invalid name")
         void testInvalidName() {
-            assertThrows(UnsupportedOperationException.class, () -> RegistryKey.HKEY_CURRENT_USER.renameTo("\\foo"));
+            assertThrows(UnsupportedOperationException.class, () -> REGISTRY.HKEY_CURRENT_USER.renameTo("\\foo"));
         }
     }
 
     @Test
     @DisplayName("delete")
     void testDelete() {
-        assertThrows(UnsupportedOperationException.class, RegistryKey.HKEY_CURRENT_USER::delete);
+        assertThrows(UnsupportedOperationException.class, REGISTRY.HKEY_CURRENT_USER::delete);
     }
 
     @Test
     @DisplayName("deleteIfExists")
     void testDeleteIfExists() {
-        assertThrows(UnsupportedOperationException.class, RegistryKey.HKEY_CURRENT_USER::deleteIfExists);
+        assertThrows(UnsupportedOperationException.class, REGISTRY.HKEY_CURRENT_USER::deleteIfExists);
     }
 
     @Nested
@@ -674,7 +676,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("with no arguments")
         void testNoArguments() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
                 try (var _ = registryKey.handle()) {
                     // Do nothing
@@ -685,7 +687,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("with CREATE")
         void testWithCreate() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
                 try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE)) {
                     // Do nothing
@@ -696,7 +698,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("with MANAGE_VALUES")
         void testWithManageValues() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
                 try (var _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
                     // Do nothing
@@ -707,7 +709,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("with CREATE and MANAGE_VALUES")
         void testWithCreateAndManageValues() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
                 try (var _ = registryKey.handle(RegistryKey.HandleOption.CREATE, RegistryKey.HandleOption.MANAGE_VALUES)) {
                     // Do nothing
@@ -718,7 +720,7 @@ class RootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("close twice")
         void testCloseTwice() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertDoesNotThrow(() -> {
                 try (RegistryKey.Handle handle = registryKey.handle()) {
                     handle.close();
@@ -730,19 +732,19 @@ class RootKeyTest extends RegistryKeyTestBase {
     @ParameterizedTest(name = "{1}")
     @MethodSource("equalsArguments")
     @DisplayName("equals")
-    void testEquals(RootKey value, Object other, boolean expected) {
+    void testEquals(LocalRootKey value, Object other, boolean expected) {
         assertEquals(expected, value.equals(other));
     }
 
     static Arguments[] equalsArguments() {
-        RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+        RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
 
         return new Arguments[] {
                 arguments(registryKey, registryKey, true),
                 arguments(registryKey, registryKey.resolve(""), true),
                 arguments(registryKey, registryKey.resolve("test"), false),
-                arguments(registryKey, new RootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"), false),
-                arguments(registryKey, RegistryKey.HKEY_LOCAL_MACHINE, false),
+                arguments(registryKey, new LocalRootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"), false),
+                arguments(registryKey, REGISTRY.HKEY_LOCAL_MACHINE, false),
                 arguments(registryKey, "foo", false),
                 arguments(registryKey, null, false),
         };
@@ -751,7 +753,7 @@ class RootKeyTest extends RegistryKeyTestBase {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER;
+        RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
 
         assertEquals(registryKey.hashCode(), registryKey.hashCode());
     }

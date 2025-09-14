@@ -27,9 +27,9 @@ import java.util.function.IntPredicate;
 final class RemoteSubKey extends RegistryKey {
 
     private final RemoteRootKey root;
-    private final SubKey local;
+    private final LocalSubKey local;
 
-    RemoteSubKey(RemoteRootKey root, SubKey local) {
+    RemoteSubKey(RemoteRootKey root, LocalSubKey local) {
         this.root = root;
         this.local = local;
     }
@@ -66,19 +66,19 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     public Optional<RegistryKey> parent() {
         return local.parent()
-                .map(p -> p.isRoot() ? root : new RemoteSubKey(root, (SubKey) p));
+                .map(p -> p.isRoot() ? root : new RemoteSubKey(root, (LocalSubKey) p));
     }
 
     @Override
     public RegistryKey resolve(String relativePath) {
         RegistryKey resolved = local.resolve(relativePath);
-        return resolved.isRoot() ? root : new RemoteSubKey(root, (SubKey) resolved);
+        return resolved.isRoot() ? root : new RemoteSubKey(root, (LocalSubKey) resolved);
     }
 
     @Override
     RegistryKey resolveChild(String name) {
         RegistryKey resolved = local.resolveChild(name);
-        return new RemoteSubKey(root, (SubKey) resolved);
+        return new RemoteSubKey(root, (LocalSubKey) resolved);
     }
 
     // other
@@ -114,7 +114,7 @@ final class RemoteSubKey extends RegistryKey {
     @Override
     public RegistryKey renameTo(String newName) {
         try (Arena allocator = Arena.ofConfined()) {
-            SubKey renamed = local.renameTo(root.hKey(), newName, allocator, machineName());
+            LocalSubKey renamed = local.renameTo(root.hKey(), newName, allocator, machineName());
             return new RemoteSubKey(root, renamed);
         }
     }
@@ -136,7 +136,7 @@ final class RemoteSubKey extends RegistryKey {
     // handles
 
     @Override
-    Handle handle(int samDesired, boolean create) {
+    RegistryKey.Handle handle(int samDesired, boolean create) {
         try (Arena allocator = Arena.ofConfined()) {
             MemorySegment hKey = hKey(samDesired, create, allocator);
             return new Handle(hKey);
