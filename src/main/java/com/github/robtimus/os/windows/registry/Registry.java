@@ -49,7 +49,7 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
      * The returned registry needs to be closed when it is no longer needed.
      *
      * @param machineName The machine name. This cannot be an IP address but must be a resolvable host name.
-     * @return A reference to the registry on the given remote machine.
+     * @return A representation of the registry on the given remote machine.
      * @throws RegistryException If the connection failed.
      */
     public static RemoteRegistry at(String machineName) {
