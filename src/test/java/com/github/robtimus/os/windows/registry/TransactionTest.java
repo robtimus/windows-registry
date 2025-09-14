@@ -470,7 +470,7 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("current transaction exists when running with transaction")
         void testCurrentTransactionExistsWhenRunningWithTransaction() {
-            RegistryKey.callWithTransaction(transaction, () -> {
+            Registry.callWithTransaction(transaction, () -> {
                 assertEquals(Optional.of(transaction), Transaction.current());
                 return null;
             });
@@ -479,7 +479,7 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("current transaction does not exists when transaction is paused")
         void testCurrentTransactionDoesNotExistsWhenTransactionIsPaused() {
-            RegistryKey.callWithTransaction(transaction, () -> RegistryKey.callWithoutTransaction(() -> {
+            Registry.callWithTransaction(transaction, () -> Registry.callWithoutTransaction(() -> {
                 assertEquals(Optional.empty(), Transaction.current());
                 return null;
             }));

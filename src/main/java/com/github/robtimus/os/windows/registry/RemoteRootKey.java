@@ -23,20 +23,20 @@ import java.util.Optional;
 import java.util.function.IntPredicate;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 
-final class RemoteRootKey extends RemoteRegistryKey {
+final class RemoteRootKey extends RegistryKey implements AutoCloseable {
 
     private final String machineName;
-    private final RootKey rootKey;
+    private final LocalRootKey local;
     private final MemorySegment hKey;
     private final Handle handle;
     private final Cleaner.Cleanable cleanable;
 
-    RemoteRootKey(String machineName, RootKey rootKey, MemorySegment hKey) {
+    RemoteRootKey(String machineName, LocalRootKey local, MemorySegment hKey) {
         this.machineName = machineName;
-        this.rootKey = rootKey;
+        this.local = local;
         this.hKey = hKey;
         this.handle = new Handle();
-        this.cleanable = closeOnClean(this, hKey, rootKey.name(), machineName);
+        this.cleanable = closeOnClean(this, hKey, local.name(), machineName);
     }
 
     MemorySegment hKey() {
@@ -47,12 +47,12 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public String name() {
-        return rootKey.name();
+        return local.name();
     }
 
     @Override
     public String path() {
-        return rootKey.path();
+        return local.path();
     }
 
     @Override
@@ -79,14 +79,14 @@ final class RemoteRootKey extends RemoteRegistryKey {
 
     @Override
     public RegistryKey resolve(String relativePath) {
-        RegistryKey resolved = rootKey.resolve(relativePath);
-        return resolved.isRoot() ? this : new RemoteSubKey(this, (SubKey) resolved);
+        RegistryKey resolved = local.resolve(relativePath);
+        return resolved.isRoot() ? this : new RemoteSubKey(this, (LocalSubKey) resolved);
     }
 
     @Override
     RegistryKey resolveChild(String name) {
-        RegistryKey resolved = rootKey.resolveChild(name);
-        return new RemoteSubKey(this, (SubKey) resolved);
+        RegistryKey resolved = local.resolveChild(name);
+        return new RemoteSubKey(this, (LocalSubKey) resolved);
     }
 
     // other
@@ -192,13 +192,13 @@ final class RemoteRootKey extends RemoteRegistryKey {
             return false;
         }
         RemoteRootKey other = (RemoteRootKey) o;
-        return rootKey.equals(other.rootKey) && machineName.equals(other.machineName);
+        return local.equals(other.local) && machineName.equals(other.machineName);
     }
 
     @Override
     public int hashCode() {
         int result = 1;
-        result = 31 * result + rootKey.hashCode();
+        result = 31 * result + local.hashCode();
         result = 31 * result + machineName.hashCode();
         return result;
     }
@@ -206,7 +206,7 @@ final class RemoteRootKey extends RemoteRegistryKey {
     @Override
     @SuppressWarnings("nls")
     public String toString() {
-        return rootKey.toString() + "@" + machineName;
+        return local.toString() + "@" + machineName;
     }
 
     @Override
