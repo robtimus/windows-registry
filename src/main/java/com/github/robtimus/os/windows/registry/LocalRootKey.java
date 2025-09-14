@@ -1,5 +1,5 @@
 /*
- * RootKey.java
+ * LocalRootKey.java
  * Copyright 2021 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,17 +27,17 @@ import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
-final class RootKey extends RegistryKey {
+final class LocalRootKey extends RegistryKey {
 
-    static final RootKey HKEY_CLASSES_ROOT = new RootKey(WinReg.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_CLASSES_ROOT = new LocalRootKey(WinReg.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
 
-    static final RootKey HKEY_CURRENT_USER = new RootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_CURRENT_USER = new LocalRootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"); //$NON-NLS-1$
 
-    static final RootKey HKEY_LOCAL_MACHINE = new RootKey(WinReg.HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_LOCAL_MACHINE = new LocalRootKey(WinReg.HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"); //$NON-NLS-1$
 
-    static final RootKey HKEY_USERS = new RootKey(WinReg.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_USERS = new LocalRootKey(WinReg.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
 
-    static final RootKey HKEY_CURRENT_CONFIG = new RootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_CURRENT_CONFIG = new LocalRootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
 
     private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 
@@ -45,7 +45,7 @@ final class RootKey extends RegistryKey {
     private final String name;
     private final Handle handle;
 
-    RootKey(MemorySegment hKey, String name) {
+    LocalRootKey(MemorySegment hKey, String name) {
         this.hKey = hKey;
         this.name = name;
         this.handle = new Handle();
@@ -110,7 +110,7 @@ final class RootKey extends RegistryKey {
             }
         }
 
-        return result.isEmpty() ? this : new SubKey(this, result);
+        return result.isEmpty() ? this : new LocalSubKey(this, result);
     }
 
     @Override
@@ -122,7 +122,7 @@ final class RootKey extends RegistryKey {
         Deque<String> newPathParts = new ArrayDeque<>(pathParts.size() + 1);
         newPathParts.addAll(pathParts);
         newPathParts.add(name);
-        return new SubKey(this, newPathParts);
+        return new LocalSubKey(this, newPathParts);
     }
 
     // other
@@ -190,7 +190,7 @@ final class RootKey extends RegistryKey {
     private final class Handle extends RegistryKey.Handle {
 
         private Handle() {
-            super(RootKey.this.hKey);
+            super(LocalRootKey.this.hKey);
         }
 
         @Override

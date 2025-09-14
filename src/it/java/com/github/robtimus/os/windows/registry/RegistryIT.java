@@ -62,6 +62,8 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 @SuppressWarnings("nls")
 class RegistryIT {
 
+    private static final LocalRegistry REGISTRY = Registry.local();
+
     @BeforeEach
     void assureDocker() {
         if (!Boolean.getBoolean("allow-non-dockerized-registry-tests")) {
@@ -78,7 +80,7 @@ class RegistryIT {
         @Test
         @DisplayName("Windows build")
         void testWindowsBuild() {
-            RegistryKey registryKey = RegistryKey.HKEY_LOCAL_MACHINE.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
+            RegistryKey registryKey = REGISTRY.HKEY_LOCAL_MACHINE.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
             RegistryValue registryValue = registryKey.getValue("CurrentBuild", RegistryValue.class);
             String buildNumber = assertInstanceOf(StringValue.class, registryValue).value();
             String expected = readBuildNumber();
@@ -93,7 +95,8 @@ class RegistryIT {
             @DisplayName("Windows build")
             void testWindowsBuild() {
                 String hostName = readHostName();
-                try (RemoteRegistryKey remoteRegistryKey = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at(hostName)) {
+                try (RemoteRegistry remoteRegistry = Registry.at(hostName)) {
+                    RegistryKey remoteRegistryKey = remoteRegistry.HKEY_LOCAL_MACHINE;
                     RegistryKey registryKey = remoteRegistryKey.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
                     RegistryValue registryValue = registryKey.getValue("CurrentBuild", RegistryValue.class);
                     String buildNumber = assertInstanceOf(StringValue.class, registryValue).value();
@@ -130,7 +133,7 @@ class RegistryIT {
 
         @BeforeAll
         static void deleteTestTree() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry");
             if (registryKey.exists()) {
                 registryKey.traverse(TraverseOption.SUB_KEYS_FIRST)
                         // use toList to make sure we aren't deleting while traversing
@@ -142,7 +145,7 @@ class RegistryIT {
         @Test
         @DisplayName("registry")
         void testRegistry() {
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\registry");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\registry");
 
             // Assert that it doesn't exist; queryKey will throw an exception
             assertFalse(registryKey.exists());
@@ -308,7 +311,7 @@ class RegistryIT {
         @DisplayName("rename")
         void testRename() {
             // Prepare the registry key and some content
-            RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\rename");
+            RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\rename");
             registryKey.createIfNotExists();
 
             List<String> subKeys = List.of("subKey1", "subKey2", "subKey3");
@@ -351,7 +354,7 @@ class RegistryIT {
             @DisplayName("use after closing")
             @SuppressWarnings("resource")
             void testUseAfterClosing() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\invalid-handle-states");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\invalid-handle-states");
                 registryKey.createIfNotExists();
 
                 RegistryKey.Handle handle;
@@ -365,7 +368,7 @@ class RegistryIT {
             @Test
             @DisplayName("delete key during use")
             void testDeleteKeyDuringUse() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\invalid-handle-states");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\invalid-handle-states");
                 registryKey.createIfNotExists();
 
                 try (RegistryKey.Handle handle = registryKey.handle(HandleOption.MANAGE_VALUES)) {
@@ -390,7 +393,7 @@ class RegistryIT {
             @Test
             @DisplayName("transaction committed")
             void testTransactionCommitted() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\committed");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\committed");
                 registryKey.createIfNotExists();
 
                 registryKey.deleteValueIfExists("test");
@@ -430,7 +433,7 @@ class RegistryIT {
             @Test
             @DisplayName("transaction rolled back")
             void testTransactionRolledBack() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\rolled-back");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\rolled-back");
                 registryKey.createIfNotExists();
 
                 registryKey.deleteValueIfExists("test");
@@ -467,7 +470,7 @@ class RegistryIT {
             @Test
             @DisplayName("transaction auto-committed")
             void testTransactionAutoCommitted() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\auto-committed");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\auto-committed");
                 registryKey.createIfNotExists();
 
                 registryKey.deleteValueIfExists("test");
@@ -503,7 +506,7 @@ class RegistryIT {
             @Test
             @DisplayName("transaction not committed or rolled back")
             void testTransactionNotCommittedOrRolledBack() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\no-auto-commit");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\no-auto-commit");
                 registryKey.createIfNotExists();
 
                 registryKey.deleteValueIfExists("test");
@@ -540,7 +543,7 @@ class RegistryIT {
             @Test
             @DisplayName("non-transactional")
             void testNonTransactional() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER
                         .resolve("Software\\JavaSoft\\windows-registry\\transactions\\non-transactional");
                 registryKey.createIfNotExists();
 
@@ -584,7 +587,7 @@ class RegistryIT {
             @Test
             @DisplayName("commit failure")
             void testCommitFailure() {
-                RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\commit-failure");
+                RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry\\transactions\\commit-failure");
                 registryKey.createIfNotExists();
 
                 registryKey.deleteValueIfExists("test");

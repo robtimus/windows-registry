@@ -31,7 +31,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
-import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -39,6 +38,7 @@ import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
@@ -67,7 +67,10 @@ import com.github.robtimus.os.windows.registry.foreign.WinReg;
 @TestInstance(Lifecycle.PER_CLASS)
 class RemoteRootKeyTest extends RegistryKeyTestBase {
 
-    private RemoteRegistryKey remoteRoot;
+    private RemoteRegistry remoteRegistry;
+    private RegistryKey remoteRoot;
+    private MemorySegment hklmHKey;
+    private MemorySegment hkuHKey;
     private MemorySegment rootHKey;
 
     // Using autoCloseArguments = true will attempt to close arguments after teardown() is called, which means that the actual native API is used.
@@ -80,9 +83,12 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     void setup() {
         super.setup();
 
-        rootHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
+        hklmHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
+        hkuHKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+        rootHKey = hklmHKey;
 
-        remoteRoot = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine");
+        remoteRegistry = Registry.at("test-machine");
+        remoteRoot = remoteRegistry.HKEY_LOCAL_MACHINE;
 
         autoCloseables.clear();
     }
@@ -91,16 +97,18 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     @AfterEach
     void teardown() {
         // close twice
-        remoteRoot.close();
-        remoteRoot.close();
+        remoteRegistry.close();
+        remoteRegistry.close();
 
         verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
-        verify(RegistryKey.api).RegCloseKey(rootHKey);
+        verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull());
+        verify(RegistryKey.api).RegCloseKey(hklmHKey);
+        verify(RegistryKey.api).RegCloseKey(hkuHKey);
 
         verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
         verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
                 notNull());
-        verify(RegistryKey.api, never()).RegCloseKey(not(eq(rootHKey)));
+        verify(RegistryKey.api, times(2)).RegCloseKey(notNull());
 
         autoCloseables.forEach(c -> assertDoesNotThrow(c::close));
 
@@ -1176,12 +1184,12 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
 
         return new Arguments[] {
                 arguments(registryKey, registryKey, true),
-                arguments(registryKey, new RemoteRootKey("test-machine", RootKey.HKEY_LOCAL_MACHINE, rootHKey), true),
+                arguments(registryKey, new RemoteRootKey("test-machine", LocalRootKey.HKEY_LOCAL_MACHINE, rootHKey), true),
                 arguments(registryKey, registryKey.resolve(""), true),
                 arguments(registryKey, registryKey.resolve("test"), false),
-                arguments(registryKey, new RemoteRootKey("test-machine2", RootKey.HKEY_LOCAL_MACHINE, rootHKey), false),
-                arguments(registryKey, new RemoteRootKey("test-machine", RootKey.HKEY_CURRENT_USER, rootHKey), false),
-                arguments(registryKey, RegistryKey.HKEY_LOCAL_MACHINE, false),
+                arguments(registryKey, new RemoteRootKey("test-machine2", LocalRootKey.HKEY_LOCAL_MACHINE, rootHKey), false),
+                arguments(registryKey, new RemoteRootKey("test-machine", LocalRootKey.HKEY_CURRENT_USER, rootHKey), false),
+                arguments(registryKey, Registry.local().HKEY_LOCAL_MACHINE, false),
                 arguments(registryKey, "foo", false),
                 arguments(registryKey, null, false),
         };
@@ -1199,6 +1207,6 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
     @DisplayName("close twice")
     void testCloseTwice() {
         // The second time is called by teardown
-        assertDoesNotThrow(remoteRoot::close);
+        assertDoesNotThrow(remoteRegistry::close);
     }
 }

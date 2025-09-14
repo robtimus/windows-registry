@@ -56,31 +56,12 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
  *
  * @author Rob Spoor
  */
-public abstract class RegistryKey implements Comparable<RegistryKey> {
-
-    /** The HKEY_CLASSES_ROOT root key. */
-    public static final RegistryKey HKEY_CLASSES_ROOT = RootKey.HKEY_CLASSES_ROOT;
-
-    /** The HKEY_CURRENT_USER root key. */
-    public static final RegistryKey HKEY_CURRENT_USER = RootKey.HKEY_CURRENT_USER;
-
-    /** The HKEY_LOCAL_MACHINE root key. */
-    public static final RegistryKey HKEY_LOCAL_MACHINE = RootKey.HKEY_LOCAL_MACHINE;
-
-    /** The HKEY_USERS root key. */
-    public static final RegistryKey HKEY_USERS = RootKey.HKEY_USERS;
-
-    /** The HKEY_CURRENT_CONFIG root key. */
-    public static final RegistryKey HKEY_CURRENT_CONFIG = RootKey.HKEY_CURRENT_CONFIG;
+public abstract sealed class RegistryKey implements Comparable<RegistryKey> permits LocalRootKey, LocalSubKey, RemoteRootKey, RemoteSubKey {
 
     static final String SEPARATOR = "\\"; //$NON-NLS-1$
 
     // Non-private non-final to allow replacing for testing
     static Advapi32 api = Advapi32.INSTANCE;
-
-    private static final ScopedValue<Context> CONTEXT = ScopedValue.newInstance();
-
-    private static final Context.NonTransactional NO_TRANSACTION = new Context.NonTransactional();
 
     private static final Cleaner CLEANER = Cleaner.create();
 
@@ -140,11 +121,13 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      *
      * @return {@code true} if this registry key is a root registry key, or {@code false} otherwise.
      * @see #root()
-     * @see #HKEY_CLASSES_ROOT
-     * @see #HKEY_CURRENT_USER
-     * @see #HKEY_LOCAL_MACHINE
-     * @see #HKEY_USERS
-     * @see #HKEY_CURRENT_CONFIG
+     * @see LocalRegistry#HKEY_CLASSES_ROOT
+     * @see LocalRegistry#HKEY_CURRENT_USER
+     * @see LocalRegistry#HKEY_LOCAL_MACHINE
+     * @see LocalRegistry#HKEY_USERS
+     * @see LocalRegistry#HKEY_CURRENT_CONFIG
+     * @see RemoteRegistry#HKEY_LOCAL_MACHINE
+     * @see RemoteRegistry#HKEY_USERS
      */
     public abstract boolean isRoot();
 
@@ -153,11 +136,13 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
      *
      * @return The root of the registry key.
      * @see #isRoot()
-     * @see #HKEY_CLASSES_ROOT
-     * @see #HKEY_CURRENT_USER
-     * @see #HKEY_LOCAL_MACHINE
-     * @see #HKEY_USERS
-     * @see #HKEY_CURRENT_CONFIG
+     * @see LocalRegistry#HKEY_CLASSES_ROOT
+     * @see LocalRegistry#HKEY_CURRENT_USER
+     * @see LocalRegistry#HKEY_LOCAL_MACHINE
+     * @see LocalRegistry#HKEY_USERS
+     * @see LocalRegistry#HKEY_CURRENT_CONFIG
+     * @see RemoteRegistry#HKEY_LOCAL_MACHINE
+     * @see RemoteRegistry#HKEY_USERS
      */
     public abstract RegistryKey root();
 
@@ -790,24 +775,6 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         return path();
     }
 
-    // transactional support
-
-    static Context currentContext() {
-        return CONTEXT.orElse(NO_TRANSACTION);
-    }
-
-    static <R, X extends Throwable> R callWithTransaction(Transaction transaction, TransactionalState.Callable<R, X> action) throws X {
-        return callWithContext(new Context.Transactional(transaction), action);
-    }
-
-    static <R, X extends Throwable> R callWithoutTransaction(TransactionalState.Callable<R, X> action) throws X {
-        return callWithContext(NO_TRANSACTION, action);
-    }
-
-    private static <R, X extends Throwable> R callWithContext(Context context, TransactionalState.Callable<R, X> action) throws X {
-        return ScopedValue.where(CONTEXT, context).call(action::call);
-    }
-
     // utility
 
     static void closeKey(MemorySegment hKey, String path, String machineName) {
@@ -821,6 +788,10 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
         // Since this method is static, using a lambda does not capture any state except what's used inside it,
         // and therefore it's safe to use as action
         return CLEANER.register(object, () -> closeKey(hKey, path, machineName));
+    }
+
+    static Cleaner.Cleanable runOnClean(Object object, Runnable action) {
+        return CLEANER.register(object, action);
     }
 
     // nested classes
@@ -1506,149 +1477,6 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         HandleOption(int samDesired) {
             this.samDesired = samDesired;
-        }
-    }
-
-    abstract static sealed class Context {
-
-        abstract int createKey(
-                MemorySegment hKey,
-                MemorySegment lpSubKey,
-                int dwOptions,
-                int samDesired,
-                MemorySegment phkResult,
-                MemorySegment lpdwDisposition);
-
-        abstract int deleteKey(
-                MemorySegment hKey,
-                MemorySegment lpSubKey,
-                int samDesired);
-
-        abstract int openKey(
-                MemorySegment hKey,
-                MemorySegment lpSubKey,
-                int ulOptions,
-                int samDesired,
-                MemorySegment phkResult);
-
-        static final class Transactional extends Context {
-
-            private final Transaction transaction;
-
-            private Transactional(Transaction transaction) {
-                this.transaction = transaction;
-            }
-
-            Transaction transaction() {
-                return transaction;
-            }
-
-            @Override
-            int createKey(
-                    MemorySegment hKey,
-                    MemorySegment lpSubKey,
-                    int dwOptions,
-                    int samDesired,
-                    MemorySegment phkResult,
-                    MemorySegment lpdwDisposition) {
-
-                return api.RegCreateKeyTransacted(
-                        hKey,
-                        lpSubKey,
-                        0,
-                        MemorySegment.NULL,
-                        dwOptions,
-                        samDesired,
-                        MemorySegment.NULL,
-                        phkResult,
-                        lpdwDisposition,
-                        transaction.handle(),
-                        MemorySegment.NULL);
-            }
-
-            @Override
-            int deleteKey(
-                    MemorySegment hKey,
-                    MemorySegment lpSubKey,
-                    int samDesired) {
-
-                return api.RegDeleteKeyTransacted(
-                        hKey,
-                        lpSubKey,
-                        samDesired,
-                        0,
-                        transaction.handle(),
-                        MemorySegment.NULL);
-            }
-
-            @Override
-            int openKey(
-                    MemorySegment hKey,
-                    MemorySegment lpSubKey,
-                    int ulOptions,
-                    int samDesired,
-                    MemorySegment phkResult) {
-
-                return api.RegOpenKeyTransacted(
-                        hKey,
-                        lpSubKey,
-                        ulOptions,
-                        samDesired,
-                        phkResult,
-                        transaction.handle(),
-                        MemorySegment.NULL);
-            }
-        }
-
-        static final class NonTransactional extends Context {
-
-            private NonTransactional() {
-            }
-
-            @Override
-            int createKey(
-                    MemorySegment hKey,
-                    MemorySegment lpSubKey,
-                    int dwOptions,
-                    int samDesired,
-                    MemorySegment phkResult,
-                    MemorySegment lpdwDisposition) {
-
-                return api.RegCreateKeyEx(
-                        hKey,
-                        lpSubKey,
-                        0,
-                        MemorySegment.NULL,
-                        dwOptions,
-                        samDesired,
-                        MemorySegment.NULL,
-                        phkResult,
-                        lpdwDisposition);
-            }
-
-            @Override
-            int deleteKey(
-                    MemorySegment hKey,
-                    MemorySegment lpSubKey,
-                    int samDesired) {
-
-                return api.RegDeleteKeyEx(
-                        hKey,
-                        lpSubKey,
-                        samDesired,
-                        0);
-            }
-
-            @Override
-            int openKey(
-                    MemorySegment hKey,
-                    MemorySegment lpSubKey,
-                    int ulOptions,
-                    int samDesired,
-                    MemorySegment phkResult) {
-
-                return api.RegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
-            }
         }
     }
 }

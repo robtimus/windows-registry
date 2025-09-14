@@ -231,7 +231,7 @@ public final class Transaction {
      * @return An {@link Optional} describing the current transaction if one exists, or {@link Optional#empty()} otherwise.
      */
     public static Optional<Transaction> current() {
-        return RegistryKey.currentContext() instanceof RegistryKey.Context.Transactional transactionalContext
+        return Registry.currentContext() instanceof Registry.Context.Transactional transactionalContext
                 ? Optional.of(transactionalContext.transaction())
                 : Optional.empty();
     }

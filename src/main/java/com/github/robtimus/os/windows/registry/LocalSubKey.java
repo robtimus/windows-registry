@@ -1,5 +1,5 @@
 /*
- * SubKey.java
+ * LocalSubKey.java
  * Copyright 2020 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -33,7 +33,7 @@ import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
-final class SubKey extends RegistryKey {
+final class LocalSubKey extends RegistryKey {
 
     /*
      * Possible values:
@@ -42,12 +42,12 @@ final class SubKey extends RegistryKey {
      */
     private static final int SAM_DESIRED_REGISTRY_VIEW = 0;
 
-    private final RootKey root;
+    private final LocalRootKey root;
 
     private final String path;
     private final Deque<String> pathParts;
 
-    SubKey(RootKey root, Deque<String> pathParts) {
+    LocalSubKey(LocalRootKey root, Deque<String> pathParts) {
         this.root = root;
 
         this.path = String.join(SEPARATOR, pathParts);
@@ -92,7 +92,7 @@ final class SubKey extends RegistryKey {
 
         Deque<String> parentPathParts = new ArrayDeque<>(pathParts);
         parentPathParts.removeLast();
-        SubKey parent = new SubKey(root, parentPathParts);
+        LocalSubKey parent = new LocalSubKey(root, parentPathParts);
         return Optional.of(parent);
     }
 
@@ -154,7 +154,8 @@ final class SubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = currentContext().openKey(
+        int code = Registry.currentContext().openKey(
+                api,
                 rootHKey,
                 lpSubKey,
                 0,
@@ -195,7 +196,8 @@ final class SubKey extends RegistryKey {
         MemorySegment phkResult = HKEY.allocateRef(allocator);
         MemorySegment lpdwDisposition = allocateInt(allocator);
 
-        int code = currentContext().createKey(
+        int code = Registry.currentContext().createKey(
+                api,
                 rootHKey,
                 lpSubKey,
                 WinNT.REG_OPTION_NON_VOLATILE,
@@ -216,7 +218,7 @@ final class SubKey extends RegistryKey {
         }
     }
 
-    SubKey renameTo(MemorySegment rootHKey, String newName, SegmentAllocator allocator, String machineName) {
+    LocalSubKey renameTo(MemorySegment rootHKey, String newName, SegmentAllocator allocator, String machineName) {
         if (newName.contains(SEPARATOR)) {
             throw new IllegalArgumentException(Messages.RegistryKey.nameContainsBackslash(newName));
         }
@@ -224,7 +226,7 @@ final class SubKey extends RegistryKey {
         Deque<String> newPathParts = new ArrayDeque<>(pathParts);
         newPathParts.removeLast();
         newPathParts.addLast(newName);
-        SubKey renamed = new SubKey(root, newPathParts);
+        LocalSubKey renamed = new LocalSubKey(root, newPathParts);
 
         MemorySegment lpSubKeyName = WString.allocate(allocator, path);
         MemorySegment lpNewKeyName = WString.allocate(allocator, newName);
@@ -249,7 +251,11 @@ final class SubKey extends RegistryKey {
     void delete(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
-        int code = currentContext().deleteKey(rootHKey, lpSubKey, SAM_DESIRED_REGISTRY_VIEW);
+        int code = Registry.currentContext().deleteKey(
+                api,
+                rootHKey,
+                lpSubKey,
+                SAM_DESIRED_REGISTRY_VIEW);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path(), machineName);
         }
@@ -265,7 +271,11 @@ final class SubKey extends RegistryKey {
     boolean deleteIfExists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
-        int code = currentContext().deleteKey(rootHKey, lpSubKey, SAM_DESIRED_REGISTRY_VIEW);
+        int code = Registry.currentContext().deleteKey(
+                api,
+                rootHKey,
+                lpSubKey,
+                SAM_DESIRED_REGISTRY_VIEW);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
         }
@@ -316,7 +326,8 @@ final class SubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = currentContext().createKey(
+        int code = Registry.currentContext().createKey(
+                api,
                 rootHKey,
                 lpSubKey,
                 WinNT.REG_OPTION_NON_VOLATILE,
@@ -333,7 +344,8 @@ final class SubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
-        int code = currentContext().openKey(
+        int code = Registry.currentContext().openKey(
+                api,
                 rootHKey,
                 lpSubKey,
                 0,
@@ -358,7 +370,7 @@ final class SubKey extends RegistryKey {
         if (o == null || o.getClass() != getClass()) {
             return false;
         }
-        SubKey other = (SubKey) o;
+        LocalSubKey other = (LocalSubKey) o;
         return root.equals(other.root) && path.equals(other.path);
     }
 

@@ -72,7 +72,12 @@ import com.github.robtimus.os.windows.registry.foreign.WinReg;
 @TestInstance(Lifecycle.PER_CLASS)
 class RemoteSubKeyTest extends RegistryKeyTestBase {
 
-    private RemoteRegistryKey remoteRoot;
+    private static final LocalRegistry REGISTRY = Registry.local();
+
+    private RemoteRegistry remoteRegistry;
+    private RegistryKey remoteRoot;
+    private MemorySegment hklmHKey;
+    private MemorySegment hkuHKey;
     private MemorySegment rootHKey;
 
     @Override
@@ -80,18 +85,23 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
     void setup() {
         super.setup();
 
-        rootHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
+        hklmHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
+        hkuHKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+        rootHKey = hklmHKey;
 
-        remoteRoot = RemoteRegistryKey.HKEY_LOCAL_MACHINE.at("test-machine");
+        remoteRegistry = Registry.at("test-machine");
+        remoteRoot = remoteRegistry.HKEY_LOCAL_MACHINE;
     }
 
     @Override
     @AfterEach
     void teardown() {
-        remoteRoot.close();
+        remoteRegistry.close();
 
         verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
-        verify(RegistryKey.api).RegCloseKey(rootHKey);
+        verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull());
+        verify(RegistryKey.api).RegCloseKey(hklmHKey);
+        verify(RegistryKey.api).RegCloseKey(hkuHKey);
 
         super.teardown();
     }
@@ -2005,18 +2015,18 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 remoteRoot.resolve("Software\\JavaSoft"),
                 remoteRoot.resolve("Software"),
                 remoteRoot,
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software"),
-                RegistryKey.HKEY_CURRENT_USER
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software"),
+                REGISTRY.HKEY_CURRENT_USER
         );
         registryKeys.sort(null);
 
         List<RegistryKey> expected = List.of(
-                RegistryKey.HKEY_CURRENT_USER,
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
-                RegistryKey.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
+                REGISTRY.HKEY_CURRENT_USER,
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft"),
+                REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs"),
                 remoteRoot,
                 remoteRoot.resolve("Software"),
                 remoteRoot.resolve("Software\\JavaSoft"),
@@ -2040,7 +2050,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 arguments(registryKey, registryKey, true),
                 arguments(registryKey, remoteRoot.resolve("Software\\JavaSoft\\Prefs"), true),
                 arguments(registryKey, remoteRoot.resolve("Software\\JavaSoft\\prefs"), false),
-                arguments(registryKey, RegistryKey.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs"), false),
+                arguments(registryKey, REGISTRY.HKEY_LOCAL_MACHINE.resolve("Software\\JavaSoft\\Prefs"), false),
                 arguments(registryKey, "foo", false),
                 arguments(registryKey, null, false),
         };
