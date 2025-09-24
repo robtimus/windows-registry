@@ -27,7 +27,7 @@ Using class [RemoteRegistryKey](https://robtimus.github.io/windows-registry/apid
 
 ## Implementation details
 
-Interaction with the Windows registry is done through the [Foreign Function and Memory (FFM) API](https://docs.oracle.com/en/java/javase/22/core/foreign-function-and-memory-api.html). This has some benefits:
+Interaction with the Windows registry is done through the [Foreign Function and Memory (FFM) API](https://docs.oracle.com/en/java/javase/25/core/foreign-function-and-memory-api.html). This has some benefits:
 
 * Native interaction with the Windows registry instead of using commands like `REG QUERY` provides better performance.
 * Native interaction with the Windows registry instead of piggybacking on Java internal classes like `java.util.Preferences` provides greater compatibility between Java versions.
