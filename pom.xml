@@ -62,7 +62,7 @@
   </issueManagement>
 
   <properties>
-    <version.java>22</version.java>
+    <version.java>25</version.java>
 
     <version.jna>5.13.0</version.jna>
   </properties>
