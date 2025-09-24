@@ -126,11 +126,11 @@ class Advapi32ImplTest {
     }
 
     @Test
-    @DisplayName("RegDeleteKey")
+    @DisplayName("RegDeleteKeyEx")
     void testRegDeleteKey() {
         MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
 
-        int code = Advapi32.INSTANCE.RegDeleteKey(INVALID_HKEY, lpSubKey);
+        int code = Advapi32.INSTANCE.RegDeleteKeyEx(INVALID_HKEY, lpSubKey, 0, 0);
 
         assertInvalidHandle(code);
     }
