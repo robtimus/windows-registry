@@ -1521,7 +1521,8 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
 
         abstract int deleteKey(
                 MemorySegment hKey,
-                MemorySegment lpSubKey);
+                MemorySegment lpSubKey,
+                int samDesired);
 
         abstract int openKey(
                 MemorySegment hKey,
@@ -1568,13 +1569,13 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             @Override
             int deleteKey(
                     MemorySegment hKey,
-                    MemorySegment lpSubKey) {
+                    MemorySegment lpSubKey,
+                    int samDesired) {
 
-                // TODO: check samDesired
                 return api.RegDeleteKeyTransacted(
                         hKey,
                         lpSubKey,
-                        0,
+                        samDesired,
                         0,
                         transaction.handle(),
                         MemorySegment.NULL);
@@ -1628,9 +1629,14 @@ public abstract class RegistryKey implements Comparable<RegistryKey> {
             @Override
             int deleteKey(
                     MemorySegment hKey,
-                    MemorySegment lpSubKey) {
+                    MemorySegment lpSubKey,
+                    int samDesired) {
 
-                return api.RegDeleteKey(hKey, lpSubKey);
+                return api.RegDeleteKeyEx(
+                        hKey,
+                        lpSubKey,
+                        samDesired,
+                        0);
             }
 
             @Override

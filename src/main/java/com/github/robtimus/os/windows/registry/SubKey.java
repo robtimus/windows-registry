@@ -35,6 +35,13 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 final class SubKey extends RegistryKey {
 
+    /*
+     * Possible values:
+     * - KEY_WOW64_32KEY (0x0200) for the 32-bit registry view
+     * - KEY_WOW64_64KEY (0x0100) for the 64-bit registry view
+     */
+    private static final int SAM_DESIRED_REGISTRY_VIEW = 0;
+
     private final RootKey root;
 
     private final String path;
@@ -151,7 +158,7 @@ final class SubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 0,
-                WinNT.KEY_READ,
+                WinNT.KEY_READ | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             closeKey(HKEY.target(phkResult), path(), machineName);
@@ -192,7 +199,7 @@ final class SubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 WinNT.REG_OPTION_NON_VOLATILE,
-                WinNT.KEY_READ,
+                WinNT.KEY_READ | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult,
                 lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
@@ -242,7 +249,7 @@ final class SubKey extends RegistryKey {
     void delete(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
-        int code = currentContext().deleteKey(rootHKey, lpSubKey);
+        int code = currentContext().deleteKey(rootHKey, lpSubKey, SAM_DESIRED_REGISTRY_VIEW);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path(), machineName);
         }
@@ -258,7 +265,7 @@ final class SubKey extends RegistryKey {
     boolean deleteIfExists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
-        int code = currentContext().deleteKey(rootHKey, lpSubKey);
+        int code = currentContext().deleteKey(rootHKey, lpSubKey, SAM_DESIRED_REGISTRY_VIEW);
         if (code == WinError.ERROR_SUCCESS) {
             return true;
         }
@@ -313,7 +320,7 @@ final class SubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 WinNT.REG_OPTION_NON_VOLATILE,
-                samDesired,
+                samDesired | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult,
                 MemorySegment.NULL);
         if (code == WinError.ERROR_SUCCESS) {
@@ -330,7 +337,7 @@ final class SubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 0,
-                samDesired,
+                samDesired | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult);
         if (code == WinError.ERROR_SUCCESS) {
             return HKEY.target(phkResult);

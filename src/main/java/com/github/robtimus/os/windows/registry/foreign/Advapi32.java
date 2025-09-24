@@ -60,9 +60,11 @@ public interface Advapi32 {
 
     boolean isRegCreateKeyTransactedEnabled();
 
-    /* LSTATUS */ int RegDeleteKey/* NOSONAR */(
+    /* LSTATUS */ int RegDeleteKeyEx/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey);
+            /* LPCWSTR */ MemorySegment lpSubKey,
+            /* REGSAM */ int samDesired,
+            /* DWORD  */ int Reserved); // NOSONAR
 
     /* LSTATUS */ int RegDeleteKeyTransacted/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,

@@ -34,7 +34,7 @@ final class Advapi32Impl implements Advapi32 {
     private final MethodHandle regConnectRegistry;
     private final MethodHandle regCreateKeyEx;
     private final Optional<MethodHandle> regCreateKeyTransacted;
-    private final MethodHandle regDeleteKey;
+    private final MethodHandle regDeleteKeyEx;
     private final Optional<MethodHandle> regDeleteKeyTransacted;
     private final MethodHandle regDeleteValue;
     private final MethodHandle regEnumKeyEx;
@@ -85,9 +85,11 @@ final class Advapi32Impl implements Advapi32 {
                 ValueLayout.ADDRESS, // hTransaction
                 ValueLayout.ADDRESS)); // pExtendedParemeter
 
-        regDeleteKey = functionMethodHandle(linker, symbolLookup, "RegDeleteKeyW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        regDeleteKeyEx = functionMethodHandle(linker, symbolLookup, "RegDeleteKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
-                ValueLayout.ADDRESS)); // lpSubKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.JAVA_INT)); // Reserved
 
         // RegDeleteKeyTransactedW does not work before Windows Vista / Windows Server 2008
         regDeleteKeyTransacted = optionalFunctionMethodHandle(linker, symbolLookup, "RegDeleteKeyTransactedW", FunctionDescriptor.of(
@@ -272,14 +274,18 @@ final class Advapi32Impl implements Advapi32 {
     }
 
     @Override
-    public int RegDeleteKey(
+    public int RegDeleteKeyEx(
             MemorySegment hKey,
-            MemorySegment lpSubKey) {
+            MemorySegment lpSubKey,
+            int samDesired,
+            int Reserved) { // NOSONAR
 
         try {
-            return (int) regDeleteKey.invokeExact(
+            return (int) regDeleteKeyEx.invokeExact(
                     hKey,
-                    lpSubKey);
+                    lpSubKey,
+                    samDesired,
+                    Reserved);
         } catch (Throwable e) {
             throw new IllegalStateException(e);
         }

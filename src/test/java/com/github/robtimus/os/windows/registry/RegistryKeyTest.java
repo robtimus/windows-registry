@@ -945,7 +945,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
                         return WinError.ERROR_SUCCESS;
                     });
-            when(RegistryKey.api.RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(WinError.ERROR_SUCCESS);
             when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
@@ -957,7 +957,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull());
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull());
-            verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
+            verify(RegistryKey.api).RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0));
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
             verifyNoMoreInteractions(RegistryKey.api);
@@ -986,7 +986,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
                         return WinError.ERROR_SUCCESS;
                     });
-            when(RegistryKey.api.RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(WinError.ERROR_SUCCESS);
             when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
@@ -1000,7 +1000,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull());
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull());
-            verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
+            verify(RegistryKey.api).RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0));
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
             verifyNoMoreInteractions(RegistryKey.api);
@@ -1089,7 +1089,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
 
                         return WinError.ERROR_SUCCESS;
                     });
-            when(RegistryKey.api.RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path))).thenReturn(WinError.ERROR_SUCCESS);
+            when(RegistryKey.api.RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(WinError.ERROR_SUCCESS);
             when(RegistryKey.api.RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = RegistryKey.HKEY_CURRENT_USER.resolve(path);
@@ -1114,7 +1114,7 @@ class RegistryKeyTest extends RegistryKeyTestBase {
             verify(RegistryKey.api).RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull());
             verify(RegistryKey.api).RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull());
-            verify(RegistryKey.api).RegDeleteKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path));
+            verify(RegistryKey.api).RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0));
             // Closed as part of create and exist calls
             verify(RegistryKey.api, times(2)).RegCloseKey(hKey);
             verifyNoMoreInteractions(RegistryKey.api, Transaction.ktmW32, Transaction.kernel32);
