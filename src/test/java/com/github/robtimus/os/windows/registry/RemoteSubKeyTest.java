@@ -1749,12 +1749,12 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\existing"));
+            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             registryKey.delete();
 
-            verify(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\existing"));
+            verify(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
             verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
             verify(RegistryKey.api, never()).RegCloseKey(notNull());
         }
@@ -1762,7 +1762,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\non-existing"));
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0));
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::delete);
@@ -1776,7 +1776,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\failure"));
+            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0));
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
@@ -1795,12 +1795,12 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\existing"));
+            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             assertTrue(registryKey.deleteIfExists());
 
-            verify(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\existing"));
+            verify(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
             verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
             verify(RegistryKey.api, never()).RegCloseKey(notNull());
         }
@@ -1808,12 +1808,12 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\non-existing"));
+            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0));
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.deleteIfExists());
 
-            verify(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\non-existing"));
+            verify(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0));
             verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
             verify(RegistryKey.api, never()).RegCloseKey(notNull());
         }
@@ -1821,7 +1821,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteKey(eq(rootHKey), eqPointer("path\\failure"));
+            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0));
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
