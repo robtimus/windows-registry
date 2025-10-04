@@ -45,15 +45,14 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
     }
 
     /**
-     * Connects to the registry on a remote machine.
-     * The returned registry needs to be closed when it is no longer needed.
+     * Returns an object that can be used to connect to the registry on a remote machine.
      *
      * @param machineName The machine name. This cannot be an IP address but must be a resolvable host name.
-     * @return A representation of the registry on the given remote machine.
-     * @throws RegistryException If the connection failed.
+     * @return An object that can be used to connect to the registry on the given remote machine.
+     * @throws NullPointerException If the given machine name is {@code null}.
      */
-    public static RemoteRegistry at(String machineName) {
-        return RemoteRegistry.connect(machineName);
+    public static RemoteRegistry.Connector at(String machineName) {
+        return new RemoteRegistry.Connector(machineName);
     }
 
     // transactional support

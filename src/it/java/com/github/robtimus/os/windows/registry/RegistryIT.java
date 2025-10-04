@@ -95,7 +95,7 @@ class RegistryIT {
             @DisplayName("Windows build")
             void testWindowsBuild() {
                 String hostName = readHostName();
-                try (RemoteRegistry remoteRegistry = Registry.at(hostName)) {
+                try (RemoteRegistry remoteRegistry = Registry.at(hostName).connect()) {
                     RegistryKey remoteRegistryKey = remoteRegistry.HKEY_LOCAL_MACHINE;
                     RegistryKey registryKey = remoteRegistryKey.resolve("SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion");
                     RegistryValue registryValue = registryKey.getValue("CurrentBuild", RegistryValue.class);
