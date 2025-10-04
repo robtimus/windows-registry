@@ -20,6 +20,7 @@ package com.github.robtimus.os.windows.registry;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
+import java.util.Objects;
 import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
@@ -93,5 +94,30 @@ public final class RemoteRegistry extends Registry implements AutoCloseable {
     @Override
     public void close() {
         cleanable.clean();
+    }
+
+    /**
+     * An object that can be used to connect to the registry on a remote machine.
+     *
+     * @author Rob Spoor
+     */
+    public static final class Connector {
+
+        private final String machineName;
+
+        Connector(String machineName) {
+            this.machineName = Objects.requireNonNull(machineName);
+        }
+
+        /**
+         * Connects to the registry on the remote machine.
+         * The returned registry needs to be closed when it is no longer needed.
+         *
+         * @return A representation of the registry on the given remote machine.
+         * @throws RegistryException If the connection failed.
+         */
+        public RemoteRegistry connect() {
+            return RemoteRegistry.connect(machineName);
+        }
     }
 }

@@ -87,7 +87,7 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         hkuHKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
         rootHKey = hklmHKey;
 
-        remoteRegistry = Registry.at("test-machine");
+        remoteRegistry = Registry.at("test-machine").connect();
         remoteRoot = remoteRegistry.HKEY_LOCAL_MACHINE;
 
         autoCloseables.clear();
