@@ -175,17 +175,13 @@ public abstract sealed class TransactionalState {
 
         // Transaction cannot implement AutoCloseable because that would require the close method to be public,
         // so create an AutoCloseable wrapper around it
-        final class TransactionCloseable implements AutoCloseable {
-
-            private final Transaction transaction;
-
-            private TransactionCloseable(Transaction transaction) {
-                this.transaction = transaction;
-            }
+        interface TransactionCloseable extends AutoCloseable {
 
             @Override
-            public void close() {
-                transaction.close();
+            void close();
+
+            static TransactionCloseable forTransaction(Transaction transaction) {
+                return transaction::close;
             }
         }
 
@@ -196,7 +192,7 @@ public abstract sealed class TransactionalState {
         String description = descriptionOption != null ? descriptionOption.description() : null;
 
         Transaction transaction = Transaction.create(timeout, description);
-        try (var _ = new TransactionCloseable(transaction)) {
+        try (var _ = TransactionCloseable.forTransaction(transaction)) {
             return Registry.callWithTransaction(transaction, () -> {
                 R result = action.call();
                 if (transaction.autoCommit() && transaction.status() == Status.ACTIVE) {
