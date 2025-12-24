@@ -1178,7 +1178,6 @@ class RemoteRootKeyTest extends RegistryKeyTestBase {
         }
     }
 
-    @SuppressWarnings("resource")
     Arguments[] equalsArguments() {
         RegistryKey registryKey = remoteRoot;
 
