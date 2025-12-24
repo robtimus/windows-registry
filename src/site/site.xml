@@ -27,6 +27,7 @@
       <item name="Download" href="download.html" />
       <item name="Releases" href="https://github.com/robtimus/windows-registry/releases" />
       <item name="Javadoc" href="apidocs/index.html" />
+      <item name="Javadoc (v1.x)" href="apidocs/1.x/index.html" />
     </menu>
   </body>
 </site>
