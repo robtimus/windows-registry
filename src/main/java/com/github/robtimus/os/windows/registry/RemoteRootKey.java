@@ -23,7 +23,7 @@ import java.util.Optional;
 import java.util.function.IntPredicate;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 
-final class RemoteRootKey extends RegistryKey implements AutoCloseable {
+final class RemoteRootKey extends RegistryKey {
 
     private final String machineName;
     private final LocalRootKey local;
@@ -209,8 +209,11 @@ final class RemoteRootKey extends RegistryKey implements AutoCloseable {
         return local.toString() + "@" + machineName;
     }
 
-    @Override
-    public void close() {
+    /*
+     * Don't let RemoteRootKey implement AutoCloseable, and keep this method package-protected,
+     * to prevent this being called directly instead of through RemoteRegistry.close()
+     */
+    void close() {
         cleanable.clean();
     }
 

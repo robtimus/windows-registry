@@ -51,7 +51,8 @@ public final class RemoteRegistry extends Registry implements AutoCloseable {
 
         this.cleanable = RegistryKey.runOnClean(this, () -> {
             // Close in reversed order, as they are closed from last to first
-            try (hku; hklm) {
+            try (var _ = RemoteRootKeyCloseable.fromRemoteRootKey(hku);
+                    var _ = RemoteRootKeyCloseable.fromRemoteRootKey(hklm)) {
                 // does nothing
             }
         });
@@ -70,8 +71,8 @@ public final class RemoteRegistry extends Registry implements AutoCloseable {
             return new RemoteRegistry(hklm, hku);
         } catch (RegistryException e) {
             // Close in reversed order, as they are closed from last to first
-            try (var _ = hku;
-                    var _ = hklm) {
+            try (var _ = RemoteRootKeyCloseable.fromRemoteRootKey(hku);
+                    var _ = RemoteRootKeyCloseable.fromRemoteRootKey(hklm)) {
 
                 throw e;
             }
@@ -118,6 +119,16 @@ public final class RemoteRegistry extends Registry implements AutoCloseable {
          */
         public RemoteRegistry connect() {
             return RemoteRegistry.connect(machineName);
+        }
+    }
+
+    private interface RemoteRootKeyCloseable extends AutoCloseable {
+
+        @Override
+        void close();
+
+        static RemoteRootKeyCloseable fromRemoteRootKey(RemoteRootKey rootKey) {
+            return rootKey == null ? null : rootKey::close;
         }
     }
 }
