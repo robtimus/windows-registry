@@ -1008,7 +1008,8 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             MemorySegment.NULL);
                     if (code == WinError.ERROR_SUCCESS) {
                         index++;
-                        return WString.getString(lpName);
+                        // lpcName contains the number of characters excluding the terminating character
+                        return WString.getString(lpName, getInt(lpcName));
                     }
                     if (code == WinError.ERROR_NO_MORE_ITEMS) {
                         return null;
@@ -1121,7 +1122,8 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                                 lpcbData);
                         if (code == WinError.ERROR_SUCCESS) {
                             index++;
-                            String valueName = WString.getString(lpValueName);
+                            // lpcchValueName contains the number of characters excluding the terminating character
+                            String valueName = WString.getString(lpValueName, getInt(lpcchValueName));
                             int valueType = getInt(lpType);
                             if (filter == null || filter.matches(valueName, valueType)) {
                                 return RegistryValue.of(valueName, valueType, lpData, getInt(lpcbData));

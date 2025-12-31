@@ -120,6 +120,7 @@ abstract class RegistryKeyTestBase {
 
             MemorySegment lpName = i.getArgument(2, MemorySegment.class);
             WString.copy(name, lpName, 0);
+            setInt(i.getArgument(3, MemorySegment.class), name.length());
 
             return WinError.ERROR_SUCCESS;
         });
@@ -157,6 +158,7 @@ abstract class RegistryKeyTestBase {
 
             MemorySegment lpValueName = i.getArgument(2, MemorySegment.class);
             WString.copy(name, lpValueName, 0);
+            setInt(i.getArgument(3, MemorySegment.class), name.length());
 
             setInt(i.getArgument(5, MemorySegment.class), values[index].type());
             copyData(data, i.getArgument(6, MemorySegment.class));

@@ -60,6 +60,10 @@ public final class WString {
         }
 
         int length = stringLength(segment, 0);
+        return getString(segment, length);
+    }
+
+    public static String getString(MemorySegment segment, int length) {
         char[] chars = new char[length];
         MemorySegment.copy(segment, CHAR_LAYOUT, 0, chars, 0, length);
         return new String(chars);

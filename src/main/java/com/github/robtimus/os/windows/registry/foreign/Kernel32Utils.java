@@ -53,7 +53,9 @@ public final class Kernel32Utils {
                 throw new IllegalStateException(formatMessage(CaptureState.getLastError(captureState)));
             }
 
-            return WString.getString(lpDst);
+            // result is the number of characters including the terminating character, but WString also includes it.
+            // Subtract 1 to not include it in the result.
+            return WString.getString(lpDst, result - 1);
         }
     }
 
@@ -78,7 +80,8 @@ public final class Kernel32Utils {
 
             MemorySegment pointer = WString.target(lpBuffer, result);
             try {
-                return WString.getString(pointer)
+                // result is the number of characters excluding the terminating character
+                return WString.getString(pointer, result)
                         .strip();
             } finally {
                 free(pointer, captureState);

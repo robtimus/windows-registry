@@ -36,6 +36,9 @@ public final class StringValue extends SettableRegistryValue {
 
     StringValue(String name, int type, MemorySegment data, long dataLength) {
         super(name, type);
+        // data may or may not include a terminating null character.
+        // Therefore, don't pass a value to getString but let it calculate the length based on the segment size
+        // and index of the first null character (if any).
         value = WString.getString(data.asSlice(0, dataLength));
     }
 
