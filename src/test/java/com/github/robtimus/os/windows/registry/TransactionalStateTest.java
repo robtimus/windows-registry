@@ -17,10 +17,19 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.TransactionMocks.createTransaction;
+import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCloseHandle;
+import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCommitTransaction;
+import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCreateTransaction;
+import static com.github.robtimus.os.windows.registry.TransactionMocks.mockGetTransactionStatus;
 import static com.github.robtimus.os.windows.registry.TransactionOption.description;
 import static com.github.robtimus.os.windows.registry.TransactionOption.timeout;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -30,9 +39,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 import java.lang.foreign.MemorySegment;
 import java.time.Duration;
 import java.util.Optional;
@@ -45,7 +52,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
-class TransactionalStateTest extends TransactionTestBase {
+class TransactionalStateTest extends RegistryTestBase {
 
     @Nested
     @DisplayName("mandatory")
@@ -117,11 +124,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -139,8 +148,10 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -176,11 +187,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -199,8 +212,10 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -238,11 +253,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -261,8 +278,10 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -298,11 +317,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), eqPointer("test"), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), eqPointer("test"), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -321,8 +342,10 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -381,11 +404,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -411,12 +436,14 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull());
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull()));
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -452,11 +479,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -483,12 +512,14 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), isNULL(), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -526,11 +557,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -557,12 +590,14 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), eqPointer("test"), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -598,11 +633,13 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), eqPointer("test"), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), eqPointer("test"), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -629,12 +666,14 @@ class TransactionalStateTest extends TransactionTestBase {
 
                 assertEquals(expectedResult, result);
 
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), eqPointer("test"), notNull());
-                verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-                verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-                verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-                verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(100), eqPointer("test"), notNull()));
+                ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+                ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+                kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+                ktmW32.verifyNoMoreInteractions();
+                kernel32.verifyNoMoreInteractions();
             }
 
             @Test
@@ -812,11 +851,13 @@ class TransactionalStateTest extends TransactionTestBase {
                 assertNotEquals(Optional.empty(), Transaction.current());
             });
 
-            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-            verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-            verify(Transaction.ktmW32).CommitTransaction(eq(handle), notNull());
-            verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-            verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+            ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+            ktmW32.verify(() -> CommitTransaction(eq(handle), notNull()));
+            kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+            ktmW32.verifyNoMoreInteractions();
+            kernel32.verifyNoMoreInteractions();
         }
 
         @ParameterizedTest
@@ -834,10 +875,12 @@ class TransactionalStateTest extends TransactionTestBase {
                 assertNotEquals(Optional.empty(), Transaction.current());
             });
 
-            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-            verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-            verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-            verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+            ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+            kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+            ktmW32.verifyNoMoreInteractions();
+            kernel32.verifyNoMoreInteractions();
         }
 
         @Test
@@ -854,10 +897,12 @@ class TransactionalStateTest extends TransactionTestBase {
             IllegalStateException exception = assertThrows(IllegalStateException.class, () -> transactionalState.run(action));
             assertEquals(Messages.Transaction.unsupportedOutcome(-1), exception.getMessage());
 
-            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-            verify(Transaction.ktmW32).GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull());
-            verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-            verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+            ktmW32.verify(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
+            kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+            ktmW32.verifyNoMoreInteractions();
+            kernel32.verifyNoMoreInteractions();
         }
 
         @Test
@@ -872,9 +917,11 @@ class TransactionalStateTest extends TransactionTestBase {
                 currentTransaction.autoCommit(false);
             });
 
-            verify(Transaction.ktmW32).CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull());
-            verify(Transaction.kernel32).CloseHandle(eq(handle), notNull());
-            verifyNoMoreInteractions(Transaction.ktmW32, Transaction.kernel32);
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), eq(0), isNULL(), notNull()));
+            kernel32.verify(() -> CloseHandle(eq(handle), notNull()));
+
+            ktmW32.verifyNoMoreInteractions();
+            kernel32.verifyNoMoreInteractions();
         }
     }
 }

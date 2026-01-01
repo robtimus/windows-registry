@@ -1,5 +1,5 @@
 /*
- * Advapi32ImplTest.java
+ * Advapi32Test.java
  * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -34,7 +34,7 @@ import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
 
 @SuppressWarnings("nls")
-class Advapi32ImplTest {
+class Advapi32Test {
 
     // Use an invalid memory segment to trigger invalid handle errors
     private static final MemorySegment INVALID_HKEY = MemorySegment.NULL;
@@ -42,7 +42,7 @@ class Advapi32ImplTest {
     @Test
     @DisplayName("RegCloseKey")
     void testRegCloseKey() {
-        int code = Advapi32.INSTANCE.RegCloseKey(INVALID_HKEY);
+        int code = Advapi32.RegCloseKey(INVALID_HKEY);
 
         assertInvalidHandle(code);
     }
@@ -56,7 +56,7 @@ class Advapi32ImplTest {
         void testMinimalArguments() {
             MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
 
-            int code = Advapi32.INSTANCE.RegConnectRegistry(MemorySegment.NULL, INVALID_HKEY, phkResult);
+            int code = Advapi32.RegConnectRegistry(MemorySegment.NULL, INVALID_HKEY, phkResult);
 
             assertInvalidHandle(code);
             assertNullReference(phkResult);
@@ -68,7 +68,7 @@ class Advapi32ImplTest {
             MemorySegment lpMachineName = WString.allocate(ALLOCATOR, "localhost");
             MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
 
-            int code = Advapi32.INSTANCE.RegConnectRegistry(lpMachineName, INVALID_HKEY, phkResult);
+            int code = Advapi32.RegConnectRegistry(lpMachineName, INVALID_HKEY, phkResult);
 
             assertInvalidHandle(code);
             assertNullReference(phkResult);
@@ -85,7 +85,7 @@ class Advapi32ImplTest {
             MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
             MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
 
-            int code = Advapi32.INSTANCE.RegCreateKeyEx(
+            int code = Advapi32.RegCreateKeyEx(
                     INVALID_HKEY,
                     lpSubKey,
                     0,
@@ -108,7 +108,7 @@ class Advapi32ImplTest {
             MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
             MemorySegment lpdwDisposition = allocateInt(ALLOCATOR);
 
-            int code = Advapi32.INSTANCE.RegCreateKeyEx(
+            int code = Advapi32.RegCreateKeyEx(
                     INVALID_HKEY,
                     lpSubKey,
                     0,
@@ -130,7 +130,7 @@ class Advapi32ImplTest {
     void testRegDeleteKey() {
         MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
 
-        int code = Advapi32.INSTANCE.RegDeleteKeyEx(INVALID_HKEY, lpSubKey, 0, 0);
+        int code = Advapi32.RegDeleteKeyEx(INVALID_HKEY, lpSubKey, 0, 0);
 
         assertInvalidHandle(code);
     }
@@ -142,7 +142,7 @@ class Advapi32ImplTest {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            int code = Advapi32.INSTANCE.RegDeleteValue(INVALID_HKEY, MemorySegment.NULL);
+            int code = Advapi32.RegDeleteValue(INVALID_HKEY, MemorySegment.NULL);
 
             assertInvalidHandle(code);
         }
@@ -152,7 +152,7 @@ class Advapi32ImplTest {
         void testAllArguments() {
             MemorySegment lpValueName = WString.allocate(ALLOCATOR, "val");
 
-            int code = Advapi32.INSTANCE.RegDeleteValue(INVALID_HKEY, lpValueName);
+            int code = Advapi32.RegDeleteValue(INVALID_HKEY, lpValueName);
 
             assertInvalidHandle(code);
         }
@@ -168,7 +168,7 @@ class Advapi32ImplTest {
             MemorySegment lpName = WString.allocate(ALLOCATOR, 100);
             MemorySegment lpcchName = allocateInt(ALLOCATOR, 100);
 
-            int code = Advapi32.INSTANCE.RegEnumKeyEx(
+            int code = Advapi32.RegEnumKeyEx(
                     INVALID_HKEY,
                     0,
                     lpName,
@@ -192,7 +192,7 @@ class Advapi32ImplTest {
             MemorySegment lpcchClass = allocateInt(ALLOCATOR, 100);
             MemorySegment lpftLastWriteTime = FILETIME.allocate(ALLOCATOR);
 
-            int code = Advapi32.INSTANCE.RegEnumKeyEx(
+            int code = Advapi32.RegEnumKeyEx(
                     INVALID_HKEY,
                     0,
                     lpName,
@@ -223,7 +223,7 @@ class Advapi32ImplTest {
             MemorySegment lpValueName = WString.allocate(ALLOCATOR, 100);
             MemorySegment lpcchValueName = allocateInt(ALLOCATOR, 100);
 
-            int code = Advapi32.INSTANCE.RegEnumValue(
+            int code = Advapi32.RegEnumValue(
                     INVALID_HKEY,
                     0,
                     lpValueName,
@@ -247,7 +247,7 @@ class Advapi32ImplTest {
             MemorySegment lpData = allocateBytes(ALLOCATOR, 100);
             MemorySegment lpcbData = allocateInt(ALLOCATOR, 100);
 
-            int code = Advapi32.INSTANCE.RegEnumValue(
+            int code = Advapi32.RegEnumValue(
                     INVALID_HKEY,
                     0,
                     lpValueName,
@@ -272,7 +272,7 @@ class Advapi32ImplTest {
         MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
         MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
 
-        int code = Advapi32.INSTANCE.RegOpenKeyEx(
+        int code = Advapi32.RegOpenKeyEx(
                 INVALID_HKEY,
                 lpSubKey,
                 0,
@@ -290,7 +290,7 @@ class Advapi32ImplTest {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            int code = Advapi32.INSTANCE.RegQueryInfoKey(
+            int code = Advapi32.RegQueryInfoKey(
                     INVALID_HKEY,
                     MemorySegment.NULL,
                     MemorySegment.NULL,
@@ -320,7 +320,7 @@ class Advapi32ImplTest {
             MemorySegment lpcbSecurityDescriptor = allocateInt(ALLOCATOR);
             MemorySegment lpftLastWriteTime = FILETIME.allocate(ALLOCATOR);
 
-            int code = Advapi32.INSTANCE.RegQueryInfoKey(
+            int code = Advapi32.RegQueryInfoKey(
                     INVALID_HKEY,
                     MemorySegment.NULL,
                     MemorySegment.NULL,
@@ -355,7 +355,7 @@ class Advapi32ImplTest {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            int code = Advapi32.INSTANCE.RegQueryValueEx(
+            int code = Advapi32.RegQueryValueEx(
                     INVALID_HKEY,
                     MemorySegment.NULL,
                     MemorySegment.NULL,
@@ -374,7 +374,7 @@ class Advapi32ImplTest {
             MemorySegment lpData = allocateBytes(ALLOCATOR, 100);
             MemorySegment lpcbData = allocateInt(ALLOCATOR, 100);
 
-            int code = Advapi32.INSTANCE.RegQueryValueEx(
+            int code = Advapi32.RegQueryValueEx(
                     INVALID_HKEY,
                     lpValueName,
                     MemorySegment.NULL,
@@ -398,7 +398,7 @@ class Advapi32ImplTest {
         void testMinimalArguments() {
             MemorySegment lpNewKeyName = WString.allocate(ALLOCATOR, "new");
 
-            int code = Advapi32.INSTANCE.RegRenameKey(
+            int code = Advapi32.RegRenameKey(
                     INVALID_HKEY,
                     MemorySegment.NULL,
                     lpNewKeyName);
@@ -412,7 +412,7 @@ class Advapi32ImplTest {
             MemorySegment lpSubKeyName = WString.allocate(ALLOCATOR, "old");
             MemorySegment lpNewKeyName = WString.allocate(ALLOCATOR, "new");
 
-            int code = Advapi32.INSTANCE.RegRenameKey(
+            int code = Advapi32.RegRenameKey(
                     INVALID_HKEY,
                     lpSubKeyName,
                     lpNewKeyName);
@@ -428,7 +428,7 @@ class Advapi32ImplTest {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            int code = Advapi32.INSTANCE.RegSetValueEx(
+            int code = Advapi32.RegSetValueEx(
                     INVALID_HKEY,
                     MemorySegment.NULL,
                     0,
@@ -445,7 +445,7 @@ class Advapi32ImplTest {
             MemorySegment lpValueName = WString.allocate(ALLOCATOR, "val");
             MemorySegment lpData = allocateInt(ALLOCATOR, ValueLayout.JAVA_INT.withOrder(ByteOrder.LITTLE_ENDIAN), 100);
 
-            int code = Advapi32.INSTANCE.RegSetValueEx(
+            int code = Advapi32.RegSetValueEx(
                     INVALID_HKEY,
                     lpValueName,
                     0,

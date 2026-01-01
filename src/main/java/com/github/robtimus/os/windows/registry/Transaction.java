@@ -19,6 +19,11 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
+import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.time.Duration;
@@ -26,9 +31,7 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import com.github.robtimus.os.windows.registry.foreign.CaptureState;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
 import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
-import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.HANDLE;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
@@ -42,9 +45,6 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
  * @since 2.0
  */
 public final class Transaction {
-
-    static KtmW32 ktmW32 = KtmW32.INSTANCE;
-    static Kernel32 kernel32 = Kernel32.INSTANCE;
 
     private final MemorySegment handle;
     private final Duration timeout;
@@ -105,7 +105,7 @@ public final class Transaction {
         try (Arena allocator = Arena.ofConfined()) {
             MemorySegment outcome = allocateInt(allocator);
             MemorySegment captureState = CaptureState.allocate(allocator);
-            boolean result = ktmW32.GetTransactionInformation(
+            boolean result = GetTransactionInformation(
                     handle,
                     outcome,
                     MemorySegment.NULL,
@@ -156,7 +156,7 @@ public final class Transaction {
     public void commit() {
         try (Arena allocator = Arena.ofConfined()) {
             MemorySegment captureState = CaptureState.allocate(allocator);
-            if (!ktmW32.CommitTransaction(handle, captureState)) {
+            if (!CommitTransaction(handle, captureState)) {
                 throw new TransactionException(CaptureState.getLastError(captureState));
             }
         }
@@ -170,7 +170,7 @@ public final class Transaction {
     public void rollback() {
         try (Arena allocator = Arena.ofConfined()) {
             MemorySegment captureState = CaptureState.allocate(allocator);
-            if (!ktmW32.RollbackTransaction(handle, captureState)) {
+            if (!RollbackTransaction(handle, captureState)) {
                 throw new TransactionException(CaptureState.getLastError(captureState));
             }
         }
@@ -198,7 +198,7 @@ public final class Transaction {
 
         try (Arena allocator = Arena.ofConfined()) {
             MemorySegment captureState = CaptureState.allocate(allocator);
-            MemorySegment handle = ktmW32.CreateTransaction(
+            MemorySegment handle = CreateTransaction(
                     MemorySegment.NULL,
                     MemorySegment.NULL,
                     KtmTypes.TRANSACTION_DO_NOT_PROMOTE,
@@ -219,7 +219,7 @@ public final class Transaction {
     void close() {
         try (Arena allocator = Arena.ofConfined()) {
             MemorySegment captureState = CaptureState.allocate(allocator);
-            if (!kernel32.CloseHandle(handle, captureState)) {
+            if (!CloseHandle(handle, captureState)) {
                 throw new TransactionException(CaptureState.getLastError(captureState));
             }
         }

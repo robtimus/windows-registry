@@ -1,5 +1,5 @@
 /*
- * TransactionTestBase.java
+ * TransactionMocks.java
  * Copyright 2025 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,36 +17,27 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.RegistryTestBase.kernel32;
+import static com.github.robtimus.os.windows.registry.RegistryTestBase.ktmW32;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
+import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.IntStream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
 import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
-import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 
-class TransactionTestBase {
+final class TransactionMocks {
 
-    @BeforeEach
-    void setup() {
-        Transaction.ktmW32 = mock(KtmW32.class);
-        Transaction.kernel32 = mock(Kernel32.class);
-    }
-
-    @AfterEach
-    void teardown() {
-        Transaction.ktmW32 = KtmW32.INSTANCE;
-        Transaction.kernel32 = mock(Kernel32.class);
+    private TransactionMocks() {
     }
 
     static Transaction createTransaction() {
@@ -75,7 +66,7 @@ class TransactionTestBase {
 
         int timeoutInMillis = Math.toIntExact(timeout.toMillis());
 
-        when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
+        ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
                 eqPointer(description), notNull()))
                 .thenReturn(handle);
     }
@@ -94,21 +85,21 @@ class TransactionTestBase {
 
         int timeoutInMillis = Math.toIntExact(timeout.toMillis());
 
-        when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
+        ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
                 eqPointer(description), notNull()))
-                .thenReturn(handles.getFirst(), handles.subList(0, handles.size()).toArray(MemorySegment[]::new));
+                .thenReturn(handles.getFirst(), (Object[]) handles.subList(0, handles.size()).toArray(MemorySegment[]::new));
     }
 
     static void mockCloseHandle(MemorySegment handle) {
-        when(Transaction.kernel32.CloseHandle(eq(handle), notNull())).thenReturn(true);
+        kernel32.when(() -> CloseHandle(eq(handle), notNull())).thenReturn(true);
     }
 
     static void mockCommitTransaction(MemorySegment handle) {
-        when(Transaction.ktmW32.CommitTransaction(eq(handle), notNull())).thenReturn(true);
+        ktmW32.when(() -> CommitTransaction(eq(handle), notNull())).thenReturn(true);
     }
 
     static void mockGetTransactionStatus(MemorySegment handle, int outcome) {
-        when(Transaction.ktmW32.GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()))
+        ktmW32.when(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()))
                 .thenAnswer(i -> {
                     MemorySegment outcomeSegment = i.getArgument(1);
                     setInt(outcomeSegment, outcome);

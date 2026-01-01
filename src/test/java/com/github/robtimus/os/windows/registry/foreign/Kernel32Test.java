@@ -1,5 +1,5 @@
 /*
- * Kernel32UtilsTest.java
+ * Kernel32Test.java
  * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,14 +27,14 @@ import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import com.sun.jna.platform.win32.Kernel32Util;
 
-class Kernel32UtilsTest {
+class Kernel32Test {
 
     @ParameterizedTest
     @DisplayName("expandEnvironmentStrings")
     @ValueSource(strings = { "value with environment string %USERNAME%", "value without environment string" })
     @NullAndEmptySource
     void testExpandEnvironmentStrings(String input) {
-        String result = Kernel32Utils.expandEnvironmentStrings(input);
+        String result = Kernel32.expandEnvironmentStrings(input);
 
         String expected = Kernel32Util.expandEnvironmentStrings(input);
 
@@ -49,7 +49,7 @@ class Kernel32UtilsTest {
         @DisplayName("success")
         @ValueSource(ints = { WinError.ERROR_SUCCESS, WinError.ERROR_ACCESS_DENIED, WinError.ERROR_ALREADY_EXISTS })
         void testFormatMessage(int code) {
-            String result = Kernel32Utils.formatMessage(code);
+            String result = Kernel32.formatMessage(code);
 
             String expected = Kernel32Util.formatMessage(code);
 
@@ -59,7 +59,7 @@ class Kernel32UtilsTest {
         @Test
         @DisplayName("unknown code")
         void testFormatMessageWithError() {
-            IllegalStateException exception = assertThrows(IllegalStateException.class, () -> Kernel32Utils.formatMessage(-1));
+            IllegalStateException exception = assertThrows(IllegalStateException.class, () -> Kernel32.formatMessage(-1));
             // 317 is ERROR_MR_MID_NOT_FOUND: The system cannot find message text for message number 0x%1 in the message file for %2.
             assertEquals(Messages.Kernel32.formatMessageError(-1, 317), exception.getMessage());
         }

@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
 import java.lang.foreign.Arena;
@@ -155,7 +156,6 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
         int code = Registry.currentContext().openKey(
-                api,
                 rootHKey,
                 lpSubKey,
                 0,
@@ -197,7 +197,6 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment lpdwDisposition = allocateInt(allocator);
 
         int code = Registry.currentContext().createKey(
-                api,
                 rootHKey,
                 lpSubKey,
                 WinNT.REG_OPTION_NON_VOLATILE,
@@ -231,7 +230,7 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment lpSubKeyName = WString.allocate(allocator, path);
         MemorySegment lpNewKeyName = WString.allocate(allocator, newName);
 
-        int code = api.RegRenameKey(rootHKey, lpSubKeyName, lpNewKeyName);
+        int code = RegRenameKey(rootHKey, lpSubKeyName, lpNewKeyName);
         if (code == WinError.ERROR_SUCCESS) {
             return renamed;
         }
@@ -252,7 +251,6 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
         int code = Registry.currentContext().deleteKey(
-                api,
                 rootHKey,
                 lpSubKey,
                 SAM_DESIRED_REGISTRY_VIEW);
@@ -272,7 +270,6 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
 
         int code = Registry.currentContext().deleteKey(
-                api,
                 rootHKey,
                 lpSubKey,
                 SAM_DESIRED_REGISTRY_VIEW);
@@ -327,7 +324,6 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
         int code = Registry.currentContext().createKey(
-                api,
                 rootHKey,
                 lpSubKey,
                 WinNT.REG_OPTION_NON_VOLATILE,
@@ -345,7 +341,6 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment phkResult = HKEY.allocateRef(allocator);
 
         int code = Registry.currentContext().openKey(
-                api,
                 rootHKey,
                 lpSubKey,
                 0,

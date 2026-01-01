@@ -17,6 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteValue;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumValue;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.clear;
@@ -44,7 +51,6 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import com.github.robtimus.os.windows.registry.foreign.Advapi32;
 import com.github.robtimus.os.windows.registry.foreign.ForeignUtils;
 import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
@@ -59,9 +65,6 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 public abstract sealed class RegistryKey implements Comparable<RegistryKey> permits LocalRootKey, LocalSubKey, RemoteRootKey, RemoteSubKey {
 
     static final String SEPARATOR = "\\"; //$NON-NLS-1$
-
-    // Non-private non-final to allow replacing for testing
-    static Advapi32 api = Advapi32.INSTANCE;
 
     private static final Cleaner CLEANER = Cleaner.create();
 
@@ -778,7 +781,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
     // utility
 
     static void closeKey(MemorySegment hKey, String path, String machineName) {
-        int code = api.RegCloseKey(hKey);
+        int code = RegCloseKey(hKey);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path, machineName);
         }
@@ -871,7 +874,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         public Instant lastWriteTime() {
             try (Arena allocator = Arena.ofConfined()) {
                 MemorySegment lpftLastWriteTime = FILETIME.allocate(allocator);
-                int code = api.RegQueryInfoKey(
+                int code = RegQueryInfoKey(
                         hKey,
                         MemorySegment.NULL,
                         MemorySegment.NULL,
@@ -902,7 +905,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 MemorySegment lpcSubKeys = allocateInt(allocator);
                 MemorySegment lpcValues = allocateInt(allocator);
                 MemorySegment lpftLastWriteTime = FILETIME.allocate(allocator);
-                int code = api.RegQueryInfoKey(
+                int code = RegQueryInfoKey(
                         hKey,
                         MemorySegment.NULL,
                         MemorySegment.NULL,
@@ -969,7 +972,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         private Iterator<String> subKeyIterator(SegmentAllocator allocator) {
             MemorySegment lpcMaxSubKeyLen = allocateInt(allocator);
 
-            int code = api.RegQueryInfoKey(
+            int code = RegQueryInfoKey(
                     hKey,
                     MemorySegment.NULL,
                     MemorySegment.NULL,
@@ -997,7 +1000,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 protected String nextElement() {
                     setInt(lpcName, lpName.byteSize());
 
-                    int code = api.RegEnumKeyEx(
+                    int code = RegEnumKeyEx(
                             hKey,
                             index,
                             lpName,
@@ -1072,7 +1075,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
             MemorySegment lpcMaxValueNameLen = allocateInt(allocator);
             MemorySegment lpcMaxValueLen = allocateInt(allocator);
 
-            int code = api.RegQueryInfoKey(
+            int code = RegQueryInfoKey(
                     hKey,
                     MemorySegment.NULL,
                     MemorySegment.NULL,
@@ -1111,7 +1114,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         clear(lpData);
                         setInt(lpcbData, getInt(lpcMaxValueLen));
 
-                        int code = api.RegEnumValue(
+                        int code = RegEnumValue(
                                 hKey,
                                 index,
                                 lpValueName,
@@ -1162,7 +1165,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 MemorySegment lpType = allocateInt(allocator);
                 MemorySegment lpcbData = allocateInt(allocator);
 
-                int code = api.RegQueryValueEx(
+                int code = RegQueryValueEx(
                         hKey,
                         lpValueName,
                         MemorySegment.NULL,
@@ -1176,7 +1179,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                     clear(lpData);
                     setInt(lpcbData, lpData.byteSize());
 
-                    code = api.RegQueryValueEx(
+                    code = RegQueryValueEx(
                             hKey,
                             lpValueName,
                             MemorySegment.NULL,
@@ -1213,7 +1216,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 MemorySegment lpType = allocateInt(allocator);
                 MemorySegment lpcbData = allocateInt(allocator);
 
-                int code = api.RegQueryValueEx(
+                int code = RegQueryValueEx(
                         hKey,
                         lpValueName,
                         MemorySegment.NULL,
@@ -1230,7 +1233,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                     clear(lpData);
                     setInt(lpcbData, lpData.byteSize());
 
-                    code = api.RegQueryValueEx(
+                    code = RegQueryValueEx(
                             hKey,
                             lpValueName,
                             MemorySegment.NULL,
@@ -1386,7 +1389,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 MemorySegment lpValueName = WString.allocate(allocator, value.name());
                 MemorySegment lpData = value.rawData(allocator);
 
-                int code = api.RegSetValueEx(
+                int code = RegSetValueEx(
                         hKey,
                         lpValueName,
                         0,
@@ -1415,7 +1418,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
             try (Arena allocator = Arena.ofConfined()) {
                 MemorySegment lpValueName = WString.allocate(allocator, name);
 
-                int code = api.RegDeleteValue(hKey, lpValueName);
+                int code = RegDeleteValue(hKey, lpValueName);
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forValue(code, path(), machineName(), name);
                 }
@@ -1438,7 +1441,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
             try (Arena allocator = Arena.ofConfined()) {
                 MemorySegment lpValueName = WString.allocate(allocator, name);
 
-                int code = api.RegDeleteValue(hKey, lpValueName);
+                int code = RegDeleteValue(hKey, lpValueName);
                 if (code == WinError.ERROR_SUCCESS) {
                     return true;
                 }

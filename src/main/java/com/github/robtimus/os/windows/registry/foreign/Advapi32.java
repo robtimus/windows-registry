@@ -17,24 +17,200 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalFunctionMethodHandle;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
+import java.util.Optional;
 
-@SuppressWarnings("javadoc")
-public interface Advapi32 {
+@SuppressWarnings({ "javadoc", "nls" })
+public final class Advapi32 {
 
-    Advapi32 INSTANCE = new Advapi32Impl();
+    private static final MethodHandle REG_CLOSE_KEY;
+    private static final MethodHandle REG_CONNECT_REGISTRY;
+    private static final MethodHandle REG_CREATE_KEY_EX;
+    private static final Optional<MethodHandle> REG_CREATE_KEY_TRANSACTED;
+    private static final MethodHandle REG_DELETE_KEY_EX;
+    private static final Optional<MethodHandle> REG_DELETE_KEY_TRANSACTED;
+    private static final MethodHandle REG_DELETE_VALUE;
+    private static final MethodHandle REG_ENUM_KEY_EX;
+    private static final MethodHandle REG_ENUM_VALUE;
+    private static final MethodHandle REG_OPEN_KEY_EX;
+    private static final Optional<MethodHandle> REG_OPEN_KEY_TRANSACTED;
+    private static final MethodHandle REG_QUERY_INFO_KEY;
+    private static final MethodHandle REG_QUERY_VALUE_EX;
+    private static final Optional<MethodHandle> REG_RENAME_KEY;
+    private static final MethodHandle REG_SET_VALUE_EX;
+
+    static {
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup advapi32 = SymbolLookup.libraryLookup("Advapi32", ARENA);
+
+        REG_CLOSE_KEY = functionMethodHandle(linker, advapi32, "RegCloseKey", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS)); // hKey
+
+        REG_CONNECT_REGISTRY = functionMethodHandle(linker, advapi32, "RegConnectRegistryW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // lpMachineName
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS)); // phkResult
+
+        REG_CREATE_KEY_EX = functionMethodHandle(linker, advapi32, "RegCreateKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.JAVA_INT, // dwOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS, // lpSecurityAttributes
+                ValueLayout.ADDRESS, // phkResult
+                ValueLayout.ADDRESS)); // lpdwDisposition
+
+        // RegCreateKeyTransactedW does not work before Windows Vista / Windows Server 2008
+        REG_CREATE_KEY_TRANSACTED = optionalFunctionMethodHandle(linker, advapi32, "RegCreateKeyTransactedW", FunctionDescriptor.of(
+                ValueLayout.JAVA_INT, // return value
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.JAVA_INT, // dwOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS, // lpSecurityAttributes
+                ValueLayout.ADDRESS, // phkResult
+                ValueLayout.ADDRESS, // lpdwDisposition
+                ValueLayout.ADDRESS, // hTransaction
+                ValueLayout.ADDRESS)); // pExtendedParemeter
+
+        REG_DELETE_KEY_EX = functionMethodHandle(linker, advapi32, "RegDeleteKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.JAVA_INT)); // Reserved
+
+        // RegDeleteKeyTransactedW does not work before Windows Vista / Windows Server 2008
+        REG_DELETE_KEY_TRANSACTED = optionalFunctionMethodHandle(linker, advapi32, "RegDeleteKeyTransactedW", FunctionDescriptor.of(
+                ValueLayout.JAVA_INT, // return value
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.ADDRESS, // hTransaction
+                ValueLayout.ADDRESS)); // pExtendedParemeter
+
+        REG_DELETE_VALUE = functionMethodHandle(linker, advapi32, "RegDeleteValueW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS)); // lpValueName
+
+        REG_ENUM_KEY_EX = functionMethodHandle(linker, advapi32, "RegEnumKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.JAVA_INT, // dwIndex
+                ValueLayout.ADDRESS, // lpName
+                ValueLayout.ADDRESS, // lpcchName
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.ADDRESS, // lpcchClass
+                ValueLayout.ADDRESS)); // lpftLastWriteTime
+
+        REG_ENUM_VALUE = functionMethodHandle(linker, advapi32, "RegEnumValueW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.JAVA_INT, // dwIndex
+                ValueLayout.ADDRESS, // lpValueName
+                ValueLayout.ADDRESS, // lpcchValueName
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpType
+                ValueLayout.ADDRESS, // lpData
+                ValueLayout.ADDRESS)); // lpcbData
+
+        REG_OPEN_KEY_EX = functionMethodHandle(linker, advapi32, "RegOpenKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // ulOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS)); // phkResult
+
+        // RegOpenKeyTransactedW does not work before Windows Vista / Windows Server 2008
+        REG_OPEN_KEY_TRANSACTED = optionalFunctionMethodHandle(linker, advapi32, "RegOpenKeyTransactedW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKey
+                ValueLayout.JAVA_INT, // ulOptions
+                ValueLayout.JAVA_INT, // samDesired
+                ValueLayout.ADDRESS, // phkResult
+                ValueLayout.ADDRESS, // hTransaction
+                ValueLayout.ADDRESS)); // pExtendedParemeter
+
+        REG_QUERY_INFO_KEY = functionMethodHandle(linker, advapi32, "RegQueryInfoKeyW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpClass
+                ValueLayout.ADDRESS, // lpcchClass
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpcSubKeys
+                ValueLayout.ADDRESS, // lpcbMaxSubKeyLen
+                ValueLayout.ADDRESS, // lpcbMaxClassLen
+                ValueLayout.ADDRESS, // lpcValues
+                ValueLayout.ADDRESS, // lpcbMaxValueNameLen
+                ValueLayout.ADDRESS, // lpcbMaxValueLen
+                ValueLayout.ADDRESS, // lpcbSecurityDescriptor
+                ValueLayout.ADDRESS)); // lpftLastWriteTime
+
+        REG_QUERY_VALUE_EX = functionMethodHandle(linker, advapi32, "RegQueryValueExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpValueName
+                ValueLayout.ADDRESS, // lpReserved
+                ValueLayout.ADDRESS, // lpType
+                ValueLayout.ADDRESS, // lpData
+                ValueLayout.ADDRESS)); // lpcbData
+
+        // RegRenameKey does not work before Windows Vista / Windows Server 2008
+        REG_RENAME_KEY = optionalFunctionMethodHandle(linker, advapi32, "RegRenameKey", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpSubKeyName
+                ValueLayout.ADDRESS)); // lpNewKeyName
+
+        REG_SET_VALUE_EX = functionMethodHandle(linker, advapi32, "RegSetValueExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // hKey
+                ValueLayout.ADDRESS, // lpValueName
+                ValueLayout.JAVA_INT, // Reserved
+                ValueLayout.JAVA_INT, // dwType
+                ValueLayout.ADDRESS, // lpData
+                ValueLayout.JAVA_INT)); // cbData
+    }
+
+    private Advapi32() {
+    }
 
     // The following functions all return any error and do not require GetLastError() to be called; CaptureState is therefore not needed
 
-    /* LSTATUS */ int RegCloseKey/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey);
+    public static /* LSTATUS */ int RegCloseKey/* NOSONAR */(
+            /* HKEY */ MemorySegment hKey) {
 
-    /* LSTATUS */ int RegConnectRegistry/* NOSONAR */(
+        try {
+            return (int) REG_CLOSE_KEY.invokeExact(
+                    hKey);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegConnectRegistry/* NOSONAR */(
             /* LPCWSTR */ MemorySegment lpMachineName,
             /* HKEY */ MemorySegment hKey,
-            /* PHKEY */ MemorySegment phkResult);
+            /* PHKEY */ MemorySegment phkResult) {
 
-    /* LSTATUS */ int RegCreateKeyEx/* NOSONAR */(
+        try {
+            return (int) REG_CONNECT_REGISTRY.invokeExact(
+                    lpMachineName,
+                    hKey,
+                    phkResult);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegCreateKeyEx/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey,
             /* DWORD */ int Reserved, // NOSONAR
@@ -43,9 +219,25 @@ public interface Advapi32 {
             /* REGSAM */ int samDesired,
             /* const LPSECURITY_ATTRIBUTES */ MemorySegment lpSecurityAttributes,
             /* PHKEY */ MemorySegment phkResult,
-            /* LPDWORD */ MemorySegment lpdwDisposition);
+            /* LPDWORD */ MemorySegment lpdwDisposition) {
 
-    /* LSTATUS */ int RegCreateKeyTransacted/* NOSONAR */(
+        try {
+            return (int) REG_CREATE_KEY_EX.invokeExact(
+                    hKey,
+                    lpSubKey,
+                    Reserved,
+                    lpClass,
+                    dwOptions,
+                    samDesired,
+                    lpSecurityAttributes,
+                    phkResult,
+                    lpdwDisposition);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegCreateKeyTransacted/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey,
             /* DWORD */ int Reserved, // NOSONAR
@@ -56,31 +248,88 @@ public interface Advapi32 {
             /* PHKEY */ MemorySegment phkResult,
             /* LPDWORD */ MemorySegment lpdwDisposition,
             /* HANDLE */ MemorySegment hTransaction,
-            /* PVOID */ MemorySegment pExtendedParemeter);
+            /* PVOID */ MemorySegment pExtendedParemeter) {
 
-    boolean isRegCreateKeyTransactedEnabled();
+        MethodHandle regCreateKeyTransactedHandle = REG_CREATE_KEY_TRANSACTED.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regCreateKeyTransactedHandle.invokeExact(
+                    hKey,
+                    lpSubKey,
+                    Reserved,
+                    lpClass,
+                    dwOptions,
+                    samDesired,
+                    lpSecurityAttributes,
+                    phkResult,
+                    lpdwDisposition,
+                    hTransaction,
+                    pExtendedParemeter);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
-    /* LSTATUS */ int RegDeleteKeyEx/* NOSONAR */(
+    public static boolean isRegCreateKeyTransactedEnabled() {
+        return REG_CREATE_KEY_TRANSACTED.isPresent();
+    }
+
+    public static /* LSTATUS */ int RegDeleteKeyEx/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey,
             /* REGSAM */ int samDesired,
-            /* DWORD  */ int Reserved); // NOSONAR
+            /* DWORD  */ int Reserved) { // NOSONAR
 
-    /* LSTATUS */ int RegDeleteKeyTransacted/* NOSONAR */(
+        try {
+            return (int) REG_DELETE_KEY_EX.invokeExact(
+                    hKey,
+                    lpSubKey,
+                    samDesired,
+                    Reserved);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegDeleteKeyTransacted/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey,
             /* REGSAM */ int samDesired,
             /* DWORD */ int Reserved, // NOSONAR
             /* HANDLE */ MemorySegment hTransaction,
-            /* PVOID */ MemorySegment pExtendedParameter);
+            /* PVOID */ MemorySegment pExtendedParameter) {
 
-    boolean isRegDeleteKeyTransactedEnabled();
+        MethodHandle regDeleteKeyTransactedHandle = REG_DELETE_KEY_TRANSACTED.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regDeleteKeyTransactedHandle.invokeExact(
+                    hKey,
+                    lpSubKey,
+                    samDesired,
+                    Reserved,
+                    hTransaction,
+                    pExtendedParameter);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
-    /* LSTATUS */ int RegDeleteValue/* NOSONAR */(
+    public static boolean isRegDeleteKeyTransactedEnabled() {
+        return REG_DELETE_KEY_TRANSACTED.isPresent();
+    }
+
+    public static /* LSTATUS */ int RegDeleteValue/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpValueName);
+            /* LPCWSTR */ MemorySegment lpValueName) {
 
-    /* LSTATUS */ int RegEnumKeyEx/* NOSONAR */(
+        try {
+            return (int) REG_DELETE_VALUE.invokeExact(
+                    hKey,
+                    lpValueName);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegEnumKeyEx/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* DWORD */ int dwIndex,
             /* LPWSTR  */ MemorySegment lpName,
@@ -88,9 +337,24 @@ public interface Advapi32 {
             /* LPDWORD */ MemorySegment lpReserved,
             /* LPWSTR */ MemorySegment lpClass,
             /* LPDWORD */ MemorySegment lpcchClass,
-            /* PFILETIME */ MemorySegment lpftLastWriteTime);
+            /* PFILETIME */ MemorySegment lpftLastWriteTime) {
 
-    /* LSTATUS */ int RegEnumValue/* NOSONAR */(
+        try {
+            return (int) REG_ENUM_KEY_EX.invokeExact(
+                    hKey,
+                    dwIndex,
+                    lpName,
+                    lpcchName,
+                    lpReserved,
+                    lpClass,
+                    lpcchClass,
+                    lpftLastWriteTime);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegEnumValue/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* DWORD */ int dwIndex,
             /* LPWSTR */ MemorySegment lpValueName,
@@ -98,27 +362,71 @@ public interface Advapi32 {
             /* LPDWORD */ MemorySegment lpReserved,
             /* LPDWORD */ MemorySegment lpType,
             /* LPBYTE */ MemorySegment lpData,
-            /* LPDWORD */ MemorySegment lpcbData);
+            /* LPDWORD */ MemorySegment lpcbData) {
 
-    /* LSTATUS */ int RegOpenKeyEx/* NOSONAR */(
+        try {
+            return (int) REG_ENUM_VALUE.invokeExact(
+                    hKey,
+                    dwIndex,
+                    lpValueName,
+                    lpcchValueName,
+                    lpReserved,
+                    lpType,
+                    lpData,
+                    lpcbData);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegOpenKeyEx/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey,
             /* DWORD */ int ulOptions,
             /* REGSAM */ int samDesired,
-            /* PHKEY */ MemorySegment phkResult);
+            /* PHKEY */ MemorySegment phkResult) {
 
-    /* LSTATUS */ int RegOpenKeyTransacted/* NOSONAR */(
+        try {
+            return (int) REG_OPEN_KEY_EX.invokeExact(
+                    hKey,
+                    lpSubKey,
+                    ulOptions,
+                    samDesired,
+                    phkResult);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegOpenKeyTransacted/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKey,
             /* DWORD */ int ulOptions,
             /* REGSAM */ int samDesired,
             /* PHKEY */ MemorySegment phkResult,
             /* HANDLE */ MemorySegment hTransaction,
-            /* PVOID */ MemorySegment pExtendedParemeter);
+            /* PVOID */ MemorySegment pExtendedParemeter) {
 
-    boolean isRegOpenKeyTransactedEnabled();
+        MethodHandle regOpenKeyTransactedHandle = REG_OPEN_KEY_TRANSACTED.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regOpenKeyTransactedHandle.invokeExact(
+                    hKey,
+                    lpSubKey,
+                    ulOptions,
+                    samDesired,
+                    phkResult,
+                    hTransaction,
+                    pExtendedParemeter);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
-    /* LSTATUS */ int RegQueryInfoKey/* NOSONAR */(
+    public static boolean isRegOpenKeyTransactedEnabled() {
+        return REG_OPEN_KEY_TRANSACTED.isPresent();
+    }
+
+    public static /* LSTATUS */ int RegQueryInfoKey/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPWSTR */ MemorySegment lpClass,
             /* LPDWORD */ MemorySegment lpcchClass,
@@ -130,28 +438,86 @@ public interface Advapi32 {
             /* LPDWORD */ MemorySegment lpcbMaxValueNameLen,
             /* LPDWORD */ MemorySegment lpcbMaxValueLen,
             /* LPDWORD */ MemorySegment lpcbSecurityDescriptor,
-            /* PFILETIME */ MemorySegment lpftLastWriteTime);
+            /* PFILETIME */ MemorySegment lpftLastWriteTime) {
 
-    /* LSTATUS */ int RegQueryValueEx(// NOSONAR
+        try {
+            return (int) REG_QUERY_INFO_KEY.invokeExact(
+                    hKey,
+                    lpClass,
+                    lpcchClass,
+                    lpReserved,
+                    lpcSubKeys,
+                    lpcbMaxSubKeyLen,
+                    lpcbMaxClassLen,
+                    lpcValues,
+                    lpcbMaxValueNameLen,
+                    lpcbMaxValueLen,
+                    lpcbSecurityDescriptor,
+                    lpftLastWriteTime);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegQueryValueEx(// NOSONAR
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpValueName,
             /* LPDWORD */ MemorySegment lpReserved,
             /* LPDWORD */ MemorySegment lpType,
             /* LPBYTE */ MemorySegment lpData,
-            /* LPDWORD */ MemorySegment lpcbData);
+            /* LPDWORD */ MemorySegment lpcbData) {
 
-    /* LSTATUS */ int RegRenameKey/* NOSONAR */(
+        try {
+            return (int) REG_QUERY_VALUE_EX.invokeExact(
+                    hKey,
+                    lpValueName,
+                    lpReserved,
+                    lpType,
+                    lpData,
+                    lpcbData);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* LSTATUS */ int RegRenameKey/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpSubKeyName,
-            /* LPCWSTR */ MemorySegment lpNewKeyName);
+            /* LPCWSTR */ MemorySegment lpNewKeyName) {
 
-    boolean isRegRenameKeyEnabled();
+        MethodHandle regRenameKeyHandle = REG_RENAME_KEY.orElseThrow(UnsupportedOperationException::new);
+        try {
+            return (int) regRenameKeyHandle.invokeExact(
+                    hKey,
+                    lpSubKeyName,
+                    lpNewKeyName);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
 
-    /* LSTATUS */ int RegSetValueEx/* NOSONAR */(
+    public static boolean isRegRenameKeyEnabled() {
+        return REG_RENAME_KEY.isPresent();
+    }
+
+    public static /* LSTATUS */ int RegSetValueEx/* NOSONAR */(
             /* HKEY */ MemorySegment hKey,
             /* LPCWSTR */ MemorySegment lpValueName,
             /* DWORD */ int Reserved, // NOSONAR
             /* DWORD */ int dwType,
             /* const BYTE * */ MemorySegment lpData,
-            /* DWORD */ int cbData);
+            /* DWORD */ int cbData) {
+
+        try {
+            return (int) REG_SET_VALUE_EX.invokeExact(
+                    hKey,
+                    lpValueName,
+                    Reserved,
+                    dwType,
+                    lpData,
+                    cbData);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
 }

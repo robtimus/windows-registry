@@ -17,8 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyTransacted;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteKeyTransacted;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyTransacted;
 import java.lang.foreign.MemorySegment;
-import com.github.robtimus.os.windows.registry.foreign.Advapi32;
 
 /**
  * A representation of a local or remote Windows registry.
@@ -76,7 +81,6 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
     abstract static sealed class Context {
 
         abstract int createKey(
-                Advapi32 api,
                 MemorySegment hKey,
                 MemorySegment lpSubKey,
                 int dwOptions,
@@ -85,13 +89,11 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
                 MemorySegment lpdwDisposition);
 
         abstract int deleteKey(
-                Advapi32 api,
                 MemorySegment hKey,
                 MemorySegment lpSubKey,
                 int samDesired);
 
         abstract int openKey(
-                Advapi32 api,
                 MemorySegment hKey,
                 MemorySegment lpSubKey,
                 int ulOptions,
@@ -112,7 +114,6 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
 
             @Override
             int createKey(
-                    Advapi32 api,
                     MemorySegment hKey,
                     MemorySegment lpSubKey,
                     int dwOptions,
@@ -120,7 +121,7 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
                     MemorySegment phkResult,
                     MemorySegment lpdwDisposition) {
 
-                return api.RegCreateKeyTransacted(
+                return RegCreateKeyTransacted(
                         hKey,
                         lpSubKey,
                         0,
@@ -136,12 +137,11 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
 
             @Override
             int deleteKey(
-                    Advapi32 api,
                     MemorySegment hKey,
                     MemorySegment lpSubKey,
                     int samDesired) {
 
-                return api.RegDeleteKeyTransacted(
+                return RegDeleteKeyTransacted(
                         hKey,
                         lpSubKey,
                         samDesired,
@@ -152,14 +152,13 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
 
             @Override
             int openKey(
-                    Advapi32 api,
                     MemorySegment hKey,
                     MemorySegment lpSubKey,
                     int ulOptions,
                     int samDesired,
                     MemorySegment phkResult) {
 
-                return api.RegOpenKeyTransacted(
+                return RegOpenKeyTransacted(
                         hKey,
                         lpSubKey,
                         ulOptions,
@@ -177,7 +176,6 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
 
             @Override
             int createKey(
-                    Advapi32 api,
                     MemorySegment hKey,
                     MemorySegment lpSubKey,
                     int dwOptions,
@@ -185,7 +183,7 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
                     MemorySegment phkResult,
                     MemorySegment lpdwDisposition) {
 
-                return api.RegCreateKeyEx(
+                return RegCreateKeyEx(
                         hKey,
                         lpSubKey,
                         0,
@@ -199,12 +197,11 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
 
             @Override
             int deleteKey(
-                    Advapi32 api,
                     MemorySegment hKey,
                     MemorySegment lpSubKey,
                     int samDesired) {
 
-                return api.RegDeleteKeyEx(
+                return RegDeleteKeyEx(
                         hKey,
                         lpSubKey,
                         samDesired,
@@ -213,14 +210,13 @@ public abstract sealed class Registry permits LocalRegistry, RemoteRegistry {
 
             @Override
             int openKey(
-                    Advapi32 api,
                     MemorySegment hKey,
                     MemorySegment lpSubKey,
                     int ulOptions,
                     int samDesired,
                     MemorySegment phkResult) {
 
-                return api.RegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
+                return RegOpenKeyEx(hKey, lpSubKey, ulOptions, samDesired, phkResult);
             }
         }
     }

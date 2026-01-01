@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
@@ -80,7 +81,7 @@ public final class RemoteRegistry extends Registry implements AutoCloseable {
     }
 
     private static RemoteRootKey connect(LocalRootKey rootKey, String machineName, MemorySegment lpMachineName, MemorySegment phkResult) {
-        int code = RegistryKey.api.RegConnectRegistry(lpMachineName, rootKey.hKey(), phkResult);
+        int code = RegConnectRegistry(lpMachineName, rootKey.hKey(), phkResult);
         if (code != WinError.ERROR_SUCCESS) {
             throw RegistryException.forKey(code, rootKey.path(), machineName);
         }

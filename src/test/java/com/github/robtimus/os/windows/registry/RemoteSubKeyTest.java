@@ -17,7 +17,27 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockClose;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockConnectAndClose;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockOpen;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockOpenAndClose;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockOpenFailure;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockSubKeys;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValue;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValues;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteValue;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumValue;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqBytes;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
@@ -40,12 +60,10 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
 import java.util.Arrays;
 import java.util.List;
@@ -70,7 +88,7 @@ import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
-class RemoteSubKeyTest extends RegistryKeyTestBase {
+class RemoteSubKeyTest extends RegistryTestBase {
 
     private static final LocalRegistry REGISTRY = Registry.local();
 
@@ -80,11 +98,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
     private MemorySegment hkuHKey;
     private MemorySegment rootHKey;
 
-    @Override
     @BeforeEach
     void setup() {
-        super.setup();
-
         hklmHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
         hkuHKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
         rootHKey = hklmHKey;
@@ -93,17 +108,14 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         remoteRoot = remoteRegistry.HKEY_LOCAL_MACHINE;
     }
 
-    @Override
     @AfterEach
     void teardown() {
         remoteRegistry.close();
 
-        verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull());
-        verify(RegistryKey.api).RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull());
-        verify(RegistryKey.api).RegCloseKey(hklmHKey);
-        verify(RegistryKey.api).RegCloseKey(hkuHKey);
-
-        super.teardown();
+        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
+        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+        advapi32.verify(() -> RegCloseKey(hklmHKey));
+        advapi32.verify(() -> RegCloseKey(hkuHKey));
     }
 
     @Test
@@ -195,8 +207,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 assertEquals(expected, subKeys);
             }
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -209,8 +221,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Nested
@@ -222,7 +234,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             void testSuccessfulClose() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
@@ -231,8 +243,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
                 assertEquals("test-machine", exception.machineName());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -242,7 +254,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
 
-                when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
                         .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
@@ -252,8 +264,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 assertEquals("test-machine", exception.machineName());
                 assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
         }
 
@@ -262,11 +274,11 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testEnumFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+            advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
-            when(RegistryKey.api.RegEnumKeyEx(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
+            advapi32.when(() -> RegEnumKeyEx(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
@@ -276,8 +288,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 assertEquals("test-machine", exception.machineName());
             }
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -297,8 +309,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 assertEquals(expected, registryKeys);
             }
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Nested
@@ -326,10 +338,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
-                verify(RegistryKey.api).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
+                advapi32.verify(() -> RegCloseKey(notNull()));
             }
 
             @Test
@@ -353,10 +365,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
-                verify(RegistryKey.api).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
+                advapi32.verify(() -> RegCloseKey(notNull()));
             }
         }
 
@@ -418,34 +430,34 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, times(13)).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
-                verify(RegistryKey.api).RegCloseKey(subKey1);
-                verify(RegistryKey.api).RegCloseKey(subKey2);
-                verify(RegistryKey.api).RegCloseKey(subKey3);
-                verify(RegistryKey.api).RegCloseKey(subKey11);
-                verify(RegistryKey.api).RegCloseKey(subKey12);
-                verify(RegistryKey.api).RegCloseKey(subKey13);
-                verify(RegistryKey.api).RegCloseKey(subKey21);
-                verify(RegistryKey.api).RegCloseKey(subKey22);
-                verify(RegistryKey.api).RegCloseKey(subKey23);
-                verify(RegistryKey.api).RegCloseKey(subKey31);
-                verify(RegistryKey.api).RegCloseKey(subKey32);
-                verify(RegistryKey.api).RegCloseKey(subKey33);
-                verify(RegistryKey.api, times(13)).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), times(13));
+                advapi32.verify(() -> RegCloseKey(hKey));
+                advapi32.verify(() -> RegCloseKey(subKey1));
+                advapi32.verify(() -> RegCloseKey(subKey2));
+                advapi32.verify(() -> RegCloseKey(subKey3));
+                advapi32.verify(() -> RegCloseKey(subKey11));
+                advapi32.verify(() -> RegCloseKey(subKey12));
+                advapi32.verify(() -> RegCloseKey(subKey13));
+                advapi32.verify(() -> RegCloseKey(subKey21));
+                advapi32.verify(() -> RegCloseKey(subKey22));
+                advapi32.verify(() -> RegCloseKey(subKey23));
+                advapi32.verify(() -> RegCloseKey(subKey31));
+                advapi32.verify(() -> RegCloseKey(subKey32));
+                advapi32.verify(() -> RegCloseKey(subKey33));
+                advapi32.verify(() -> RegCloseKey(notNull()), times(13));
             }
 
             @Test
@@ -502,34 +514,34 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, times(13)).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
-                verify(RegistryKey.api).RegCloseKey(subKey1);
-                verify(RegistryKey.api).RegCloseKey(subKey2);
-                verify(RegistryKey.api).RegCloseKey(subKey3);
-                verify(RegistryKey.api).RegCloseKey(subKey11);
-                verify(RegistryKey.api).RegCloseKey(subKey12);
-                verify(RegistryKey.api).RegCloseKey(subKey13);
-                verify(RegistryKey.api).RegCloseKey(subKey21);
-                verify(RegistryKey.api).RegCloseKey(subKey22);
-                verify(RegistryKey.api).RegCloseKey(subKey23);
-                verify(RegistryKey.api).RegCloseKey(subKey31);
-                verify(RegistryKey.api).RegCloseKey(subKey32);
-                verify(RegistryKey.api).RegCloseKey(subKey33);
-                verify(RegistryKey.api, times(13)).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), times(13));
+                advapi32.verify(() -> RegCloseKey(hKey));
+                advapi32.verify(() -> RegCloseKey(subKey1));
+                advapi32.verify(() -> RegCloseKey(subKey2));
+                advapi32.verify(() -> RegCloseKey(subKey3));
+                advapi32.verify(() -> RegCloseKey(subKey11));
+                advapi32.verify(() -> RegCloseKey(subKey12));
+                advapi32.verify(() -> RegCloseKey(subKey13));
+                advapi32.verify(() -> RegCloseKey(subKey21));
+                advapi32.verify(() -> RegCloseKey(subKey22));
+                advapi32.verify(() -> RegCloseKey(subKey23));
+                advapi32.verify(() -> RegCloseKey(subKey31));
+                advapi32.verify(() -> RegCloseKey(subKey32));
+                advapi32.verify(() -> RegCloseKey(subKey33));
+                advapi32.verify(() -> RegCloseKey(notNull()), times(13));
             }
         }
 
@@ -569,8 +581,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, values);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -594,8 +606,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, values);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -619,8 +631,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals(expected, values);
                 }
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
         }
 
@@ -634,8 +646,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Nested
@@ -651,7 +663,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 void testSuccessfulClose() {
                     MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
@@ -660,8 +672,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
                     assertEquals("test-machine", exception.machineName());
 
-                    verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                    verify(RegistryKey.api).RegCloseKey(hKey);
+                    advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegCloseKey(hKey));
                 }
 
                 @Test
@@ -671,7 +683,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                     mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
 
-                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
@@ -681,8 +693,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals("test-machine", exception.machineName());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-                    verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                    verify(RegistryKey.api).RegCloseKey(hKey);
+                    advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegCloseKey(hKey));
                 }
             }
 
@@ -695,7 +707,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 void testSuccessfulClose() {
                     MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
@@ -705,8 +717,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
                     assertEquals("test-machine", exception.machineName());
 
-                    verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                    verify(RegistryKey.api).RegCloseKey(hKey);
+                    advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegCloseKey(hKey));
                 }
 
                 @Test
@@ -716,7 +728,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                     mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
 
-                    when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
                             .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
@@ -727,8 +739,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                     assertEquals("test-machine", exception.machineName());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-                    verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                    verify(RegistryKey.api).RegCloseKey(hKey);
+                    advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegCloseKey(hKey));
                 }
             }
         }
@@ -738,11 +750,11 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testEnumFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            when(RegistryKey.api.RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+            advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
-            when(RegistryKey.api.RegEnumValue(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
+            advapi32.when(() -> RegEnumValue(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
@@ -752,8 +764,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 assertEquals("test-machine", exception.machineName());
             }
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -774,8 +786,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -789,8 +801,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
@@ -798,7 +810,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testNonExistingValue() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\non-existing");
 
-            when(RegistryKey.api.RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
+            advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
@@ -808,8 +820,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("test-machine", exception.machineName());
             assertEquals("string", exception.name());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -825,8 +837,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -841,8 +853,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -863,8 +875,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -878,8 +890,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
@@ -887,15 +899,15 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testNonExistingValue() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\non-existing");
 
-            when(RegistryKey.api.RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
+            advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -911,8 +923,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -927,8 +939,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -944,16 +956,16 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data));
+            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             registryKey.setValue(stringValue);
 
-            verify(RegistryKey.api).RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data));
+            advapi32.verify(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)));
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -968,9 +980,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
-            verify(RegistryKey.api, never()).RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
+            advapi32.verify(() -> RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()), never());
         }
 
         @Test
@@ -980,7 +992,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            when(RegistryKey.api.RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), notNull(), anyInt()))
+            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), notNull(), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
@@ -988,8 +1000,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -1002,15 +1014,15 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testSuccess() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-            when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             registryKey.deleteValue("string");
 
-            verify(RegistryKey.api).RegDeleteValue(eq(hKey), eqPointer("string"));
+            advapi32.verify(() -> RegDeleteValue(eq(hKey), eqPointer("string")));
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1023,9 +1035,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
-            verify(RegistryKey.api, never()).RegDeleteValue(notNull(), notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
+            advapi32.verify(() -> RegDeleteValue(notNull(), notNull()), never());
         }
 
         @Test
@@ -1033,7 +1045,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -1041,8 +1053,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("test-machine", exception.machineName());
             assertEquals("string", exception.name());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -1059,15 +1071,15 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             void testExisted() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-                when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
+                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
 
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(eq(hKey), eqPointer("string"));
+                advapi32.verify(() -> RegDeleteValue(eq(hKey), eqPointer("string")));
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -1075,15 +1087,15 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             void testValueDidntExist() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-                when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(eq(hKey), eqPointer("string"));
+                advapi32.verify(() -> RegDeleteValue(eq(hKey), eqPointer("string")));
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
         }
 
@@ -1097,9 +1109,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
-            verify(RegistryKey.api, never()).RegDeleteValue(notNull(), notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
+            advapi32.verify(() -> RegDeleteValue(notNull(), notNull()), never());
         }
 
         @Test
@@ -1107,7 +1119,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            when(RegistryKey.api.RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -1115,8 +1127,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
 
@@ -1132,8 +1144,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             assertTrue(registryKey.exists());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1144,8 +1156,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.exists());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
@@ -1158,8 +1170,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
 
@@ -1186,8 +1198,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -1205,8 +1217,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
             @Test
@@ -1226,8 +1238,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
 
@@ -1248,8 +1260,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 assertEquals(Optional.of("new handle"), result);
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -1267,8 +1279,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
             @Test
@@ -1288,8 +1300,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
     }
@@ -1306,8 +1318,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             assertTrue(registryKey.isAccessible());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1318,8 +1330,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.isAccessible());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
@@ -1330,8 +1342,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\non-accessible");
             assertFalse(registryKey.isAccessible());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-accessible"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-accessible"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
@@ -1344,8 +1356,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
 
@@ -1372,8 +1384,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -1391,8 +1403,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
             @Test
@@ -1410,8 +1422,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
             @Test
@@ -1431,8 +1443,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).accept(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
 
@@ -1453,8 +1465,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 assertEquals(Optional.of("new handle"), result);
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api).RegCloseKey(hKey);
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
@@ -1472,8 +1484,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
             @Test
@@ -1491,8 +1503,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
             @Test
@@ -1512,8 +1524,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
                 verify(action, never()).apply(any());
 
-                verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-                verify(RegistryKey.api, never()).RegCloseKey(notNull());
+                advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
     }
@@ -1527,7 +1539,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testCreateNonExisting() {
             MemorySegment hKey = newHKEY();
 
-            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"),
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
@@ -1539,9 +1551,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\new");
             registryKey.create();
 
-            verify(RegistryKey.api)
-                    .RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
+                    notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1549,7 +1561,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testCreateExisting() {
             MemorySegment hKey = newHKEY();
 
-            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"),
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
@@ -1563,26 +1575,26 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
-                    notNull(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                    .RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                            notNull());
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::create);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
-                    notNull(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
 
@@ -1595,7 +1607,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testCreateNonExisting() {
             MemorySegment hKey = newHKEY();
 
-            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
                     notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
@@ -1607,9 +1619,9 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\new");
             assertTrue(registryKey.createIfNotExists());
 
-            verify(RegistryKey.api)
-                    .RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\new"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
+                    notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1617,7 +1629,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testCreateExisting() {
             MemorySegment hKey = newHKEY();
 
-            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"),
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
@@ -1629,26 +1641,26 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             assertFalse(registryKey.createIfNotExists());
 
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
-                    notNull(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\existing"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                    .RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                            notNull());
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
-                    notNull(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()));
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
 
@@ -1659,38 +1671,39 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("existing")
         void testRenameExisting() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
+            advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             RegistryKey renamed = registryKey.renameTo("foo");
             assertEquals(registryKey.resolve("..\\foo"), renamed);
 
-            verify(RegistryKey.api).RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegRenameKey(eq(rootHKey), eqPointer("path\\non-existing"), eqPointer("foo"));
+            advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\non-existing"), eqPointer("foo")))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegRenameKey(eq(rootHKey), eqPointer("path\\non-existing"), eqPointer("foo"));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\non-existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("target exists")
         void testTargetExists() {
-            doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                    .RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
+            advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
 
             MemorySegment targetHkey = mockOpenAndClose(rootHKey, "path\\foo");
 
@@ -1699,16 +1712,16 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\foo", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(eq(rootHKey), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(not(eq(targetHkey)));
+            advapi32.verify(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(not(eq(targetHkey))), never());
         }
 
         @Test
         @DisplayName("access denied")
         void testAccessDenied() {
-            doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                    .RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
+            advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
 
             mockOpenFailure(rootHKey, "path\\foo", WinError.ERROR_FILE_NOT_FOUND);
 
@@ -1717,25 +1730,25 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(not(eq(rootHKey)), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(not(eq(rootHKey)), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api)
-                    .RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
+            advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_LOCAL_MACHINE\\path\\existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo"));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         // Cannot test function not available, as this is now caught early on when creating Advapi32Impl instances
@@ -1748,7 +1761,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
 
             assertThrows(IllegalArgumentException.class, () -> registryKey.renameTo("\\foo"));
 
-            verify(RegistryKey.api, never()).RegRenameKey(notNull(), notNull(), notNull());
+            advapi32.verify(() -> RegRenameKey(notNull(), notNull(), notNull()), never());
         }
     }
 
@@ -1759,42 +1772,45 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
+            advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0)))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             registryKey.delete();
 
-            verify(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0)));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0));
+            advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0)))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::delete);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\non-existing", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0));
+            advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0)))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
 
@@ -1805,41 +1821,44 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
+            advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0)))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             assertTrue(registryKey.deleteIfExists());
 
-            verify(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0)));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0));
+            advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0)))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.deleteIfExists());
 
-            verify(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0));
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0)));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0));
+            advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0)))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
 
@@ -1857,10 +1876,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 // Do nothing
             }
 
-            verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                    notNull());
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
+                    never());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1868,7 +1887,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testWithCreate() {
             MemorySegment hKey = newHKEY();
 
-            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
@@ -1882,10 +1901,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 // Do nothing
             }
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ), notNull(), notNull(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ), notNull(), notNull(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1898,11 +1917,11 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 // Do nothing
             }
 
-            verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                    notNull());
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(),
-                    eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
+                    never());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(),
+                    eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1910,7 +1929,7 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
         void testWithCreateAndManageValues() {
             MemorySegment hKey = newHKEY();
 
-            when(RegistryKey.api.RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
@@ -1924,10 +1943,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 // Do nothing
             }
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull(), notNull(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull(), notNull(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1940,10 +1959,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
                 handle.close();
             }
 
-            verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                    notNull());
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
+                    never());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
@@ -1956,18 +1975,18 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                    notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
+                    never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("create failure")
         void testCreateFailure() {
-            doReturn(WinError.ERROR_ACCESS_DENIED).when(RegistryKey.api)
-                    .RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                            notNull());
+            advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class,
@@ -1975,10 +1994,10 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("HKEY_LOCAL_MACHINE\\path\\failure", exception.path());
             assertEquals("test-machine", exception.machineName());
 
-            verify(RegistryKey.api).RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
-                    notNull(), notNull());
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
+                    notNull(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
@@ -1996,8 +2015,8 @@ class RemoteSubKeyTest extends RegistryKeyTestBase {
             assertEquals("test-machine", exception.machineName());
             assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-            verify(RegistryKey.api).RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api).RegCloseKey(hKey);
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         private void triggerCloseFailure(RegistryKey registryKey) {

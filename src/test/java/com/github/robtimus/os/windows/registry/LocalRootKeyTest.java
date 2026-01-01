@@ -17,7 +17,19 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockSubKeys;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValue;
+import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValues;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteValue;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumValue;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqBytes;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
@@ -33,11 +45,9 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
 import java.util.List;
 import java.util.Optional;
@@ -57,19 +67,16 @@ import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
-class LocalRootKeyTest extends RegistryKeyTestBase {
+class LocalRootKeyTest extends RegistryTestBase {
 
     private static final LocalRegistry REGISTRY = Registry.local();
 
-    @Override
     @AfterEach
-    void teardown() {
-        verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-        verify(RegistryKey.api, never()).RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(),
-                notNull());
-        verify(RegistryKey.api, never()).RegCloseKey(notNull());
-
-        super.teardown();
+    void verifyRootKeysNotOpenedCreatedOrClosed() {
+        advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+        advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
+                never());
+        advapi32.verify(() -> RegCloseKey(notNull()), never());
     }
 
     @Test
@@ -149,9 +156,9 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("query failure")
         void testQueryFailure() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
-                            notNull(), notNull(), notNull(), notNull());
+            advapi32.when(() -> RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -161,11 +168,11 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
-                            notNull(), notNull(), notNull(), notNull());
+            advapi32.when(() -> RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
-            when(RegistryKey.api.RegEnumKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
+            advapi32.when(() -> RegEnumKeyEx(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -192,8 +199,8 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
                 assertEquals(expected, registryKeys);
             }
 
-            verify(RegistryKey.api, never()).RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull());
-            verify(RegistryKey.api, never()).RegCloseKey(notNull());
+            advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Nested
@@ -322,9 +329,9 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("query failure")
         void testQueryFailure() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
-                            notNull(), notNull(), notNull(), notNull());
+            advapi32.when(() -> RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -334,11 +341,11 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api)
-                    .RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
-                            notNull(), notNull(), notNull(), notNull());
+            advapi32.when(() -> RegQueryInfoKey(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
+                    notNull(), notNull(), notNull(), notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
-            when(RegistryKey.api.RegEnumValue(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
+            advapi32.when(() -> RegEnumValue(eq(WinReg.HKEY_CURRENT_USER), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
                     .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -368,8 +375,8 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull());
+            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
@@ -420,8 +427,8 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api)
-                    .RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull());
+            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
@@ -461,14 +468,13 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
             StringValue stringValue = StringValue.of("string", "value");
             MemorySegment data = stringValue.rawData(ALLOCATOR);
 
-            when(RegistryKey.api.RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
+            advapi32.when(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
                     .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             registryKey.setValue(stringValue);
 
-            verify(RegistryKey.api)
-                    .RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data));
+            advapi32.verify(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)));
         }
 
         @Test
@@ -476,7 +482,7 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         void testFailure() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            when(RegistryKey.api.RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()))
+            advapi32.when(() -> RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()))
                     .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -492,18 +498,20 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
+            advapi32.when(() -> RegDeleteValue(notNull(), eqPointer("string")))
+                    .thenReturn(WinError.ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             registryKey.deleteValue("string");
 
-            verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
+            advapi32.verify(() -> RegDeleteValue(notNull(), eqPointer("string")));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
+            advapi32.when(() -> RegDeleteValue(notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -523,30 +531,33 @@ class LocalRootKeyTest extends RegistryKeyTestBase {
             @Test
             @DisplayName("value existed")
             void testExisted() {
-                doReturn(WinError.ERROR_SUCCESS).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
+                advapi32.when(() -> RegDeleteValue(notNull(), eqPointer("string")))
+                        .thenReturn(WinError.ERROR_SUCCESS);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
+                advapi32.verify(() -> RegDeleteValue(notNull(), eqPointer("string")));
             }
 
             @Test
             @DisplayName("value didn't exist")
             void testValueDidntExist() {
-                doReturn(WinError.ERROR_FILE_NOT_FOUND).when(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
+                advapi32.when(() -> RegDeleteValue(notNull(), eqPointer("string")))
+                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
-                verify(RegistryKey.api).RegDeleteValue(notNull(), eqPointer("string"));
+                advapi32.verify(() -> RegDeleteValue(notNull(), eqPointer("string")));
             }
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            doReturn(WinError.ERROR_INVALID_HANDLE).when(RegistryKey.api).RegDeleteValue(notNull(), notNull());
+            advapi32.when(() -> RegDeleteValue(notNull(), notNull()))
+                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,

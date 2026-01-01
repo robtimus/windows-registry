@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.Kernel32Utils;
+import com.github.robtimus.os.windows.registry.foreign.Kernel32;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 /**
@@ -65,7 +65,7 @@ public class RegistryException extends RuntimeException {
             sb.append('@').append(machineName);
         }
         sb.append(": ");
-        sb.append(Kernel32Utils.formatMessage(errorCode));
+        sb.append(Kernel32.formatMessage(errorCode));
         return sb.toString();
     }
 

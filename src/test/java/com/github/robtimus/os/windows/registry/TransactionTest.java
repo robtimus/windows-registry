@@ -17,11 +17,17 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.TransactionMocks.createTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setLastError;
 import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
+import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
+import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -29,8 +35,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 import java.lang.foreign.MemorySegment;
 import java.time.Duration;
 import java.util.Optional;
@@ -41,13 +45,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32Utils;
+import com.github.robtimus.os.windows.registry.foreign.Kernel32;
 import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
 import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
-class TransactionTest extends TransactionTestBase {
+class TransactionTest extends RegistryTestBase {
 
     @Nested
     @DisplayName("create")
@@ -59,7 +63,7 @@ class TransactionTest extends TransactionTestBase {
             Duration timeout = Duration.ofMillis(100);
             MemorySegment handle = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), isNULL(), notNull()))
+            ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), isNULL(), notNull()))
                     .thenReturn(handle);
 
             Transaction transaction = Transaction.create(timeout, null);
@@ -68,8 +72,8 @@ class TransactionTest extends TransactionTestBase {
             assertEquals(timeout, transaction.timeout());
             assertEquals(Optional.empty(), transaction.description());
 
-            verify(Transaction.ktmW32)
-                    .CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), isNULL(), notNull());
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), isNULL(),
+                    notNull()));
         }
 
         @Test
@@ -78,7 +82,7 @@ class TransactionTest extends TransactionTestBase {
             Duration timeout = Duration.ofMillis(100);
             MemorySegment handle = ALLOCATOR.allocate(0);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), eqPointer("test"), notNull()))
+            ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), eqPointer("test"), notNull()))
                     .thenReturn(handle);
 
             Transaction transaction = Transaction.create(timeout, "test");
@@ -87,9 +91,8 @@ class TransactionTest extends TransactionTestBase {
             assertEquals(timeout, transaction.timeout());
             assertEquals(Optional.of("test"), transaction.description());
 
-            verify(Transaction.ktmW32)
-                    .CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), eqPointer("test"),
-                            notNull());
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100),
+                    eqPointer("test"), notNull()));
         }
 
         @Test
@@ -98,7 +101,7 @@ class TransactionTest extends TransactionTestBase {
             Duration timeout = Duration.ofMillis(100);
             MemorySegment handle = MemorySegment.ofAddress(-1);
 
-            when(Transaction.ktmW32.CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), notNull(), notNull()))
+            ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
                         setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
@@ -108,7 +111,7 @@ class TransactionTest extends TransactionTestBase {
 
             TransactionException exception = assertThrows(TransactionException.class, () -> Transaction.create(timeout, null));
             assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32Utils.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
         }
     }
 
@@ -131,7 +134,7 @@ class TransactionTest extends TransactionTestBase {
                 "3, ROLLED_BACK"
         })
         void testValidStatus(int outcome, Transaction.Status expected) {
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
@@ -148,7 +151,7 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("unknown status")
         void testUnknownStatus() {
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
@@ -164,7 +167,7 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("closed")
         void testClosed() {
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
@@ -181,7 +184,7 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("non-closed failure")
         void testNonClosedError() {
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
@@ -192,7 +195,7 @@ class TransactionTest extends TransactionTestBase {
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::status);
             assertEquals(WinError.ERROR_ACCESS_DENIED, exception.errorCode());
-            assertEquals(Kernel32Utils.formatMessage(WinError.ERROR_ACCESS_DENIED), exception.getMessage());
+            assertEquals(Kernel32.formatMessage(WinError.ERROR_ACCESS_DENIED), exception.getMessage());
         }
     }
 
@@ -210,17 +213,17 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            when(Transaction.ktmW32.CommitTransaction(eq(transaction.handle()), notNull())).thenReturn(true);
+            ktmW32.when(() -> CommitTransaction(eq(transaction.handle()), notNull())).thenReturn(true);
 
             assertDoesNotThrow(transaction::commit);
 
-            verify(Transaction.ktmW32).CommitTransaction(eq(transaction.handle()), notNull());
+            ktmW32.verify(() -> CommitTransaction(eq(transaction.handle()), notNull()));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(Transaction.ktmW32.CommitTransaction(eq(transaction.handle()), notNull())).thenAnswer(i -> {
+            ktmW32.when(() -> CommitTransaction(eq(transaction.handle()), notNull())).thenAnswer(i -> {
                 MemorySegment captureState = i.getArgument(1);
                 setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
 
@@ -229,9 +232,9 @@ class TransactionTest extends TransactionTestBase {
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::commit);
             assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32Utils.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
 
-            verify(Transaction.ktmW32).CommitTransaction(eq(transaction.handle()), notNull());
+            ktmW32.verify(() -> CommitTransaction(eq(transaction.handle()), notNull()));
         }
     }
 
@@ -249,17 +252,17 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            when(Transaction.ktmW32.RollbackTransaction(eq(transaction.handle()), notNull())).thenReturn(true);
+            ktmW32.when(() -> RollbackTransaction(eq(transaction.handle()), notNull())).thenReturn(true);
 
             assertDoesNotThrow(transaction::rollback);
 
-            verify(Transaction.ktmW32).RollbackTransaction(eq(transaction.handle()), notNull());
+            ktmW32.verify(() -> RollbackTransaction(eq(transaction.handle()), notNull()));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(Transaction.ktmW32.RollbackTransaction(eq(transaction.handle()), notNull())).thenAnswer(i -> {
+            ktmW32.when(() -> RollbackTransaction(eq(transaction.handle()), notNull())).thenAnswer(i -> {
                 MemorySegment captureState = i.getArgument(1);
                 setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
 
@@ -268,9 +271,9 @@ class TransactionTest extends TransactionTestBase {
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::rollback);
             assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32Utils.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
 
-            verify(Transaction.ktmW32).RollbackTransaction(eq(transaction.handle()), notNull());
+            ktmW32.verify(() -> RollbackTransaction(eq(transaction.handle()), notNull()));
         }
     }
 
@@ -286,7 +289,7 @@ class TransactionTest extends TransactionTestBase {
             transaction.autoCommit(autoCommit);
             assertEquals(autoCommit, transaction.autoCommit());
 
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
@@ -311,7 +314,7 @@ class TransactionTest extends TransactionTestBase {
         void testValidStatus(int outcome, Transaction.Status expectedStatus) {
             Transaction transaction = createTransaction();
 
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
@@ -332,7 +335,7 @@ class TransactionTest extends TransactionTestBase {
         void testUnknownStatus() {
             Transaction transaction = createTransaction();
 
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
@@ -353,7 +356,7 @@ class TransactionTest extends TransactionTestBase {
         void testClosed() {
             Transaction transaction = createTransaction();
 
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
@@ -373,7 +376,7 @@ class TransactionTest extends TransactionTestBase {
         void testNonClosedError() {
             Transaction transaction = createTransaction();
 
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
@@ -394,7 +397,7 @@ class TransactionTest extends TransactionTestBase {
         void testNonNullDescription() {
             Transaction transaction = createTransaction("test");
 
-            when(Transaction.ktmW32.GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
+            ktmW32.when(() -> GetTransactionInformation(eq(transaction.handle()), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(),
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
@@ -425,17 +428,17 @@ class TransactionTest extends TransactionTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            when(Transaction.kernel32.CloseHandle(eq(transaction.handle()), notNull())).thenReturn(true);
+            kernel32.when(() -> CloseHandle(eq(transaction.handle()), notNull())).thenReturn(true);
 
             assertDoesNotThrow(transaction::close);
 
-            verify(Transaction.kernel32).CloseHandle(eq(transaction.handle()), notNull());
+            kernel32.verify(() -> CloseHandle(eq(transaction.handle()), notNull()));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            when(Transaction.kernel32.CloseHandle(eq(transaction.handle()), notNull())).thenAnswer(i -> {
+            kernel32.when(() -> CloseHandle(eq(transaction.handle()), notNull())).thenAnswer(i -> {
                 MemorySegment captureState = i.getArgument(1);
                 setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
 
@@ -444,9 +447,9 @@ class TransactionTest extends TransactionTestBase {
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::close);
             assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32Utils.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
 
-            verify(Transaction.kernel32).CloseHandle(eq(transaction.handle()), notNull());
+            kernel32.verify(() -> CloseHandle(eq(transaction.handle()), notNull()));
         }
     }
 

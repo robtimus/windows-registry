@@ -50,6 +50,7 @@ import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -132,6 +133,7 @@ class RegistryIT {
     class HKCU {
 
         @BeforeAll
+        @AfterAll
         static void deleteTestTree() {
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\windows-registry");
             if (registryKey.exists()) {

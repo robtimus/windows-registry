@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
@@ -166,7 +167,7 @@ final class RemoteRootKey extends RegistryKey {
     }
 
     private int checkHKEY() {
-        return api.RegQueryInfoKey(
+        return RegQueryInfoKey(
                 hKey,
                 MemorySegment.NULL,
                 MemorySegment.NULL,

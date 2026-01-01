@@ -17,22 +17,143 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
+import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
+import java.lang.foreign.Arena;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.SymbolLookup;
+import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
 
-@SuppressWarnings("javadoc")
-public interface Kernel32 {
+@SuppressWarnings({ "javadoc", "nls" })
+public final class Kernel32 {
 
-    Kernel32 INSTANCE = new Kernel32Impl();
+    private static final MethodHandle EXPAND_ENVIRONMENT_STRINGS;
+    private static final MethodHandle FORMAT_MESSAGE;
+    private static final MethodHandle LOCAL_FREE;
+    private static final MethodHandle CLOSE_HANDLE;
+
+    static {
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup kernel32 = SymbolLookup.libraryLookup("Kernel32", ARENA);
+
+        EXPAND_ENVIRONMENT_STRINGS = functionMethodHandle(linker, kernel32, "ExpandEnvironmentStringsW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.ADDRESS, // lpSrc
+                ValueLayout.ADDRESS, // lpDst
+                ValueLayout.JAVA_INT), // nSize
+                CaptureState.LINKER_OPTION);
+
+        FORMAT_MESSAGE = functionMethodHandle(linker, kernel32, "FormatMessageW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+                ValueLayout.JAVA_INT, // dwFlags
+                ValueLayout.ADDRESS, // lpSource
+                ValueLayout.JAVA_INT, // dwMessageId
+                ValueLayout.JAVA_INT, // dwLanguageId
+                ValueLayout.ADDRESS, // lpBuffer
+                ValueLayout.JAVA_INT, // nSize
+                ValueLayout.ADDRESS), // Arguments
+                CaptureState.LINKER_OPTION);
+
+        LOCAL_FREE = functionMethodHandle(linker, kernel32, "LocalFree", FunctionDescriptor.of(ValueLayout.ADDRESS,
+                ValueLayout.ADDRESS), // hMem
+                CaptureState.LINKER_OPTION);
+
+        CLOSE_HANDLE = functionMethodHandle(linker, kernel32, "CloseHandle", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN,
+                ValueLayout.ADDRESS), // hObject
+                CaptureState.LINKER_OPTION);
+    }
+
+    private static final int FORMAT_MESSAGE_ALLOCATE_BUFFER = 0x100;
+    private static final int FORMAT_MESSAGE_IGNORE_INSERTS = 0x200;
+    private static final int FORMAT_MESSAGE_FROM_SYSTEM = 0x1000;
+
+    private Kernel32() {
+    }
 
     // The following functions all require GetLastError() to be called to retrieve any error that occurred
 
-    /* DWORD */ int ExpandEnvironmentStrings/* NOSONAR */(
+    public static String expandEnvironmentStrings(String input) {
+        if (input == null) {
+            return ""; //$NON-NLS-1$
+        }
+
+        try (Arena allocator = Arena.ofConfined()) {
+            MemorySegment lpSrc = WString.allocate(allocator, input);
+            MemorySegment captureState = CaptureState.allocate(allocator);
+
+            int result = ExpandEnvironmentStrings(lpSrc,
+                    MemorySegment.NULL,
+                    0,
+                    captureState);
+            if (result == 0) {
+                throw new IllegalStateException(formatMessage(CaptureState.getLastError(captureState)));
+            }
+
+            MemorySegment lpDst = WString.allocate(allocator, result);
+
+            result = ExpandEnvironmentStrings(lpSrc,
+                    lpDst,
+                    result,
+                    captureState);
+            if (result == 0) {
+                throw new IllegalStateException(formatMessage(CaptureState.getLastError(captureState)));
+            }
+
+            // result is the number of characters including the terminating character, but WString also includes it.
+            // Subtract 1 to not include it in the result.
+            return WString.getString(lpDst, result - 1);
+        }
+    }
+
+    private static /* DWORD */ int ExpandEnvironmentStrings/* NOSONAR */(
             /* LPCWSTR */ MemorySegment lpSrc,
             /* LPWSTR */ MemorySegment lpDst,
             /* DWORD */ int nSize,
-            MemorySegment captureState);
+            MemorySegment captureState) {
 
-    /* DWORD */ int FormatMessage/* NOSONAR */(
+        try {
+            return (int) EXPAND_ENVIRONMENT_STRINGS.invokeExact(
+                    captureState,
+                    lpSrc,
+                    lpDst,
+                    nSize);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static String formatMessage(int code) {
+        try (Arena allocator = Arena.ofConfined()) {
+            int dwFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
+            int dwLanguageId = 0;
+            MemorySegment lpBuffer = WString.allocateRef(allocator);
+            MemorySegment captureState = CaptureState.allocate(allocator);
+
+            int result = FormatMessage(dwFlags,
+                    MemorySegment.NULL,
+                    code,
+                    dwLanguageId,
+                    lpBuffer,
+                    0,
+                    MemorySegment.NULL,
+                    captureState);
+            if (result == 0) {
+                throw new IllegalStateException(Messages.Kernel32.formatMessageError(code, CaptureState.getLastError(captureState)));
+            }
+
+            MemorySegment pointer = WString.target(lpBuffer, result);
+            try {
+                // result is the number of characters excluding the terminating character
+                return WString.getString(pointer, result)
+                        .strip();
+            } finally {
+                free(pointer, captureState);
+            }
+        }
+    }
+
+    private static /* DWORD */ int FormatMessage/* NOSONAR */(
             /* DWORD */ int dwFlags,
             /* LPCVOID */ MemorySegment lpSource,
             /* DWORD */ int dwMessageId,
@@ -40,13 +161,57 @@ public interface Kernel32 {
             /* LPTSTR */ MemorySegment lpBuffer,
             /* DWORD */ int nSize,
             /* va_list * */ MemorySegment Arguments, // NOSONAR
-            MemorySegment captureState);
+            MemorySegment captureState) {
 
-    /* HLOCAL */ MemorySegment LocalFree/* NOSONAR */(
+        try {
+            return (int) FORMAT_MESSAGE.invokeExact(
+                    captureState,
+                    dwFlags,
+                    lpSource,
+                    dwMessageId,
+                    dwLanguageId,
+                    lpBuffer,
+                    nSize,
+                    Arguments);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static void free(MemorySegment hMem, MemorySegment captureState) {
+        MemorySegment result = LocalFree(hMem, captureState);
+        if (result == null || MemorySegment.NULL.equals(result)) {
+            return;
+        }
+        if (!result.equals(hMem)) {
+            throw new IllegalStateException(Messages.Kernel32.localFreeUnexpectedResult(hMem, result));
+        }
+        throw new IllegalStateException(Messages.Kernel32.localFreeError(CaptureState.getLastError(captureState)));
+    }
+
+    private static /* HLOCAL */ MemorySegment LocalFree/* NOSONAR */(
             /* HLOCAL */ MemorySegment hMem,
-            MemorySegment captureState);
+            MemorySegment captureState) {
 
-    /* BOOL */ boolean CloseHandle/* NOSONAR */(
+        try {
+            return (MemorySegment) LOCAL_FREE.invokeExact(
+                    captureState,
+                    hMem);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    public static /* BOOL */ boolean CloseHandle/* NOSONAR */(
             /* HANDLE */ MemorySegment hObject,
-            MemorySegment captureState);
+            MemorySegment captureState) {
+
+        try {
+            return (boolean) CLOSE_HANDLE.invokeExact(
+                    captureState,
+                    hObject);
+        } catch (Throwable e) {
+            throw new IllegalStateException(e);
+        }
+    }
 }

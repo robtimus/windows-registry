@@ -29,16 +29,16 @@ import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 public enum RegistryFeature {
 
     /** {@link RegistryKey#renameTo(String) Renaming} registry keys. */
-    RENAME_KEY(Advapi32.INSTANCE.isRegRenameKeyEnabled()),
+    RENAME_KEY(Advapi32.isRegRenameKeyEnabled()),
 
     /** {@link Transaction transactions}. */
-    TRANSACTIONS(Advapi32.INSTANCE.isRegCreateKeyTransactedEnabled()
-            && Advapi32.INSTANCE.isRegDeleteKeyTransactedEnabled()
-            && Advapi32.INSTANCE.isRegOpenKeyTransactedEnabled()
-            && KtmW32.INSTANCE.isCreateTransactionEnabled()
-            && KtmW32.INSTANCE.isCommitTransactionEnabled()
-            && KtmW32.INSTANCE.isRollbackTransactionEnabled()
-            && KtmW32.INSTANCE.isGetTransactionInformationEnabled()),
+    TRANSACTIONS(Advapi32.isRegCreateKeyTransactedEnabled()
+            && Advapi32.isRegDeleteKeyTransactedEnabled()
+            && Advapi32.isRegOpenKeyTransactedEnabled()
+            && KtmW32.isCreateTransactionEnabled()
+            && KtmW32.isCommitTransactionEnabled()
+            && KtmW32.isRollbackTransactionEnabled()
+            && KtmW32.isGetTransactionInformationEnabled()),
     ;
 
     private final boolean enabled;
