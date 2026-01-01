@@ -128,8 +128,7 @@ public final class WString {
     }
 
     public static void copy(String value, MemorySegment segment, long start) {
-        for (int i = 0; i < value.length(); i++) {
-            segment.set(CHAR_LAYOUT, start + i * CHAR_SIZE, value.charAt(i));
-        }
+        char[] chars = value.toCharArray();
+        MemorySegment.copy(chars, 0, segment, CHAR_LAYOUT, start, value.length());
     }
 }
