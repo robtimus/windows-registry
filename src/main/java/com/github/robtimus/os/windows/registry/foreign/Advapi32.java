@@ -191,8 +191,13 @@ public final class Advapi32 extends WindowsApi {
 
     // The following functions all return any error and do not require GetLastError() to be called; CaptureState is therefore not needed
 
-    public static /* LSTATUS */ int RegCloseKey/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey) {
+    /*
+     * LSTATUS RegCloseKey(
+     *   [in] HKEY hKey
+     * )
+     */
+    public static int RegCloseKey/* NOSONAR */(
+            MemorySegment hKey) {
 
         try {
             return (int) REG_CLOSE_KEY.invokeExact(
@@ -202,10 +207,17 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegConnectRegistry/* NOSONAR */(
-            /* LPCWSTR */ MemorySegment lpMachineName,
-            /* HKEY */ MemorySegment hKey,
-            /* PHKEY */ MemorySegment phkResult) {
+    /*
+     * LSTATUS RegConnectRegistryW(
+     *   [in, optional] LPCWSTR lpMachineName,
+     *   [in]           HKEY    hKey,
+     *   [out]          PHKEY   phkResult
+     * )
+     */
+    public static int RegConnectRegistry/* NOSONAR */(
+            MemorySegment lpMachineName,
+            MemorySegment hKey,
+            MemorySegment phkResult) {
 
         try {
             return (int) REG_CONNECT_REGISTRY.invokeExact(
@@ -217,16 +229,29 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegCreateKeyEx/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey,
-            /* DWORD */ int Reserved, // NOSONAR
-            /* LPWSTR */ MemorySegment lpClass,
-            /* DWORD */ int dwOptions,
-            /* REGSAM */ int samDesired,
-            /* const LPSECURITY_ATTRIBUTES */ MemorySegment lpSecurityAttributes,
-            /* PHKEY */ MemorySegment phkResult,
-            /* LPDWORD */ MemorySegment lpdwDisposition) {
+    /*
+     * LSTATUS RegCreateKeyExW(
+     *   [in]            HKEY                        hKey,
+     *   [in]            LPCWSTR                     lpSubKey,
+     *                   DWORD                       Reserved,
+     *   [in, optional]  LPWSTR                      lpClass,
+     *   [in]            DWORD                       dwOptions,
+     *   [in]            REGSAM                      samDesired,
+     *   [in, optional]  const LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+     *   [out]           PHKEY                       phkResult,
+     *   [out, optional] LPDWORD                     lpdwDisposition
+     * )
+     */
+    public static int RegCreateKeyEx/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
+            int Reserved, // NOSONAR
+            MemorySegment lpClass,
+            int dwOptions,
+            int samDesired,
+            MemorySegment lpSecurityAttributes,
+            MemorySegment phkResult,
+            MemorySegment lpdwDisposition) {
 
         try {
             return (int) REG_CREATE_KEY_EX.invokeExact(
@@ -244,18 +269,33 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegCreateKeyTransacted/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey,
-            /* DWORD */ int Reserved, // NOSONAR
-            /* LPWSTR */ MemorySegment lpClass,
-            /* DWORD */ int dwOptions,
-            /* REGSAM */ int samDesired,
-            /* const LPSECURITY_ATTRIBUTES */ MemorySegment lpSecurityAttributes,
-            /* PHKEY */ MemorySegment phkResult,
-            /* LPDWORD */ MemorySegment lpdwDisposition,
-            /* HANDLE */ MemorySegment hTransaction,
-            /* PVOID */ MemorySegment pExtendedParemeter) {
+    /*
+     * LSTATUS RegCreateKeyTransactedW(
+     *   [in]            HKEY                        hKey,
+     *   [in]            LPCWSTR                     lpSubKey,
+     *                   DWORD                       Reserved,
+     *   [in, optional]  LPWSTR                      lpClass,
+     *   [in]            DWORD                       dwOptions,
+     *   [in]            REGSAM                      samDesired,
+     *   [in, optional]  const LPSECURITY_ATTRIBUTES lpSecurityAttributes,
+     *   [out]           PHKEY                       phkResult,
+     *   [out, optional] LPDWORD                     lpdwDisposition,
+     *   [in]            HANDLE                      hTransaction,
+     *                   PVOID                       pExtendedParemeter
+     * )
+     */
+    public static int RegCreateKeyTransacted/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
+            int Reserved, // NOSONAR
+            MemorySegment lpClass,
+            int dwOptions,
+            int samDesired,
+            MemorySegment lpSecurityAttributes,
+            MemorySegment phkResult,
+            MemorySegment lpdwDisposition,
+            MemorySegment hTransaction,
+            MemorySegment pExtendedParemeter) {
 
         MethodHandle regCreateKeyTransactedHandle = REG_CREATE_KEY_TRANSACTED.orElseThrow(UnsupportedOperationException::new);
         try {
@@ -280,11 +320,19 @@ public final class Advapi32 extends WindowsApi {
         return REG_CREATE_KEY_TRANSACTED.isPresent();
     }
 
-    public static /* LSTATUS */ int RegDeleteKeyEx/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey,
-            /* REGSAM */ int samDesired,
-            /* DWORD  */ int Reserved) { // NOSONAR
+    /*
+     * LSTATUS RegDeleteKeyExW(
+     *   [in] HKEY    hKey,
+     *   [in] LPCWSTR lpSubKey,
+     *   [in] REGSAM  samDesired,
+     *        DWORD   Reserved
+     * )
+     */
+    public static int RegDeleteKeyEx/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
+            int samDesired,
+            int Reserved) { // NOSONAR
 
         try {
             return (int) REG_DELETE_KEY_EX.invokeExact(
@@ -297,13 +345,23 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegDeleteKeyTransacted/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey,
-            /* REGSAM */ int samDesired,
-            /* DWORD */ int Reserved, // NOSONAR
-            /* HANDLE */ MemorySegment hTransaction,
-            /* PVOID */ MemorySegment pExtendedParameter) {
+    /*
+     * LSTATUS RegDeleteKeyTransactedW(
+     *   [in] HKEY    hKey,
+     *   [in] LPCWSTR lpSubKey,
+     *   [in] REGSAM  samDesired,
+     *        DWORD   Reserved,
+     *   [in] HANDLE  hTransaction,
+     *        PVOID   pExtendedParameter
+     * )
+     */
+    public static int RegDeleteKeyTransacted/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
+            int samDesired,
+            int Reserved, // NOSONAR
+            MemorySegment hTransaction,
+            MemorySegment pExtendedParameter) {
 
         MethodHandle regDeleteKeyTransactedHandle = REG_DELETE_KEY_TRANSACTED.orElseThrow(UnsupportedOperationException::new);
         try {
@@ -323,9 +381,15 @@ public final class Advapi32 extends WindowsApi {
         return REG_DELETE_KEY_TRANSACTED.isPresent();
     }
 
-    public static /* LSTATUS */ int RegDeleteValue/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpValueName) {
+    /*
+     * LSTATUS RegDeleteValueW(
+     *   [in]           HKEY    hKey,
+     *   [in, optional] LPCWSTR lpValueName
+     * )
+     */
+    public static int RegDeleteValue/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpValueName) {
 
         try {
             return (int) REG_DELETE_VALUE.invokeExact(
@@ -336,15 +400,27 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegEnumKeyEx/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* DWORD */ int dwIndex,
-            /* LPWSTR  */ MemorySegment lpName,
-            /* LPDWORD */ MemorySegment lpcchName,
-            /* LPDWORD */ MemorySegment lpReserved,
-            /* LPWSTR */ MemorySegment lpClass,
-            /* LPDWORD */ MemorySegment lpcchClass,
-            /* PFILETIME */ MemorySegment lpftLastWriteTime) {
+    /*
+     * LSTATUS RegEnumKeyExW(
+     *   [in]                HKEY      hKey,
+     *   [in]                DWORD     dwIndex,
+     *   [out]               LPWSTR    lpName,
+     *   [in, out]           LPDWORD   lpcchName,
+     *                       LPDWORD   lpReserved,
+     *   [in, out]           LPWSTR    lpClass,
+     *   [in, out, optional] LPDWORD   lpcchClass,
+     *   [out, optional]     PFILETIME lpftLastWriteTime
+     * )
+     */
+    public static int RegEnumKeyEx/* NOSONAR */(
+            MemorySegment hKey,
+            int dwIndex,
+            MemorySegment lpName,
+            MemorySegment lpcchName,
+            MemorySegment lpReserved,
+            MemorySegment lpClass,
+            MemorySegment lpcchClass,
+            MemorySegment lpftLastWriteTime) {
 
         try {
             return (int) REG_ENUM_KEY_EX.invokeExact(
@@ -361,15 +437,27 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegEnumValue/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* DWORD */ int dwIndex,
-            /* LPWSTR */ MemorySegment lpValueName,
-            /* LPDWORD */ MemorySegment lpcchValueName,
-            /* LPDWORD */ MemorySegment lpReserved,
-            /* LPDWORD */ MemorySegment lpType,
-            /* LPBYTE */ MemorySegment lpData,
-            /* LPDWORD */ MemorySegment lpcbData) {
+    /*
+     * LSTATUS RegEnumValueW(
+     *   [in]                HKEY    hKey,
+     *   [in]                DWORD   dwIndex,
+     *   [out]               LPWSTR  lpValueName,
+     *   [in, out]           LPDWORD lpcchValueName,
+     *                       LPDWORD lpReserved,
+     *   [out, optional]     LPDWORD lpType,
+     *   [out, optional]     LPBYTE  lpData,
+     *   [in, out, optional] LPDWORD lpcbData
+     * )
+     */
+    public static int RegEnumValue/* NOSONAR */(
+            MemorySegment hKey,
+            int dwIndex,
+            MemorySegment lpValueName,
+            MemorySegment lpcchValueName,
+            MemorySegment lpReserved,
+            MemorySegment lpType,
+            MemorySegment lpData,
+            MemorySegment lpcbData) {
 
         try {
             return (int) REG_ENUM_VALUE.invokeExact(
@@ -386,12 +474,21 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegOpenKeyEx/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey,
-            /* DWORD */ int ulOptions,
-            /* REGSAM */ int samDesired,
-            /* PHKEY */ MemorySegment phkResult) {
+    /*
+     * LSTATUS RegOpenKeyExW(
+     *   [in]           HKEY    hKey,
+     *   [in, optional] LPCWSTR lpSubKey,
+     *   [in]           DWORD   ulOptions,
+     *   [in]           REGSAM  samDesired,
+     *   [out]          PHKEY   phkResult
+     * )
+     */
+    public static int RegOpenKeyEx/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
+            int ulOptions,
+            int samDesired,
+            MemorySegment phkResult) {
 
         try {
             return (int) REG_OPEN_KEY_EX.invokeExact(
@@ -405,14 +502,25 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegOpenKeyTransacted/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKey,
-            /* DWORD */ int ulOptions,
-            /* REGSAM */ int samDesired,
-            /* PHKEY */ MemorySegment phkResult,
-            /* HANDLE */ MemorySegment hTransaction,
-            /* PVOID */ MemorySegment pExtendedParemeter) {
+    /*
+     * LSTATUS RegOpenKeyTransactedW(
+     *  [in]           HKEY    hKey,
+     *  [in, optional] LPCWSTR lpSubKey,
+     *  [in]           DWORD   ulOptions,
+     *  [in]           REGSAM  samDesired,
+     *  [out]          PHKEY   phkResult,
+     *  [in]           HANDLE  hTransaction,
+     *                 PVOID   pExtendedParemeter
+     *)
+     */
+    public static int RegOpenKeyTransacted/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKey,
+            int ulOptions,
+            int samDesired,
+            MemorySegment phkResult,
+            MemorySegment hTransaction,
+            MemorySegment pExtendedParemeter) {
 
         MethodHandle regOpenKeyTransactedHandle = REG_OPEN_KEY_TRANSACTED.orElseThrow(UnsupportedOperationException::new);
         try {
@@ -433,19 +541,35 @@ public final class Advapi32 extends WindowsApi {
         return REG_OPEN_KEY_TRANSACTED.isPresent();
     }
 
-    public static /* LSTATUS */ int RegQueryInfoKey/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPWSTR */ MemorySegment lpClass,
-            /* LPDWORD */ MemorySegment lpcchClass,
-            /* LPDWORD */ MemorySegment lpReserved,
-            /* LPDWORD */ MemorySegment lpcSubKeys,
-            /* LPDWORD */ MemorySegment lpcbMaxSubKeyLen,
-            /* LPDWORD */ MemorySegment lpcbMaxClassLen,
-            /* LPDWORD */ MemorySegment lpcValues,
-            /* LPDWORD */ MemorySegment lpcbMaxValueNameLen,
-            /* LPDWORD */ MemorySegment lpcbMaxValueLen,
-            /* LPDWORD */ MemorySegment lpcbSecurityDescriptor,
-            /* PFILETIME */ MemorySegment lpftLastWriteTime) {
+    /*
+     * LSTATUS RegQueryInfoKeyW(
+     *  [in]                HKEY      hKey,
+     *  [out, optional]     LPWSTR    lpClass,
+     *  [in, out, optional] LPDWORD   lpcchClass,
+     *                      LPDWORD   lpReserved,
+     *  [out, optional]     LPDWORD   lpcSubKeys,
+     *  [out, optional]     LPDWORD   lpcbMaxSubKeyLen,
+     *  [out, optional]     LPDWORD   lpcbMaxClassLen,
+     *  [out, optional]     LPDWORD   lpcValues,
+     *  [out, optional]     LPDWORD   lpcbMaxValueNameLen,
+     *  [out, optional]     LPDWORD   lpcbMaxValueLen,
+     *  [out, optional]     LPDWORD   lpcbSecurityDescriptor,
+     *  [out, optional]     PFILETIME lpftLastWriteTime
+     *)
+     */
+    public static int RegQueryInfoKey/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpClass,
+            MemorySegment lpcchClass,
+            MemorySegment lpReserved,
+            MemorySegment lpcSubKeys,
+            MemorySegment lpcbMaxSubKeyLen,
+            MemorySegment lpcbMaxClassLen,
+            MemorySegment lpcValues,
+            MemorySegment lpcbMaxValueNameLen,
+            MemorySegment lpcbMaxValueLen,
+            MemorySegment lpcbSecurityDescriptor,
+            MemorySegment lpftLastWriteTime) {
 
         try {
             return (int) REG_QUERY_INFO_KEY.invokeExact(
@@ -466,13 +590,23 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegQueryValueEx(// NOSONAR
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpValueName,
-            /* LPDWORD */ MemorySegment lpReserved,
-            /* LPDWORD */ MemorySegment lpType,
-            /* LPBYTE */ MemorySegment lpData,
-            /* LPDWORD */ MemorySegment lpcbData) {
+    /*
+     * LSTATUS RegQueryValueExW(
+     *   [in]                HKEY    hKey,
+     *   [in, optional]      LPCWSTR lpValueName,
+     *                       LPDWORD lpReserved,
+     *   [out, optional]     LPDWORD lpType,
+     *   [out, optional]     LPBYTE  lpData,
+     *   [in, out, optional] LPDWORD lpcbData
+     * )
+     */
+    public static int RegQueryValueEx/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpValueName,
+            MemorySegment lpReserved,
+            MemorySegment lpType,
+            MemorySegment lpData,
+            MemorySegment lpcbData) {
 
         try {
             return (int) REG_QUERY_VALUE_EX.invokeExact(
@@ -487,10 +621,17 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static /* LSTATUS */ int RegRenameKey/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpSubKeyName,
-            /* LPCWSTR */ MemorySegment lpNewKeyName) {
+    /*
+     * LSTATUS RegRenameKey(
+     *   HKEY    hKey,
+     *   LPCWSTR lpSubKeyName,
+     *   LPCWSTR lpNewKeyName
+     * )
+     */
+    public static int RegRenameKey/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpSubKeyName,
+            MemorySegment lpNewKeyName) {
 
         MethodHandle regRenameKeyHandle = REG_RENAME_KEY.orElseThrow(UnsupportedOperationException::new);
         try {
@@ -507,13 +648,23 @@ public final class Advapi32 extends WindowsApi {
         return REG_RENAME_KEY.isPresent();
     }
 
-    public static /* LSTATUS */ int RegSetValueEx/* NOSONAR */(
-            /* HKEY */ MemorySegment hKey,
-            /* LPCWSTR */ MemorySegment lpValueName,
-            /* DWORD */ int Reserved, // NOSONAR
-            /* DWORD */ int dwType,
-            /* const BYTE * */ MemorySegment lpData,
-            /* DWORD */ int cbData) {
+    /*
+     * LSTATUS RegSetValueExW(
+     *   [in]           HKEY       hKey,
+     *   [in, optional] LPCWSTR    lpValueName,
+     *                  DWORD      Reserved,
+     *   [in]           DWORD      dwType,
+     *   [in]           const BYTE *lpData,
+     *   [in]           DWORD      cbData
+     * )
+     */
+    public static int RegSetValueEx/* NOSONAR */(
+            MemorySegment hKey,
+            MemorySegment lpValueName,
+            int Reserved, // NOSONAR
+            int dwType,
+            MemorySegment lpData,
+            int cbData) {
 
         try {
             return (int) REG_SET_VALUE_EX.invokeExact(

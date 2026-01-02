@@ -83,14 +83,25 @@ public final class KtmW32 extends WindowsApi {
 
     // The following functions all require GetLastError() to be called to retrieve any error that occurred
 
-    public static /* HANDLE */ MemorySegment CreateTransaction/* NOSONAR */(
-            /* LPSECURITY_ATTRIBUTES */ MemorySegment lpSecurityAttributes,
-            /* LPGUID */ MemorySegment UOW, // NOSONAR
-            /* DWORD */ int CreateOptions, // NOSONAR
-            /* DWORD */ int IsolationLevel, // NOSONAR
-            /* DWORD */ int IsolationFlags, // NOSONAR
-            /* DWORD */ int Timeout, // NOSONAR
-            /* LPWSTR */ MemorySegment Description, // NOSONAR
+    /*
+     * HANDLE CreateTransaction(
+     *   [in, optional] LPSECURITY_ATTRIBUTES lpTransactionAttributes,
+     *   [in, optional] LPGUID                UOW,
+     *   [in, optional] DWORD                 CreateOptions,
+     *   [in, optional] DWORD                 IsolationLevel,
+     *   [in, optional] DWORD                 IsolationFlags,
+     *   [in, optional] DWORD                 Timeout,
+     *   [in, optional] LPWSTR                Description
+     * )
+     */
+    public static MemorySegment CreateTransaction/* NOSONAR */(
+            MemorySegment lpSecurityAttributes,
+            MemorySegment UOW, // NOSONAR
+            int CreateOptions, // NOSONAR
+            int IsolationLevel, // NOSONAR
+            int IsolationFlags, // NOSONAR
+            int Timeout, // NOSONAR
+            MemorySegment Description, // NOSONAR
             MemorySegment captureState) {
 
         MethodHandle createTransactionHandle = CREATE_TRANSACTION.orElseThrow(UnsupportedOperationException::new);
@@ -113,8 +124,13 @@ public final class KtmW32 extends WindowsApi {
         return CREATE_TRANSACTION.isPresent();
     }
 
-    public static /* BOOL */ boolean CommitTransaction/* NOSONAR */(
-            /* HANDLE */ MemorySegment TransactionHandle, // NOSONAR
+    /*
+     * BOOL CommitTransaction(
+     *   [in] HANDLE TransactionHandle
+     * )
+     */
+    public static boolean CommitTransaction/* NOSONAR */(
+            MemorySegment TransactionHandle, // NOSONAR
             MemorySegment captureState) {
 
         MethodHandle commitTransactionHandle = COMMIT_TRANSACTION.orElseThrow(UnsupportedOperationException::new);
@@ -131,8 +147,13 @@ public final class KtmW32 extends WindowsApi {
         return COMMIT_TRANSACTION.isPresent();
     }
 
-    public static /* BOOL */ boolean RollbackTransaction/* NOSONAR */(
-            /* HANDLE */ MemorySegment TransactionHandle, // NOSONAR
+    /*
+     * BOOL RollbackTransaction(
+     *   [in] HANDLE TransactionHandle
+     * )
+     */
+    public static boolean RollbackTransaction/* NOSONAR */(
+            MemorySegment TransactionHandle, // NOSONAR
             MemorySegment captureState) {
 
         MethodHandle rollbackTransactionHandle = ROLLBACK_TRANSACTION.orElseThrow(UnsupportedOperationException::new);
@@ -149,14 +170,25 @@ public final class KtmW32 extends WindowsApi {
         return ROLLBACK_TRANSACTION.isPresent();
     }
 
-    public static /* BOOL */ boolean GetTransactionInformation/* NOSONAR */(
-            /* HANDLE */ MemorySegment TransactionHandle, // NOSONAR
-            /* PDWORD */ MemorySegment Outcome, // NOSONAR
-            /* PDWORD */ MemorySegment IsolationLevel, // NOSONAR
-            /* PDWORD */ MemorySegment IsolationFlags, // NOSONAR
-            /* PDWORD */ MemorySegment Timeout, // NOSONAR
-            /* DWORD */ int BufferLength, // NOSONAR
-            /* LPWSTR */ MemorySegment Description, // NOSONAR
+    /*
+     * BOOL GetTransactionInformation(
+     *   [in]            HANDLE TransactionHandle,
+     *   [out, optional] PDWORD Outcome,
+     *   [out, optional] PDWORD IsolationLevel,
+     *   [out, optional] PDWORD IsolationFlags,
+     *   [out, optional] PDWORD Timeout,
+     *   [in]            DWORD  BufferLength,
+     *   [out, optional] LPWSTR Description
+     * )
+     */
+    public static boolean GetTransactionInformation/* NOSONAR */(
+            MemorySegment TransactionHandle, // NOSONAR
+            MemorySegment Outcome, // NOSONAR
+            MemorySegment IsolationLevel, // NOSONAR
+            MemorySegment IsolationFlags, // NOSONAR
+            MemorySegment Timeout, // NOSONAR
+            int BufferLength, // NOSONAR
+            MemorySegment Description, // NOSONAR
             MemorySegment captureState) {
 
         MethodHandle getTransactionInformationHandle = GET_TRANSACTION_INFORMATION.orElseThrow(UnsupportedOperationException::new);

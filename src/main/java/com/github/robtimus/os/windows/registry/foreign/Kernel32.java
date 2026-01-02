@@ -108,10 +108,17 @@ public final class Kernel32 extends WindowsApi {
         }
     }
 
-    private static /* DWORD */ int ExpandEnvironmentStrings/* NOSONAR */(
-            /* LPCWSTR */ MemorySegment lpSrc,
-            /* LPWSTR */ MemorySegment lpDst,
-            /* DWORD */ int nSize,
+    /*
+     * DWORD ExpandEnvironmentStringsW(
+     *   [in]            LPCWSTR lpSrc,
+     *   [out, optional] LPWSTR  lpDst,
+     *   [in]            DWORD   nSize
+     * )
+     */
+    private static int ExpandEnvironmentStrings/* NOSONAR */(
+            MemorySegment lpSrc,
+            MemorySegment lpDst,
+            int nSize,
             MemorySegment captureState) {
 
         try {
@@ -155,14 +162,25 @@ public final class Kernel32 extends WindowsApi {
         }
     }
 
-    private static /* DWORD */ int FormatMessage/* NOSONAR */(
-            /* DWORD */ int dwFlags,
-            /* LPCVOID */ MemorySegment lpSource,
-            /* DWORD */ int dwMessageId,
-            /* DWORD */ int dwLanguageId,
-            /* LPTSTR */ MemorySegment lpBuffer,
-            /* DWORD */ int nSize,
-            /* va_list * */ MemorySegment Arguments, // NOSONAR
+    /*
+     * DWORD FormatMessage(
+     *   [in]           DWORD   dwFlags,
+     *   [in, optional] LPCVOID lpSource,
+     *   [in]           DWORD   dwMessageId,
+     *   [in]           DWORD   dwLanguageId,
+     *   [out]          LPTSTR  lpBuffer,
+     *   [in]           DWORD   nSize,
+     *   [in, optional] va_list *Arguments
+     * )
+     */
+    private static int FormatMessage/* NOSONAR */(
+            int dwFlags,
+            MemorySegment lpSource,
+            int dwMessageId,
+            int dwLanguageId,
+            MemorySegment lpBuffer,
+            int nSize,
+            MemorySegment Arguments, // NOSONAR
             MemorySegment captureState) {
 
         try {
@@ -191,8 +209,13 @@ public final class Kernel32 extends WindowsApi {
         throw new IllegalStateException(Messages.Kernel32.localFreeError(CaptureState.getLastError(captureState)));
     }
 
-    private static /* HLOCAL */ MemorySegment LocalFree/* NOSONAR */(
-            /* HLOCAL */ MemorySegment hMem,
+    /*
+     * HLOCAL LocalFree(
+     *   [in] _Frees_ptr_opt_ HLOCAL hMem
+     * )
+     */
+    private static MemorySegment LocalFree/* NOSONAR */(
+            MemorySegment hMem,
             MemorySegment captureState) {
 
         try {
@@ -204,8 +227,13 @@ public final class Kernel32 extends WindowsApi {
         }
     }
 
-    public static /* BOOL */ boolean CloseHandle/* NOSONAR */(
-            /* HANDLE */ MemorySegment hObject,
+    /*
+     * BOOL CloseHandle(
+     *   [in] HANDLE hObject
+     * )
+     */
+    public static boolean CloseHandle/* NOSONAR */(
+            MemorySegment hObject,
             MemorySegment captureState) {
 
         try {

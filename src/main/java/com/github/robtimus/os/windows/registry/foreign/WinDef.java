@@ -60,6 +60,11 @@ public final class WinDef {
         }
     }
 
+    /*
+     * typedef struct _FILETIME:
+     *   DWORD dwLowDateTime
+     *   DWORD dwHighDateTime
+     */
     public static final class FILETIME {
 
         private static final String DW_LOW_DATE_TIME_NAME = "dwLowDateTime"; //$NON-NLS-1$

@@ -58,6 +58,12 @@ public final class WinNT {
     private WinNT() {
     }
 
+    /*
+     * typedef enum _TRANSACTION_OUTCOME:
+     *   TransactionOutcomeUndetermined = 1,
+     *   TransactionOutcomeCommitted,
+     *   TransactionOutcomeAborted
+     */
     public static final class TRANSACTION_OUTCOME { // NOSONAR
 
         public static final int TransactionOutcomeUndetermined = 1; // NOSONAR
