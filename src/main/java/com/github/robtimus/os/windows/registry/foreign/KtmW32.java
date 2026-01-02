@@ -17,9 +17,6 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalFunctionMethodHandle;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalSymbolLookup;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
@@ -29,7 +26,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.Optional;
 
 @SuppressWarnings({ "javadoc", "nls" })
-public final class KtmW32 {
+public final class KtmW32 extends WindowsApi {
 
     private static final Optional<MethodHandle> CREATE_TRANSACTION;
     private static final Optional<MethodHandle> COMMIT_TRANSACTION;
@@ -41,38 +38,44 @@ public final class KtmW32 {
         Optional<SymbolLookup> ktmW32 = optionalSymbolLookup("KtmW32", ARENA);
 
         // CreateTransaction does not work before Windows Vista / Windows Server 2008
-        CREATE_TRANSACTION = optionalFunctionMethodHandle(linker, ktmW32, "CreateTransaction", FunctionDescriptor.of(ValueLayout.ADDRESS,
-                ValueLayout.ADDRESS, // lpSecurityAttributes
-                ValueLayout.ADDRESS, // UOW
-                ValueLayout.JAVA_INT, // CreateOptions
-                ValueLayout.JAVA_INT, // IsolationLevel
-                ValueLayout.JAVA_INT, // IsolationFlags
-                ValueLayout.JAVA_INT, // Timeout
-                ValueLayout.ADDRESS), // Description
-                CaptureState.LINKER_OPTION);
+        CREATE_TRANSACTION = ktmW32.flatMap(l -> l.find("CreateTransaction"))
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.ADDRESS,
+                        ValueLayout.ADDRESS, // lpSecurityAttributes
+                        ValueLayout.ADDRESS, // UOW
+                        ValueLayout.JAVA_INT, // CreateOptions
+                        ValueLayout.JAVA_INT, // IsolationLevel
+                        ValueLayout.JAVA_INT, // IsolationFlags
+                        ValueLayout.JAVA_INT, // Timeout
+                        ValueLayout.ADDRESS), // Description
+                        CaptureState.LINKER_OPTION));
 
         // CommitTransaction does not work before Windows Vista / Windows Server 2008
-        COMMIT_TRANSACTION = optionalFunctionMethodHandle(linker, ktmW32, "CommitTransaction", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN,
-                ValueLayout.ADDRESS), // TransactionHandle
-                CaptureState.LINKER_OPTION);
+        COMMIT_TRANSACTION = ktmW32.flatMap(l -> l.find("CommitTransaction"))
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_BOOLEAN,
+                        ValueLayout.ADDRESS), // TransactionHandle
+                        CaptureState.LINKER_OPTION));
 
         // RollbackTransaction does not work before Windows Vista / Windows Server 2008
-        ROLLBACK_TRANSACTION = optionalFunctionMethodHandle(linker, ktmW32, "RollbackTransaction", FunctionDescriptor.of(
-                ValueLayout.JAVA_BOOLEAN, // return value
-                ValueLayout.ADDRESS), // TransactionHandle
-                CaptureState.LINKER_OPTION);
+        ROLLBACK_TRANSACTION = ktmW32.flatMap(l -> l.find("RollbackTransaction"))
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_BOOLEAN, // return value
+                        ValueLayout.ADDRESS), // TransactionHandle
+                        CaptureState.LINKER_OPTION));
 
         // GetTransactionInformation does not work before Windows Vista / Windows Server 2008
-        GET_TRANSACTION_INFORMATION = optionalFunctionMethodHandle(linker, ktmW32, "GetTransactionInformation", FunctionDescriptor.of(
-                ValueLayout.JAVA_BOOLEAN, // return value
-                ValueLayout.ADDRESS, // TransactionHandle
-                ValueLayout.ADDRESS, // Outcome
-                ValueLayout.ADDRESS, // IsolationLevel
-                ValueLayout.ADDRESS, // IsolationFlags
-                ValueLayout.ADDRESS, // Timeout
-                ValueLayout.JAVA_INT, // BufferLength
-                ValueLayout.ADDRESS), // Description
-                CaptureState.LINKER_OPTION);
+        GET_TRANSACTION_INFORMATION = ktmW32.flatMap(l -> l.find("GetTransactionInformation"))
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_BOOLEAN, // return value
+                        ValueLayout.ADDRESS, // TransactionHandle
+                        ValueLayout.ADDRESS, // Outcome
+                        ValueLayout.ADDRESS, // IsolationLevel
+                        ValueLayout.ADDRESS, // IsolationFlags
+                        ValueLayout.ADDRESS, // Timeout
+                        ValueLayout.JAVA_INT, // BufferLength
+                        ValueLayout.ADDRESS), // Description
+                        CaptureState.LINKER_OPTION));
     }
 
     private KtmW32() {

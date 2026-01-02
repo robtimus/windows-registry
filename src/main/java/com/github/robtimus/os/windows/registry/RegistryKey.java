@@ -24,14 +24,11 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumVa
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.clear;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
+import static java.lang.Math.toIntExact;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.ValueLayout;
 import java.lang.ref.Cleaner;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -51,7 +48,6 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import com.github.robtimus.os.windows.registry.foreign.ForeignUtils;
 import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
@@ -902,8 +898,8 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
          */
         public Attributes attributes() {
             try (Arena allocator = Arena.ofConfined()) {
-                MemorySegment lpcSubKeys = allocateInt(allocator);
-                MemorySegment lpcValues = allocateInt(allocator);
+                MemorySegment lpcSubKeys = allocator.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcValues = allocator.allocate(ValueLayout.JAVA_INT);
                 MemorySegment lpftLastWriteTime = FILETIME.allocate(allocator);
                 int code = RegQueryInfoKey(
                         hKey,
@@ -921,7 +917,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, path(), machineName());
                 }
-                return new Attributes(ForeignUtils.getInt(lpcSubKeys), getInt(lpcValues), toInstant(lpftLastWriteTime));
+                return new Attributes(lpcSubKeys.get(ValueLayout.JAVA_INT, 0), lpcValues.get(ValueLayout.JAVA_INT, 0), toInstant(lpftLastWriteTime));
             }
         }
 
@@ -970,7 +966,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         }
 
         private Iterator<String> subKeyIterator(SegmentAllocator allocator) {
-            MemorySegment lpcMaxSubKeyLen = allocateInt(allocator);
+            MemorySegment lpcMaxSubKeyLen = allocator.allocate(ValueLayout.JAVA_INT);
 
             int code = RegQueryInfoKey(
                     hKey,
@@ -989,8 +985,9 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 throw RegistryException.forKey(code, path(), machineName());
             }
 
-            MemorySegment lpName = WString.allocate(allocator, getInt(lpcMaxSubKeyLen));
-            MemorySegment lpcName = allocateInt(allocator, lpName.byteSize());
+            MemorySegment lpName = WString.allocate(allocator, lpcMaxSubKeyLen.get(ValueLayout.JAVA_INT, 0));
+            int lpcNameValue = toIntExact(lpName.byteSize());
+            MemorySegment lpcName = allocator.allocateFrom(ValueLayout.JAVA_INT, lpcNameValue);
 
             return new LookaheadIterator<>() {
 
@@ -998,7 +995,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
                 @Override
                 protected String nextElement() {
-                    setInt(lpcName, lpName.byteSize());
+                    lpcName.set(ValueLayout.JAVA_INT, 0, lpcNameValue);
 
                     int code = RegEnumKeyEx(
                             hKey,
@@ -1012,7 +1009,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                     if (code == WinError.ERROR_SUCCESS) {
                         index++;
                         // lpcName contains the number of characters excluding the terminating character
-                        return WString.getString(lpName, getInt(lpcName));
+                        return WString.getString(lpName, lpcName.get(ValueLayout.JAVA_INT, 0));
                     }
                     if (code == WinError.ERROR_NO_MORE_ITEMS) {
                         return null;
@@ -1072,8 +1069,8 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         }
 
         private Iterator<RegistryValue> valueIterator(RegistryValue.Filter filter, SegmentAllocator allocator) {
-            MemorySegment lpcMaxValueNameLen = allocateInt(allocator);
-            MemorySegment lpcMaxValueLen = allocateInt(allocator);
+            MemorySegment lpcMaxValueNameLen = allocator.allocate(ValueLayout.JAVA_INT);
+            MemorySegment lpcMaxValueLen = allocator.allocate(ValueLayout.JAVA_INT);
 
             int code = RegQueryInfoKey(
                     hKey,
@@ -1092,14 +1089,16 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 throw RegistryException.forKey(code, path(), machineName());
             }
 
-            MemorySegment lpValueName = WString.allocate(allocator, getInt(lpcMaxValueNameLen));
-            MemorySegment lpcchValueName = allocateInt(allocator, lpValueName.byteSize());
+            MemorySegment lpValueName = WString.allocate(allocator, lpcMaxValueNameLen.get(ValueLayout.JAVA_INT, 0));
+            int lpcchValueNameValue = toIntExact(lpValueName.byteSize());
+            MemorySegment lpcchValueName = allocator.allocateFrom(ValueLayout.JAVA_INT, lpcchValueNameValue);
 
-            MemorySegment lpType = allocateInt(allocator);
+            MemorySegment lpType = allocator.allocate(ValueLayout.JAVA_INT);
 
             // lpcMaxValueLen does not include the terminating null character so add one extra
-            MemorySegment lpData = allocateBytes(allocator, getInt(lpcMaxValueLen) + WString.CHAR_SIZE);
-            MemorySegment lpcbData = allocateInt(allocator, lpData.byteSize());
+            MemorySegment lpData = allocator.allocate(ValueLayout.JAVA_BYTE, lpcMaxValueLen.get(ValueLayout.JAVA_INT, 0) + WString.CHAR_SIZE);
+            int lpcbDataValue = toIntExact(lpData.byteSize());
+            MemorySegment lpcbData = allocator.allocateFrom(ValueLayout.JAVA_INT, lpcbDataValue);
 
             return new LookaheadIterator<>() {
 
@@ -1108,11 +1107,11 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 @Override
                 protected RegistryValue nextElement() {
                     while (true) {
-                        clear(lpValueName);
-                        setInt(lpcchValueName, lpValueName.byteSize());
-                        setInt(lpType, 0);
-                        clear(lpData);
-                        setInt(lpcbData, getInt(lpcMaxValueLen));
+                        lpValueName.fill((byte) 0);
+                        lpcchValueName.set(ValueLayout.JAVA_INT, 0, lpcchValueNameValue);
+                        lpType.set(ValueLayout.JAVA_INT, 0, 0);
+                        lpData.fill((byte) 0);
+                        lpcbData.set(ValueLayout.JAVA_INT, 0, lpcbDataValue);
 
                         int code = RegEnumValue(
                                 hKey,
@@ -1126,10 +1125,10 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         if (code == WinError.ERROR_SUCCESS) {
                             index++;
                             // lpcchValueName contains the number of characters excluding the terminating character
-                            String valueName = WString.getString(lpValueName, getInt(lpcchValueName));
-                            int valueType = getInt(lpType);
+                            String valueName = WString.getString(lpValueName, lpcchValueName.get(ValueLayout.JAVA_INT, 0));
+                            int valueType = lpType.get(ValueLayout.JAVA_INT, 0);
                             if (filter == null || filter.matches(valueName, valueType)) {
-                                return RegistryValue.of(valueName, valueType, lpData, getInt(lpcbData));
+                                return RegistryValue.of(valueName, valueType, lpData, lpcbData.get(ValueLayout.JAVA_INT, 0));
                             }
                             continue;
                         }
@@ -1162,8 +1161,8 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
             try (Arena allocator = Arena.ofConfined()) {
                 MemorySegment lpValueName = WString.allocate(allocator, name);
-                MemorySegment lpType = allocateInt(allocator);
-                MemorySegment lpcbData = allocateInt(allocator);
+                MemorySegment lpType = allocator.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbData = allocator.allocate(ValueLayout.JAVA_INT);
 
                 int code = RegQueryValueEx(
                         hKey,
@@ -1175,9 +1174,9 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
                     // lpcbData includes the terminating null characters unless the data was stored without them
                     // Add not one but two chars, so for REG_MULTI_SZ both terminating null characters will be added
-                    MemorySegment lpData = allocateBytes(allocator, getInt(lpcbData) + 2 * WString.CHAR_SIZE);
-                    clear(lpData);
-                    setInt(lpcbData, lpData.byteSize());
+                    MemorySegment lpData = allocator.allocate(ValueLayout.JAVA_BYTE, lpcbData.get(ValueLayout.JAVA_INT, 0) + 2 * WString.CHAR_SIZE);
+                    lpData.fill((byte) 0);
+                    lpcbData.set(ValueLayout.JAVA_INT, 0, toIntExact(lpData.byteSize()));
 
                     code = RegQueryValueEx(
                             hKey,
@@ -1187,7 +1186,11 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             lpData,
                             lpcbData);
                     if (code == WinError.ERROR_SUCCESS) {
-                        return valueType.cast(RegistryValue.of(name, getInt(lpType), lpData, getInt(lpcbData)));
+                        return valueType.cast(RegistryValue.of(
+                                name,
+                                lpType.get(ValueLayout.JAVA_INT, 0),
+                                lpData,
+                                lpcbData.get(ValueLayout.JAVA_INT, 0)));
                     }
                 }
                 throw RegistryException.forValue(code, path(), machineName(), name);
@@ -1213,8 +1216,8 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
             try (Arena allocator = Arena.ofConfined()) {
                 MemorySegment lpValueName = WString.allocate(allocator, name);
-                MemorySegment lpType = allocateInt(allocator);
-                MemorySegment lpcbData = allocateInt(allocator);
+                MemorySegment lpType = allocator.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbData = allocator.allocate(ValueLayout.JAVA_INT);
 
                 int code = RegQueryValueEx(
                         hKey,
@@ -1229,9 +1232,9 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
                     // lpcbData includes the terminating null characters unless the data was stored without them
                     // Add not one but two chars, so for REG_MULTI_SZ both terminating null characters will be added
-                    MemorySegment lpData = allocateBytes(allocator, getInt(lpcbData) + 2 * WString.CHAR_SIZE);
-                    clear(lpData);
-                    setInt(lpcbData, lpData.byteSize());
+                    MemorySegment lpData = allocator.allocate(ValueLayout.JAVA_BYTE, lpcbData.get(ValueLayout.JAVA_INT, 0) + 2 * WString.CHAR_SIZE);
+                    lpData.fill((byte) 0);
+                    lpcbData.set(ValueLayout.JAVA_INT, 0, toIntExact(lpData.byteSize()));
 
                     code = RegQueryValueEx(
                             hKey,
@@ -1241,8 +1244,11 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             lpData,
                             lpcbData);
                     if (code == WinError.ERROR_SUCCESS) {
-                        RegistryValue value = RegistryValue.of(name, getInt(lpType), lpData, getInt(lpcbData));
-                        return Optional.of(valueType.cast(value));
+                        return Optional.of(valueType.cast(RegistryValue.of(
+                                name,
+                                lpType.get(ValueLayout.JAVA_INT, 0),
+                                lpData,
+                                lpcbData.get(ValueLayout.JAVA_INT, 0))));
                     }
                 }
                 throw RegistryException.forValue(code, path(), machineName(), name);
@@ -1395,7 +1401,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         0,
                         value.type(),
                         lpData,
-                        Math.toIntExact(lpData.byteSize()));
+                        toIntExact(lpData.byteSize()));
                 if (code != WinError.ERROR_SUCCESS) {
                     throw RegistryException.forValue(code, path(), machineName(), value.name());
                 }

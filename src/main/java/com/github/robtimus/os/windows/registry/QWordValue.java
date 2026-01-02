@@ -17,8 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateLong;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getLong;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
@@ -40,7 +38,7 @@ public final class QWordValue extends SettableRegistryValue {
     QWordValue(String name, MemorySegment data) {
         super(name, WinNT.REG_QWORD_LITTLE_ENDIAN);
 
-        this.value = getLong(data, LAYOUT);
+        this.value = data.get(LAYOUT, 0);
     }
 
     private QWordValue(String name, long value) {
@@ -71,7 +69,7 @@ public final class QWordValue extends SettableRegistryValue {
 
     @Override
     MemorySegment rawData(SegmentAllocator allocator) {
-        return allocateLong(allocator, LAYOUT, value);
+        return allocator.allocateFrom(LAYOUT, value);
     }
 
     @Override

@@ -17,12 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.setLastError;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.createTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setLastError;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
@@ -36,6 +34,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.time.Duration;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,7 +60,7 @@ class TransactionTest extends RegistryTestBase {
         @DisplayName("null description")
         void testNullDescription() {
             Duration timeout = Duration.ofMillis(100);
-            MemorySegment handle = ALLOCATOR.allocate(0);
+            MemorySegment handle = arena.allocate(0);
 
             ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), isNULL(), notNull()))
                     .thenReturn(handle);
@@ -80,7 +79,7 @@ class TransactionTest extends RegistryTestBase {
         @DisplayName("non-null description")
         void testNonNullDescription() {
             Duration timeout = Duration.ofMillis(100);
-            MemorySegment handle = ALLOCATOR.allocate(0);
+            MemorySegment handle = arena.allocate(0);
 
             ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), eqPointer("test"), notNull()))
                     .thenReturn(handle);
@@ -138,7 +137,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        setInt(outcomeSegment, outcome);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, outcome);
 
                         return true;
                     });
@@ -155,7 +154,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        setInt(outcomeSegment, -1);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, -1);
 
                         return true;
                     });
@@ -293,7 +292,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        setInt(outcomeSegment, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
 
                         return true;
                     });
@@ -318,7 +317,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        setInt(outcomeSegment, outcome);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, outcome);
 
                         return true;
                     });
@@ -339,7 +338,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        setInt(outcomeSegment, -1);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, -1);
 
                         return true;
                     });
@@ -401,7 +400,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        setInt(outcomeSegment, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeCommitted);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeCommitted);
 
                         return true;
                     });

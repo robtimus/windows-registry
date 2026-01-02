@@ -17,10 +17,10 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.ArrayList;
@@ -55,11 +55,13 @@ class WStringTest {
         @ValueSource(strings = { "foo", "bar" })
         @EmptySource
         void testNonEmptySegment(String value) {
-            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE)) {
+            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
                 memory.setWideString(0, value);
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 String result = WString.getString(segment);
                 assertEquals(value, result);
@@ -69,11 +71,13 @@ class WStringTest {
         @Test
         void testMissingTerminator() {
             String value = "foo";
-            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE)) {
+            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
                 memory.setWideString(0, value);
                 byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
 
-                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class, () -> WString.getString(segment));
                 assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
@@ -104,7 +108,9 @@ class WStringTest {
                     + values.size()
                     + 1;
 
-            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
                 long offset = 0;
                 for (String value : values) {
                     memory.setWideString(offset, value);
@@ -114,7 +120,7 @@ class WStringTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 List<String> result = WString.getStringList(segment);
                 assertEquals(values, result);
@@ -132,7 +138,9 @@ class WStringTest {
                     + values.size()
                     + 1;
 
-            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
                 long offset = 0;
                 for (String value : values) {
                     memory.setWideString(offset, value);
@@ -142,7 +150,7 @@ class WStringTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 List<String> result = WString.getStringList(segment);
                 assertEquals(values.subList(0, 2), result);
@@ -158,7 +166,9 @@ class WStringTest {
                     .sum()
                     + values.size();
 
-            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
                 long offset = 0;
                 for (String value : values) {
                     memory.setWideString(offset, value);
@@ -167,7 +177,7 @@ class WStringTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
 
-                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 List<String> result = WString.getStringList(segment);
                 assertEquals(values, result);
@@ -183,7 +193,9 @@ class WStringTest {
                     .sum()
                     + values.size();
 
-            try (Memory memory = new Memory(size * Native.WCHAR_SIZE)) {
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
                 long offset = 0;
                 for (String value : values) {
                     memory.setWideString(offset, value);
@@ -192,7 +204,7 @@ class WStringTest {
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
 
-                MemorySegment segment = ALLOCATOR.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
                 IllegalStateException exception = assertThrows(IllegalStateException.class, () -> WString.getStringList(segment));
                 assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
@@ -205,16 +217,18 @@ class WStringTest {
     @ValueSource(strings = { "foo", "bar" })
     @EmptySource
     void testAllocateFromString(String value) {
-        MemorySegment segment = WString.allocate(ALLOCATOR, value);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment segment = WString.allocate(arena, value);
 
-        byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
+            byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
-        try (Memory memory = new Memory(bytes.length)) {
-            memory.write(0, bytes, 0, bytes.length);
+            try (Memory memory = new Memory(bytes.length)) {
+                memory.write(0, bytes, 0, bytes.length);
 
-            String result = memory.getWideString(0);
+                String result = memory.getWideString(0);
 
-            assertEquals(value, result);
+                assertEquals(value, result);
+            }
         }
     }
 
@@ -225,50 +239,54 @@ class WStringTest {
         @Test
         @DisplayName("without empty strings")
         void testWithoutEmptyStrings() {
-            List<String> values = List.of("foo", "bar");
-            List<String> expected = List.of("foo", "bar", "");
+            try (Arena arena = Arena.ofConfined()) {
+                List<String> values = List.of("foo", "bar");
+                List<String> expected = List.of("foo", "bar", "");
 
-            MemorySegment segment = WString.allocate(ALLOCATOR, values);
+                MemorySegment segment = WString.allocate(arena, values);
 
-            byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
+                byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
-            try (Memory memory = new Memory(bytes.length)) {
-                memory.write(0, bytes, 0, bytes.length);
+                try (Memory memory = new Memory(bytes.length)) {
+                    memory.write(0, bytes, 0, bytes.length);
 
-                List<String> result = new ArrayList<>();
-                long offset = 0;
-                while (offset < memory.size()) {
-                    String value = memory.getWideString(offset);
-                    result.add(value);
-                    offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                    List<String> result = new ArrayList<>();
+                    long offset = 0;
+                    while (offset < memory.size()) {
+                        String value = memory.getWideString(offset);
+                        result.add(value);
+                        offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                    }
+
+                    assertEquals(expected, result);
                 }
-
-                assertEquals(expected, result);
             }
         }
 
         @Test
         @DisplayName("with empty strings")
         void testWithEmptyStrings() {
-            List<String> values = List.of("foo", "bar", "", "hello", "world");
-            List<String> expected = List.of("foo", "bar", "", "hello", "world", "");
+            try (Arena arena = Arena.ofConfined()) {
+                List<String> values = List.of("foo", "bar", "", "hello", "world");
+                List<String> expected = List.of("foo", "bar", "", "hello", "world", "");
 
-            MemorySegment segment = WString.allocate(ALLOCATOR, values);
+                MemorySegment segment = WString.allocate(arena, values);
 
-            byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
+                byte[] bytes = segment.toArray(ValueLayout.JAVA_BYTE);
 
-            try (Memory memory = new Memory(bytes.length)) {
-                memory.write(0, bytes, 0, bytes.length);
+                try (Memory memory = new Memory(bytes.length)) {
+                    memory.write(0, bytes, 0, bytes.length);
 
-                List<String> result = new ArrayList<>();
-                long offset = 0;
-                while (offset < memory.size()) {
-                    String value = memory.getWideString(offset);
-                    result.add(value);
-                    offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                    List<String> result = new ArrayList<>();
+                    long offset = 0;
+                    while (offset < memory.size()) {
+                        String value = memory.getWideString(offset);
+                        result.add(value);
+                        offset += (value.length() + 1L) * Native.WCHAR_SIZE;
+                    }
+
+                    assertEquals(expected, result);
                 }
-
-                assertEquals(expected, result);
             }
         }
     }

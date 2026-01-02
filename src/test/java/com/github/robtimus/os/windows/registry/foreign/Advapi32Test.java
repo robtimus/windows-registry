@@ -17,13 +17,9 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
@@ -54,24 +50,28 @@ class Advapi32Test {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment phkResult = HKEY.allocateRef(arena);
 
-            int code = Advapi32.RegConnectRegistry(MemorySegment.NULL, INVALID_HKEY, phkResult);
+                int code = Advapi32.RegConnectRegistry(MemorySegment.NULL, INVALID_HKEY, phkResult);
 
-            assertInvalidHandle(code);
-            assertNullReference(phkResult);
+                assertInvalidHandle(code);
+                assertNullReference(phkResult);
+            }
         }
 
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpMachineName = WString.allocate(ALLOCATOR, "localhost");
-            MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpMachineName = WString.allocate(arena, "localhost");
+                MemorySegment phkResult = HKEY.allocateRef(arena);
 
-            int code = Advapi32.RegConnectRegistry(lpMachineName, INVALID_HKEY, phkResult);
+                int code = Advapi32.RegConnectRegistry(lpMachineName, INVALID_HKEY, phkResult);
 
-            assertInvalidHandle(code);
-            assertNullReference(phkResult);
+                assertInvalidHandle(code);
+                assertNullReference(phkResult);
+            }
         }
     }
 
@@ -82,57 +82,63 @@ class Advapi32Test {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
-            MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpSubKey = WString.allocate(arena, "sub");
+                MemorySegment phkResult = HKEY.allocateRef(arena);
 
-            int code = Advapi32.RegCreateKeyEx(
-                    INVALID_HKEY,
-                    lpSubKey,
-                    0,
-                    MemorySegment.NULL,
-                    WinNT.REG_OPTION_NON_VOLATILE,
-                    WinNT.KEY_READ,
-                    MemorySegment.NULL,
-                    phkResult,
-                    MemorySegment.NULL);
+                int code = Advapi32.RegCreateKeyEx(
+                        INVALID_HKEY,
+                        lpSubKey,
+                        0,
+                        MemorySegment.NULL,
+                        WinNT.REG_OPTION_NON_VOLATILE,
+                        WinNT.KEY_READ,
+                        MemorySegment.NULL,
+                        phkResult,
+                        MemorySegment.NULL);
 
-            assertInvalidHandle(code);
-            assertNullReference(phkResult);
+                assertInvalidHandle(code);
+                assertNullReference(phkResult);
+            }
         }
 
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
-            // Don't set lpClass, it's never set in any other code
-            MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
-            MemorySegment lpdwDisposition = allocateInt(ALLOCATOR);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpSubKey = WString.allocate(arena, "sub");
+                // Don't set lpClass, it's never set in any other code
+                MemorySegment phkResult = HKEY.allocateRef(arena);
+                MemorySegment lpdwDisposition = arena.allocate(ValueLayout.JAVA_INT);
 
-            int code = Advapi32.RegCreateKeyEx(
-                    INVALID_HKEY,
-                    lpSubKey,
-                    0,
-                    MemorySegment.NULL,
-                    WinNT.REG_OPTION_NON_VOLATILE,
-                    WinNT.KEY_READ,
-                    MemorySegment.NULL,
-                    phkResult,
-                    lpdwDisposition);
+                int code = Advapi32.RegCreateKeyEx(
+                        INVALID_HKEY,
+                        lpSubKey,
+                        0,
+                        MemorySegment.NULL,
+                        WinNT.REG_OPTION_NON_VOLATILE,
+                        WinNT.KEY_READ,
+                        MemorySegment.NULL,
+                        phkResult,
+                        lpdwDisposition);
 
-            assertInvalidHandle(code);
-            assertNullReference(phkResult);
-            assertUninitializedInt(lpdwDisposition);
+                assertInvalidHandle(code);
+                assertNullReference(phkResult);
+                assertUninitializedInt(lpdwDisposition);
+            }
         }
     }
 
     @Test
     @DisplayName("RegDeleteKeyEx")
     void testRegDeleteKey() {
-        MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment lpSubKey = WString.allocate(arena, "sub");
 
-        int code = Advapi32.RegDeleteKeyEx(INVALID_HKEY, lpSubKey, 0, 0);
+            int code = Advapi32.RegDeleteKeyEx(INVALID_HKEY, lpSubKey, 0, 0);
 
-        assertInvalidHandle(code);
+            assertInvalidHandle(code);
+        }
     }
 
     @Nested
@@ -150,11 +156,13 @@ class Advapi32Test {
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpValueName = WString.allocate(ALLOCATOR, "val");
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpValueName = WString.allocate(arena, "val");
 
-            int code = Advapi32.RegDeleteValue(INVALID_HKEY, lpValueName);
+                int code = Advapi32.RegDeleteValue(INVALID_HKEY, lpValueName);
 
-            assertInvalidHandle(code);
+                assertInvalidHandle(code);
+            }
         }
     }
 
@@ -165,51 +173,55 @@ class Advapi32Test {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            MemorySegment lpName = WString.allocate(ALLOCATOR, 100);
-            MemorySegment lpcchName = allocateInt(ALLOCATOR, 100);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpName = WString.allocate(arena, 100);
+                MemorySegment lpcchName = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
 
-            int code = Advapi32.RegEnumKeyEx(
-                    INVALID_HKEY,
-                    0,
-                    lpName,
-                    lpcchName,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL);
+                int code = Advapi32.RegEnumKeyEx(
+                        INVALID_HKEY,
+                        0,
+                        lpName,
+                        lpcchName,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL);
 
-            assertInvalidHandle(code);
-            assertUninitializedString(lpName);
-            assertEquals(100, getInt(lpcchName));
+                assertInvalidHandle(code);
+                assertUninitializedString(lpName);
+                assertEquals(100, lpcchName.get(ValueLayout.JAVA_INT, 0));
+            }
         }
 
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpName = WString.allocate(ALLOCATOR, 100);
-            MemorySegment lpcchName = allocateInt(ALLOCATOR, 100);
-            MemorySegment lpClass = WString.allocate(ALLOCATOR, 100);
-            MemorySegment lpcchClass = allocateInt(ALLOCATOR, 100);
-            MemorySegment lpftLastWriteTime = FILETIME.allocate(ALLOCATOR);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpName = WString.allocate(arena, 100);
+                MemorySegment lpcchName = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
+                MemorySegment lpClass = WString.allocate(arena, 100);
+                MemorySegment lpcchClass = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
+                MemorySegment lpftLastWriteTime = FILETIME.allocate(arena);
 
-            int code = Advapi32.RegEnumKeyEx(
-                    INVALID_HKEY,
-                    0,
-                    lpName,
-                    lpcchName,
-                    MemorySegment.NULL,
-                    lpClass,
-                    lpcchClass,
-                    lpftLastWriteTime);
+                int code = Advapi32.RegEnumKeyEx(
+                        INVALID_HKEY,
+                        0,
+                        lpName,
+                        lpcchName,
+                        MemorySegment.NULL,
+                        lpClass,
+                        lpcchClass,
+                        lpftLastWriteTime);
 
-            assertInvalidHandle(code);
-            assertUninitializedString(lpName);
-            assertEquals(100, getInt(lpcchName));
-            assertUninitializedString(lpClass);
-            assertEquals(100, getInt(lpcchClass));
+                assertInvalidHandle(code);
+                assertUninitializedString(lpName);
+                assertEquals(100, lpcchName.get(ValueLayout.JAVA_INT, 0));
+                assertUninitializedString(lpClass);
+                assertEquals(100, lpcchClass.get(ValueLayout.JAVA_INT, 0));
 
-            assertEquals(0, FILETIME.dwLowDateTime(lpftLastWriteTime));
-            assertEquals(0, FILETIME.dwHighDateTime(lpftLastWriteTime));
+                assertEquals(0, FILETIME.dwLowDateTime(lpftLastWriteTime));
+                assertEquals(0, FILETIME.dwHighDateTime(lpftLastWriteTime));
+            }
         }
     }
 
@@ -220,67 +232,73 @@ class Advapi32Test {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            MemorySegment lpValueName = WString.allocate(ALLOCATOR, 100);
-            MemorySegment lpcchValueName = allocateInt(ALLOCATOR, 100);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpValueName = WString.allocate(arena, 100);
+                MemorySegment lpcchValueName = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
 
-            int code = Advapi32.RegEnumValue(
-                    INVALID_HKEY,
-                    0,
-                    lpValueName,
-                    lpcchValueName,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL);
+                int code = Advapi32.RegEnumValue(
+                        INVALID_HKEY,
+                        0,
+                        lpValueName,
+                        lpcchValueName,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL);
 
-            assertInvalidHandle(code);
-            assertUninitializedString(lpValueName);
-            assertEquals(100, getInt(lpcchValueName));
+                assertInvalidHandle(code);
+                assertUninitializedString(lpValueName);
+                assertEquals(100, lpcchValueName.get(ValueLayout.JAVA_INT, 0));
+            }
         }
 
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpValueName = WString.allocate(ALLOCATOR, 100);
-            MemorySegment lpcchValueName = allocateInt(ALLOCATOR, 100);
-            MemorySegment lpType = allocateInt(ALLOCATOR);
-            MemorySegment lpData = allocateBytes(ALLOCATOR, 100);
-            MemorySegment lpcbData = allocateInt(ALLOCATOR, 100);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpValueName = WString.allocate(arena, 100);
+                MemorySegment lpcchValueName = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
+                MemorySegment lpType = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpData = arena.allocate(ValueLayout.JAVA_BYTE, 100);
+                MemorySegment lpcbData = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
 
-            int code = Advapi32.RegEnumValue(
-                    INVALID_HKEY,
-                    0,
-                    lpValueName,
-                    lpcchValueName,
-                    MemorySegment.NULL,
-                    lpType,
-                    lpData,
-                    lpcbData);
+                int code = Advapi32.RegEnumValue(
+                        INVALID_HKEY,
+                        0,
+                        lpValueName,
+                        lpcchValueName,
+                        MemorySegment.NULL,
+                        lpType,
+                        lpData,
+                        lpcbData);
 
-            assertInvalidHandle(code);
-            assertUninitializedString(lpValueName);
-            assertEquals(100, getInt(lpcchValueName));
-            assertUninitializedInt(lpType);
-            assertUninitializedBytes(lpData);
-            assertEquals(100, getInt(lpcbData));
+                assertInvalidHandle(code);
+                assertUninitializedString(lpValueName);
+                assertEquals(100, lpcchValueName.get(ValueLayout.JAVA_INT, 0));
+                assertUninitializedInt(lpType);
+                assertUninitializedBytes(lpData);
+                assertEquals(100, lpcbData.get(ValueLayout.JAVA_INT, 0));
+            }
         }
     }
 
     @Test
     @DisplayName("RegOpenKeyEx")
     void testRegOpenKeyEx() {
-        MemorySegment lpSubKey = WString.allocate(ALLOCATOR, "sub");
-        MemorySegment phkResult = HKEY.allocateRef(ALLOCATOR);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment lpSubKey = WString.allocate(arena, "sub");
+            MemorySegment phkResult = HKEY.allocateRef(arena);
 
-        int code = Advapi32.RegOpenKeyEx(
-                INVALID_HKEY,
-                lpSubKey,
-                0,
-                WinNT.KEY_READ,
-                phkResult);
+            int code = Advapi32.RegOpenKeyEx(
+                    INVALID_HKEY,
+                    lpSubKey,
+                    0,
+                    WinNT.KEY_READ,
+                    phkResult);
 
-        assertInvalidHandle(code);
-        assertNullReference(phkResult);
+            assertInvalidHandle(code);
+            assertNullReference(phkResult);
+        }
     }
 
     @Nested
@@ -310,41 +328,43 @@ class Advapi32Test {
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            // Don't set lpClass or lpcchClass, they're never set in any other code
-            MemorySegment lpcSubKeys = allocateInt(ALLOCATOR);
-            MemorySegment lpcbMaxSubKeyLen = allocateInt(ALLOCATOR);
-            MemorySegment lpcbMaxClassLen = allocateInt(ALLOCATOR);
-            MemorySegment lpcValues = allocateInt(ALLOCATOR);
-            MemorySegment lpcbMaxValueNameLen = allocateInt(ALLOCATOR);
-            MemorySegment lpcbMaxValueLen = allocateInt(ALLOCATOR);
-            MemorySegment lpcbSecurityDescriptor = allocateInt(ALLOCATOR);
-            MemorySegment lpftLastWriteTime = FILETIME.allocate(ALLOCATOR);
+            try (Arena arena = Arena.ofConfined()) {
+                // Don't set lpClass or lpcchClass, they're never set in any other code
+                MemorySegment lpcSubKeys = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbMaxSubKeyLen = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbMaxClassLen = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcValues = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbMaxValueNameLen = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbMaxValueLen = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpcbSecurityDescriptor = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpftLastWriteTime = FILETIME.allocate(arena);
 
-            int code = Advapi32.RegQueryInfoKey(
-                    INVALID_HKEY,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL,
-                    MemorySegment.NULL,
-                    lpcSubKeys,
-                    lpcbMaxSubKeyLen,
-                    lpcbMaxClassLen,
-                    lpcValues,
-                    lpcbMaxValueNameLen,
-                    lpcbMaxValueLen,
-                    lpcbSecurityDescriptor,
-                    lpftLastWriteTime);
+                int code = Advapi32.RegQueryInfoKey(
+                        INVALID_HKEY,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        MemorySegment.NULL,
+                        lpcSubKeys,
+                        lpcbMaxSubKeyLen,
+                        lpcbMaxClassLen,
+                        lpcValues,
+                        lpcbMaxValueNameLen,
+                        lpcbMaxValueLen,
+                        lpcbSecurityDescriptor,
+                        lpftLastWriteTime);
 
-            assertInvalidHandle(code);
-            assertUninitializedInt(lpcSubKeys);
-            assertUninitializedInt(lpcbMaxSubKeyLen);
-            assertUninitializedInt(lpcbMaxClassLen);
-            assertUninitializedInt(lpcValues);
-            assertUninitializedInt(lpcbMaxValueNameLen);
-            assertUninitializedInt(lpcbMaxValueLen);
-            assertUninitializedInt(lpcbSecurityDescriptor);
+                assertInvalidHandle(code);
+                assertUninitializedInt(lpcSubKeys);
+                assertUninitializedInt(lpcbMaxSubKeyLen);
+                assertUninitializedInt(lpcbMaxClassLen);
+                assertUninitializedInt(lpcValues);
+                assertUninitializedInt(lpcbMaxValueNameLen);
+                assertUninitializedInt(lpcbMaxValueLen);
+                assertUninitializedInt(lpcbSecurityDescriptor);
 
-            assertEquals(0, FILETIME.dwLowDateTime(lpftLastWriteTime));
-            assertEquals(0, FILETIME.dwHighDateTime(lpftLastWriteTime));
+                assertEquals(0, FILETIME.dwLowDateTime(lpftLastWriteTime));
+                assertEquals(0, FILETIME.dwHighDateTime(lpftLastWriteTime));
+            }
         }
     }
 
@@ -369,23 +389,25 @@ class Advapi32Test {
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpValueName = WString.allocate(ALLOCATOR, "val");
-            MemorySegment lpType = allocateInt(ALLOCATOR);
-            MemorySegment lpData = allocateBytes(ALLOCATOR, 100);
-            MemorySegment lpcbData = allocateInt(ALLOCATOR, 100);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpValueName = WString.allocate(arena, "val");
+                MemorySegment lpType = arena.allocate(ValueLayout.JAVA_INT);
+                MemorySegment lpData = arena.allocate(ValueLayout.JAVA_BYTE, 100);
+                MemorySegment lpcbData = arena.allocateFrom(ValueLayout.JAVA_INT, 100);
 
-            int code = Advapi32.RegQueryValueEx(
-                    INVALID_HKEY,
-                    lpValueName,
-                    MemorySegment.NULL,
-                    lpType,
-                    lpData,
-                    lpcbData);
+                int code = Advapi32.RegQueryValueEx(
+                        INVALID_HKEY,
+                        lpValueName,
+                        MemorySegment.NULL,
+                        lpType,
+                        lpData,
+                        lpcbData);
 
-            assertInvalidHandle(code);
-            assertUninitializedInt(lpType);
-            assertUninitializedBytes(lpData);
-            assertEquals(100, getInt(lpcbData));
+                assertInvalidHandle(code);
+                assertUninitializedInt(lpType);
+                assertUninitializedBytes(lpData);
+                assertEquals(100, lpcbData.get(ValueLayout.JAVA_INT, 0));
+            }
         }
     }
 
@@ -396,28 +418,32 @@ class Advapi32Test {
         @Test
         @DisplayName("minimal arguments")
         void testMinimalArguments() {
-            MemorySegment lpNewKeyName = WString.allocate(ALLOCATOR, "new");
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpNewKeyName = WString.allocate(arena, "new");
 
-            int code = Advapi32.RegRenameKey(
-                    INVALID_HKEY,
-                    MemorySegment.NULL,
-                    lpNewKeyName);
+                int code = Advapi32.RegRenameKey(
+                        INVALID_HKEY,
+                        MemorySegment.NULL,
+                        lpNewKeyName);
 
-            assertInvalidHandle(code);
+                assertInvalidHandle(code);
+            }
         }
 
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpSubKeyName = WString.allocate(ALLOCATOR, "old");
-            MemorySegment lpNewKeyName = WString.allocate(ALLOCATOR, "new");
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpSubKeyName = WString.allocate(arena, "old");
+                MemorySegment lpNewKeyName = WString.allocate(arena, "new");
 
-            int code = Advapi32.RegRenameKey(
-                    INVALID_HKEY,
-                    lpSubKeyName,
-                    lpNewKeyName);
+                int code = Advapi32.RegRenameKey(
+                        INVALID_HKEY,
+                        lpSubKeyName,
+                        lpNewKeyName);
 
-            assertInvalidHandle(code);
+                assertInvalidHandle(code);
+            }
         }
     }
 
@@ -442,18 +468,20 @@ class Advapi32Test {
         @Test
         @DisplayName("all arguments")
         void testAllArguments() {
-            MemorySegment lpValueName = WString.allocate(ALLOCATOR, "val");
-            MemorySegment lpData = allocateInt(ALLOCATOR, ValueLayout.JAVA_INT.withOrder(ByteOrder.LITTLE_ENDIAN), 100);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment lpValueName = WString.allocate(arena, "val");
+                MemorySegment lpData = arena.allocateFrom(ValueLayout.JAVA_INT.withOrder(ByteOrder.LITTLE_ENDIAN), 100);
 
-            int code = Advapi32.RegSetValueEx(
-                    INVALID_HKEY,
-                    lpValueName,
-                    0,
-                    WinNT.REG_DWORD_LITTLE_ENDIAN,
-                    lpData,
-                    100);
+                int code = Advapi32.RegSetValueEx(
+                        INVALID_HKEY,
+                        lpValueName,
+                        0,
+                        WinNT.REG_DWORD_LITTLE_ENDIAN,
+                        lpData,
+                        100);
 
-            assertInvalidHandle(code);
+                assertInvalidHandle(code);
+            }
         }
     }
 
@@ -471,10 +499,10 @@ class Advapi32Test {
     }
 
     private void assertUninitializedInt(MemorySegment segment) {
-        assertEquals(0, getInt(segment));
+        assertEquals(0, segment.get(ValueLayout.JAVA_INT, 0));
     }
 
     private void assertUninitializedBytes(MemorySegment segment) {
-        assertArrayEquals(new byte[Math.toIntExact(segment.byteSize())], toByteArray(segment));
+        assertArrayEquals(new byte[Math.toIntExact(segment.byteSize())], segment.toArray(ValueLayout.JAVA_BYTE));
     }
 }

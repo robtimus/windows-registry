@@ -17,6 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqBytes;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqSize;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.newHKEY;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.setHKEY;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockClose;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockOpen;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockOpenAndClose;
@@ -36,14 +42,6 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryI
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqBytes;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqSize;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.newHKEY;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setHKEY;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.instanceOf;
@@ -63,6 +61,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
@@ -1011,7 +1010,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         @DisplayName("success")
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
-            MemorySegment data = stringValue.rawData(ALLOCATOR);
+            MemorySegment data = stringValue.rawData(arena);
 
             MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
@@ -1586,13 +1585,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testCreateNonExisting() {
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1608,13 +1607,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testCreateExisting() {
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_OPENED_EXISTING_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_OPENED_EXISTING_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1652,13 +1651,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testCreateNonExisting() {
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1674,13 +1673,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testCreateExisting() {
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_OPENED_EXISTING_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_OPENED_EXISTING_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1926,7 +1925,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("with CREATE")
         void testWithCreate() {
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
@@ -1968,7 +1967,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("with CREATE and MANAGE_VALUES")
         void testWithCreateAndManageValues() {
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))

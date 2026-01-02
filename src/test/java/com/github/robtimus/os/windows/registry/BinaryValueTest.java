@@ -21,8 +21,6 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertCo
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDataBytePointer;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -31,7 +29,9 @@ import static org.junit.jupiter.params.provider.Arguments.arguments;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -68,10 +68,12 @@ class BinaryValueTest {
         @Test
         @DisplayName("from memory segment")
         void testFromBytesWithLength() {
-            MemorySegment data = randomDataBytePointer();
-            BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
+                BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
 
-            assertArrayEquals(toByteArray(data.asSlice(0, data.byteSize() - 10)), value.data());
+                assertArrayEquals(data.asSlice(0, data.byteSize() - 10).toArray(ValueLayout.JAVA_BYTE), value.data());
+            }
         }
     }
 
@@ -85,8 +87,10 @@ class BinaryValueTest {
             byte[] data = randomData();
             BinaryValue value = BinaryValue.of("test", data);
 
-            MemorySegment rawData = value.rawData(ALLOCATOR);
-            assertArrayEquals(data, toByteArray(rawData));
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment rawData = value.rawData(arena);
+                assertArrayEquals(data, rawData.toArray(ValueLayout.JAVA_BYTE));
+            }
         }
 
         @Test
@@ -95,37 +99,43 @@ class BinaryValueTest {
             byte[] data = randomData();
             BinaryValue value = assertDoesNotThrow(() -> BinaryValue.of("test", new ByteArrayInputStream(data)));
 
-            MemorySegment rawData = value.rawData(ALLOCATOR);
-            assertArrayEquals(data, toByteArray(rawData));
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment rawData = value.rawData(arena);
+                assertArrayEquals(data, rawData.toArray(ValueLayout.JAVA_BYTE));
+            }
         }
 
         @Test
         @DisplayName("from memory segment")
         void testFromBytesWithLength() {
-            MemorySegment data = randomDataBytePointer();
-            BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
+                BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
 
-            MemorySegment rawData = value.rawData(ALLOCATOR);
-            assertContentEquals(data, rawData, data.byteSize() - 10);
-            assertEquals(data.byteSize() - 10, rawData.byteSize());
+                MemorySegment rawData = value.rawData(arena);
+                assertContentEquals(data, rawData, data.byteSize() - 10);
+                assertEquals(data.byteSize() - 10, rawData.byteSize());
+            }
         }
     }
 
     @Test
     @DisplayName("inputStream")
     void testInputStream() throws IOException {
-        MemorySegment data = randomDataBytePointer();
-        BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment data = randomDataBytePointer(arena);
+            BinaryValue value = new BinaryValue("test", data, data.byteSize() - 10);
 
-        byte[] content = new byte[Math.toIntExact(data.byteSize()) - 10];
-        try (InputStream inputStream = value.inputStream()) {
-            int offset = 0;
-            int remaining = content.length;
-            while (inputStream.read(content, offset, remaining) != -1) {
-                // Nothing to do
+            byte[] content = new byte[Math.toIntExact(data.byteSize()) - 10];
+            try (InputStream inputStream = value.inputStream()) {
+                int offset = 0;
+                int remaining = content.length;
+                while (inputStream.read(content, offset, remaining) != -1) {
+                    // Nothing to do
+                }
             }
+            assertArrayEquals(data.asSlice(0, data.byteSize() - 10).toArray(ValueLayout.JAVA_BYTE), content);
         }
-        assertArrayEquals(toByteArray(data.asSlice(0, data.byteSize() - 10)), content);
     }
 
     @Nested
@@ -206,16 +216,19 @@ class BinaryValueTest {
         assertEquals(expected, value.equals(other));
     }
 
+    @SuppressWarnings("resource")
     static Arguments[] equalsArguments() {
-        MemorySegment data = randomDataBytePointer();
-        byte[] dataBytes = toByteArray(data);
+        Arena arena = Arena.ofAuto();
+
+        MemorySegment data = randomDataBytePointer(arena);
+        byte[] dataBytes = data.toArray(ValueLayout.JAVA_BYTE);
         BinaryValue value = BinaryValue.of("test", dataBytes);
 
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, BinaryValue.of("test", dataBytes), true),
                 arguments(value, new BinaryValue("test", data, data.byteSize()), true),
-                arguments(value, new BinaryValue("test", resized(data, data.byteSize() + 10), data.byteSize()), true),
+                arguments(value, new BinaryValue("test", resized(arena, data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, BinaryValue.of("test2", dataBytes), false),
                 arguments(value, new BinaryValue("test", data, data.byteSize() - 1), false),
                 arguments(value, "foo", false),

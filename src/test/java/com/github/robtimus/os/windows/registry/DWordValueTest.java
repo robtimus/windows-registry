@@ -19,10 +19,10 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytesSegment;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -70,19 +70,23 @@ class DWordValueTest {
             @Test
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
-                assertEquals(67305985, value.value());
+                    assertEquals(67305985, value.value());
+                }
             }
 
             @Test
             @DisplayName("REG_DWORD_BIG_ENDIAN")
             void testBigEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
 
-                assertEquals(16909060, value.value());
+                    assertEquals(16909060, value.value());
+                }
             }
         }
     }
@@ -98,28 +102,34 @@ class DWordValueTest {
             @Test
             @DisplayName("default endian")
             void testDefaultEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = DWordValue.of("test", 67305985);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = DWordValue.of("test", 67305985);
 
-                assertContentEquals(data, value.rawData(ALLOCATOR));
+                    assertContentEquals(data, value.rawData(arena));
+                }
             }
 
             @Test
             @DisplayName("little-endian")
             void testLittleEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = DWordValue.littleEndianOf("test", 67305985);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = DWordValue.littleEndianOf("test", 67305985);
 
-                assertContentEquals(data, value.rawData(ALLOCATOR));
+                    assertContentEquals(data, value.rawData(arena));
+                }
             }
 
             @Test
             @DisplayName("big-endian")
             void testBigEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = DWordValue.bigEndianOf("test", 16909060);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = DWordValue.bigEndianOf("test", 16909060);
 
-                assertContentEquals(data, value.rawData(ALLOCATOR));
+                    assertContentEquals(data, value.rawData(arena));
+                }
             }
         }
 
@@ -130,19 +140,23 @@ class DWordValueTest {
             @Test
             @DisplayName("REG_DWORD_BIG_ENDIAN")
             void testBigEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
 
-                assertContentEquals(data, value.rawData(ALLOCATOR));
+                    assertContentEquals(data, value.rawData(arena));
+                }
             }
 
             @Test
             @DisplayName("REG_DWORD_LITTLE_ENDIAN")
             void testLittleEndian() {
-                MemorySegment data = bytesSegment(1, 2, 3, 4);
-                DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
+                try (Arena arena = Arena.ofConfined()) {
+                    MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
+                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
-                assertContentEquals(data, value.rawData(ALLOCATOR));
+                    assertContentEquals(data, value.rawData(arena));
+                }
             }
         }
     }
@@ -511,8 +525,11 @@ class DWordValueTest {
         assertEquals(expected, value.equals(other));
     }
 
+    @SuppressWarnings("resource")
     static Arguments[] equalsArguments() {
-        MemorySegment data = bytesSegment(1, 2, 3, 4);
+        Arena arena = Arena.ofAuto();
+
+        MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
         DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
 
         return new Arguments[] {

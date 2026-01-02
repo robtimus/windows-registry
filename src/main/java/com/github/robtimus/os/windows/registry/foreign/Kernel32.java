@@ -17,8 +17,6 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -28,7 +26,7 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
 @SuppressWarnings({ "javadoc", "nls" })
-public final class Kernel32 {
+public final class Kernel32 extends WindowsApi {
 
     private static final MethodHandle EXPAND_ENVIRONMENT_STRINGS;
     private static final MethodHandle FORMAT_MESSAGE;
@@ -39,13 +37,15 @@ public final class Kernel32 {
         Linker linker = Linker.nativeLinker();
         SymbolLookup kernel32 = SymbolLookup.libraryLookup("Kernel32", ARENA);
 
-        EXPAND_ENVIRONMENT_STRINGS = functionMethodHandle(linker, kernel32, "ExpandEnvironmentStringsW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        EXPAND_ENVIRONMENT_STRINGS = linker.downcallHandle(kernel32.findOrThrow("ExpandEnvironmentStringsW"), FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // lpSrc
                 ValueLayout.ADDRESS, // lpDst
                 ValueLayout.JAVA_INT), // nSize
                 CaptureState.LINKER_OPTION);
 
-        FORMAT_MESSAGE = functionMethodHandle(linker, kernel32, "FormatMessageW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        FORMAT_MESSAGE = linker.downcallHandle(kernel32.findOrThrow("FormatMessageW"), FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
                 ValueLayout.JAVA_INT, // dwFlags
                 ValueLayout.ADDRESS, // lpSource
                 ValueLayout.JAVA_INT, // dwMessageId
@@ -55,11 +55,13 @@ public final class Kernel32 {
                 ValueLayout.ADDRESS), // Arguments
                 CaptureState.LINKER_OPTION);
 
-        LOCAL_FREE = functionMethodHandle(linker, kernel32, "LocalFree", FunctionDescriptor.of(ValueLayout.ADDRESS,
+        LOCAL_FREE = linker.downcallHandle(kernel32.findOrThrow("LocalFree"), FunctionDescriptor.of(
+                ValueLayout.ADDRESS,
                 ValueLayout.ADDRESS), // hMem
                 CaptureState.LINKER_OPTION);
 
-        CLOSE_HANDLE = functionMethodHandle(linker, kernel32, "CloseHandle", FunctionDescriptor.of(ValueLayout.JAVA_BOOLEAN,
+        CLOSE_HANDLE = linker.downcallHandle(kernel32.findOrThrow("CloseHandle"), FunctionDescriptor.of(
+                ValueLayout.JAVA_BOOLEAN,
                 ValueLayout.ADDRESS), // hObject
                 CaptureState.LINKER_OPTION);
     }

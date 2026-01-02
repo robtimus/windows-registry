@@ -21,6 +21,7 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomDa
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -38,14 +39,17 @@ class ResourceRequirementsListValueTest {
         assertEquals(expected, value.equals(other));
     }
 
+    @SuppressWarnings("resource")
     static Arguments[] equalsArguments() {
-        MemorySegment data = randomDataBytePointer();
+        Arena arena = Arena.ofAuto();
+
+        MemorySegment data = randomDataBytePointer(arena);
         ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.byteSize());
 
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, new ResourceRequirementsListValue("test", data, data.byteSize()), true),
-                arguments(value, new ResourceRequirementsListValue("test", resized(data, data.byteSize() + 10), data.byteSize()), true),
+                arguments(value, new ResourceRequirementsListValue("test", resized(arena, data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, new ResourceRequirementsListValue("test2", data, data.byteSize()), false),
                 arguments(value, new ResourceRequirementsListValue("test", data, data.byteSize() - 1), false),
                 arguments(value, "foo", false),
@@ -56,10 +60,12 @@ class ResourceRequirementsListValueTest {
     @Test
     @DisplayName("hashCode")
     void testHashCode() {
-        MemorySegment data = randomDataBytePointer();
-        ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.byteSize());
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment data = randomDataBytePointer(arena);
+            ResourceRequirementsListValue value = new ResourceRequirementsListValue("test", data, data.byteSize());
 
-        assertEquals(value.hashCode(), value.hashCode());
-        assertEquals(value.hashCode(), new ResourceRequirementsListValue("test", data, data.byteSize()).hashCode());
+            assertEquals(value.hashCode(), value.hashCode());
+            assertEquals(value.hashCode(), new ResourceRequirementsListValue("test", data, data.byteSize()).hashCode());
+        }
     }
 }

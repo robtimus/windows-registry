@@ -17,7 +17,14 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.copyData;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.newHKEY;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.notNULL;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.setHKEY;
 import static com.github.robtimus.os.windows.registry.RegistryTestBase.advapi32;
+import static com.github.robtimus.os.windows.registry.RegistryTestBase.arena;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
@@ -25,18 +32,12 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumVa
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.copyData;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.newHKEY;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.notNULL;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setHKEY;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
+import static java.lang.Math.toIntExact;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import com.github.robtimus.os.windows.registry.foreign.WString;
 import com.github.robtimus.os.windows.registry.foreign.WinError;
@@ -53,7 +54,7 @@ final class RegistryKeyMocks {
     }
 
     static MemorySegment mockOpen(MemorySegment hKey, String path) {
-        MemorySegment result = newHKEY();
+        MemorySegment result = newHKEY(arena);
 
         advapi32.when(() -> RegOpenKeyEx(eq(hKey), eqPointer(path), anyInt(), anyInt(), notNull())).thenAnswer(i -> {
             setHKEY(i.getArgument(4, MemorySegment.class), result);
@@ -75,7 +76,7 @@ final class RegistryKeyMocks {
     }
 
     static MemorySegment mockConnect(MemorySegment hKey, String machineName) {
-        MemorySegment result = newHKEY();
+        MemorySegment result = newHKEY(arena);
 
         advapi32.when(() -> RegConnectRegistry(eqPointer(machineName), eq(hKey), notNull())).thenAnswer(i -> {
             setHKEY(i.getArgument(2, MemorySegment.class), result);
@@ -103,7 +104,7 @@ final class RegistryKeyMocks {
         advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNULL(), notNull(), notNull(), notNull(),
                 notNull(), notNull(), notNull()))
                 .thenAnswer(i -> {
-                    setInt(i.getArgument(5, MemorySegment.class), maxLength);
+                    i.getArgument(5, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, maxLength);
                     return WinError.ERROR_SUCCESS;
                 });
         advapi32.when(() -> RegEnumKeyEx(eq(hKey), anyInt(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull())).thenAnswer(i -> {
@@ -115,7 +116,7 @@ final class RegistryKeyMocks {
 
             MemorySegment lpName = i.getArgument(2, MemorySegment.class);
             WString.copy(name, lpName, 0);
-            setInt(i.getArgument(3, MemorySegment.class), name.length());
+            i.getArgument(3, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, name.length());
 
             return WinError.ERROR_SUCCESS;
         });
@@ -128,7 +129,7 @@ final class RegistryKeyMocks {
                 .max()
                 .orElseThrow();
         MemorySegment[] datas = Arrays.stream(values)
-                .map(value -> value.rawData(ALLOCATOR))
+                .map(value -> value.rawData(arena))
                 .toArray(MemorySegment[]::new);
         int maxValueLength = Arrays.stream(datas)
                 .mapToLong(MemorySegment::byteSize)
@@ -139,8 +140,8 @@ final class RegistryKeyMocks {
         advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNULL(),
                 notNULL(), notNull(), notNull()))
                 .thenAnswer(i -> {
-                    setInt(i.getArgument(8, MemorySegment.class), maxNameLength);
-                    setInt(i.getArgument(9, MemorySegment.class), maxValueLength);
+                    i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, maxNameLength);
+                    i.getArgument(9, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, maxValueLength);
                     return WinError.ERROR_SUCCESS;
                 });
         advapi32.when(() -> RegEnumValue(eq(hKey), anyInt(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull())).thenAnswer(i -> {
@@ -153,11 +154,11 @@ final class RegistryKeyMocks {
 
             MemorySegment lpValueName = i.getArgument(2, MemorySegment.class);
             WString.copy(name, lpValueName, 0);
-            setInt(i.getArgument(3, MemorySegment.class), name.length());
+            i.getArgument(3, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, name.length());
 
-            setInt(i.getArgument(5, MemorySegment.class), values[index].type());
+            i.getArgument(5, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, values[index].type());
             copyData(data, i.getArgument(6, MemorySegment.class));
-            setInt(i.getArgument(7, MemorySegment.class), data.byteSize());
+            i.getArgument(7, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, toIntExact(data.byteSize()));
 
             return WinError.ERROR_SUCCESS;
         });
@@ -168,17 +169,17 @@ final class RegistryKeyMocks {
     }
 
     static void mockValue(MemorySegment hKey, SettableRegistryValue value, int returnCode) {
-        MemorySegment data = value.rawData(ALLOCATOR);
+        MemorySegment data = value.rawData(arena);
 
         advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer(value.name()), notNull(), notNull(), isNULL(), notNull())).thenAnswer(i -> {
-            setInt(i.getArgument(3, MemorySegment.class), value.type());
-            setInt(i.getArgument(5, MemorySegment.class), data.byteSize());
+            i.getArgument(3, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, value.type());
+            i.getArgument(5, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, toIntExact(data.byteSize()));
 
             return WinError.ERROR_MORE_DATA;
         });
         advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer(value.name()), notNull(), isNULL(), notNull(), notNull())).thenAnswer(i -> {
             copyData(data, i.getArgument(4, MemorySegment.class));
-            setInt(i.getArgument(5, MemorySegment.class), data.byteSize());
+            i.getArgument(5, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, toIntExact(data.byteSize()));
 
             return returnCode;
         });

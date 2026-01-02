@@ -17,9 +17,6 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.ARENA;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.functionMethodHandle;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.optionalFunctionMethodHandle;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
 import java.lang.foreign.MemorySegment;
@@ -29,7 +26,7 @@ import java.lang.invoke.MethodHandle;
 import java.util.Optional;
 
 @SuppressWarnings({ "javadoc", "nls" })
-public final class Advapi32 {
+public final class Advapi32 extends WindowsApi {
 
     private static final MethodHandle REG_CLOSE_KEY;
     private static final MethodHandle REG_CONNECT_REGISTRY;
@@ -51,15 +48,17 @@ public final class Advapi32 {
         Linker linker = Linker.nativeLinker();
         SymbolLookup advapi32 = SymbolLookup.libraryLookup("Advapi32", ARENA);
 
-        REG_CLOSE_KEY = functionMethodHandle(linker, advapi32, "RegCloseKey", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_CLOSE_KEY = linker.downcallHandle(advapi32.findOrThrow("RegCloseKey"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS)); // hKey
 
-        REG_CONNECT_REGISTRY = functionMethodHandle(linker, advapi32, "RegConnectRegistryW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_CONNECT_REGISTRY = linker.downcallHandle(advapi32.findOrThrow("RegConnectRegistryW"), FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // lpMachineName
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS)); // phkResult
 
-        REG_CREATE_KEY_EX = functionMethodHandle(linker, advapi32, "RegCreateKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_CREATE_KEY_EX = linker.downcallHandle(advapi32.findOrThrow("RegCreateKeyExW"), FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS, // lpSubKey
                 ValueLayout.JAVA_INT, // Reserved
@@ -71,41 +70,44 @@ public final class Advapi32 {
                 ValueLayout.ADDRESS)); // lpdwDisposition
 
         // RegCreateKeyTransactedW does not work before Windows Vista / Windows Server 2008
-        REG_CREATE_KEY_TRANSACTED = optionalFunctionMethodHandle(linker, advapi32, "RegCreateKeyTransactedW", FunctionDescriptor.of(
-                ValueLayout.JAVA_INT, // return value
-                ValueLayout.ADDRESS, // hKey
-                ValueLayout.ADDRESS, // lpSubKey
-                ValueLayout.JAVA_INT, // Reserved
-                ValueLayout.ADDRESS, // lpClass
-                ValueLayout.JAVA_INT, // dwOptions
-                ValueLayout.JAVA_INT, // samDesired
-                ValueLayout.ADDRESS, // lpSecurityAttributes
-                ValueLayout.ADDRESS, // phkResult
-                ValueLayout.ADDRESS, // lpdwDisposition
-                ValueLayout.ADDRESS, // hTransaction
-                ValueLayout.ADDRESS)); // pExtendedParemeter
+        REG_CREATE_KEY_TRANSACTED = advapi32.find("RegCreateKeyTransactedW")
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, // hKey
+                        ValueLayout.ADDRESS, // lpSubKey
+                        ValueLayout.JAVA_INT, // Reserved
+                        ValueLayout.ADDRESS, // lpClass
+                        ValueLayout.JAVA_INT, // dwOptions
+                        ValueLayout.JAVA_INT, // samDesired
+                        ValueLayout.ADDRESS, // lpSecurityAttributes
+                        ValueLayout.ADDRESS, // phkResult
+                        ValueLayout.ADDRESS, // lpdwDisposition
+                        ValueLayout.ADDRESS, // hTransaction
+                        ValueLayout.ADDRESS))); // pExtendedParemeter
 
-        REG_DELETE_KEY_EX = functionMethodHandle(linker, advapi32, "RegDeleteKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_DELETE_KEY_EX = linker.downcallHandle(advapi32.findOrThrow("RegDeleteKeyExW"), FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS, // lpSubKey
                 ValueLayout.JAVA_INT, // samDesired
                 ValueLayout.JAVA_INT)); // Reserved
 
         // RegDeleteKeyTransactedW does not work before Windows Vista / Windows Server 2008
-        REG_DELETE_KEY_TRANSACTED = optionalFunctionMethodHandle(linker, advapi32, "RegDeleteKeyTransactedW", FunctionDescriptor.of(
-                ValueLayout.JAVA_INT, // return value
-                ValueLayout.ADDRESS, // hKey
-                ValueLayout.ADDRESS, // lpSubKey
-                ValueLayout.JAVA_INT, // samDesired
-                ValueLayout.JAVA_INT, // Reserved
-                ValueLayout.ADDRESS, // hTransaction
-                ValueLayout.ADDRESS)); // pExtendedParemeter
+        REG_DELETE_KEY_TRANSACTED = advapi32.find("RegDeleteKeyTransactedW")
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, // hKey
+                        ValueLayout.ADDRESS, // lpSubKey
+                        ValueLayout.JAVA_INT, // samDesired
+                        ValueLayout.JAVA_INT, // Reserved
+                        ValueLayout.ADDRESS, // hTransaction
+                        ValueLayout.ADDRESS))); // pExtendedParemeter
 
-        REG_DELETE_VALUE = functionMethodHandle(linker, advapi32, "RegDeleteValueW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_DELETE_VALUE = linker.downcallHandle(advapi32.findOrThrow("RegDeleteValueW"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS)); // lpValueName
 
-        REG_ENUM_KEY_EX = functionMethodHandle(linker, advapi32, "RegEnumKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_ENUM_KEY_EX = linker.downcallHandle(advapi32.findOrThrow("RegEnumKeyExW"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.JAVA_INT, // dwIndex
                 ValueLayout.ADDRESS, // lpName
@@ -115,7 +117,7 @@ public final class Advapi32 {
                 ValueLayout.ADDRESS, // lpcchClass
                 ValueLayout.ADDRESS)); // lpftLastWriteTime
 
-        REG_ENUM_VALUE = functionMethodHandle(linker, advapi32, "RegEnumValueW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_ENUM_VALUE = linker.downcallHandle(advapi32.findOrThrow("RegEnumValueW"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.JAVA_INT, // dwIndex
                 ValueLayout.ADDRESS, // lpValueName
@@ -125,7 +127,7 @@ public final class Advapi32 {
                 ValueLayout.ADDRESS, // lpData
                 ValueLayout.ADDRESS)); // lpcbData
 
-        REG_OPEN_KEY_EX = functionMethodHandle(linker, advapi32, "RegOpenKeyExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_OPEN_KEY_EX = linker.downcallHandle(advapi32.findOrThrow("RegOpenKeyExW"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS, // lpSubKey
                 ValueLayout.JAVA_INT, // ulOptions
@@ -133,16 +135,18 @@ public final class Advapi32 {
                 ValueLayout.ADDRESS)); // phkResult
 
         // RegOpenKeyTransactedW does not work before Windows Vista / Windows Server 2008
-        REG_OPEN_KEY_TRANSACTED = optionalFunctionMethodHandle(linker, advapi32, "RegOpenKeyTransactedW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                ValueLayout.ADDRESS, // hKey
-                ValueLayout.ADDRESS, // lpSubKey
-                ValueLayout.JAVA_INT, // ulOptions
-                ValueLayout.JAVA_INT, // samDesired
-                ValueLayout.ADDRESS, // phkResult
-                ValueLayout.ADDRESS, // hTransaction
-                ValueLayout.ADDRESS)); // pExtendedParemeter
+        REG_OPEN_KEY_TRANSACTED = advapi32.find("RegOpenKeyTransactedW")
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, // hKey
+                        ValueLayout.ADDRESS, // lpSubKey
+                        ValueLayout.JAVA_INT, // ulOptions
+                        ValueLayout.JAVA_INT, // samDesired
+                        ValueLayout.ADDRESS, // phkResult
+                        ValueLayout.ADDRESS, // hTransaction
+                        ValueLayout.ADDRESS))); // pExtendedParemeter
 
-        REG_QUERY_INFO_KEY = functionMethodHandle(linker, advapi32, "RegQueryInfoKeyW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_QUERY_INFO_KEY = linker.downcallHandle(advapi32.findOrThrow("RegQueryInfoKeyW"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS, // lpClass
                 ValueLayout.ADDRESS, // lpcchClass
@@ -156,7 +160,7 @@ public final class Advapi32 {
                 ValueLayout.ADDRESS, // lpcbSecurityDescriptor
                 ValueLayout.ADDRESS)); // lpftLastWriteTime
 
-        REG_QUERY_VALUE_EX = functionMethodHandle(linker, advapi32, "RegQueryValueExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_QUERY_VALUE_EX = linker.downcallHandle(advapi32.findOrThrow("RegQueryValueExW"), FunctionDescriptor.of(ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS, // lpValueName
                 ValueLayout.ADDRESS, // lpReserved
@@ -165,12 +169,15 @@ public final class Advapi32 {
                 ValueLayout.ADDRESS)); // lpcbData
 
         // RegRenameKey does not work before Windows Vista / Windows Server 2008
-        REG_RENAME_KEY = optionalFunctionMethodHandle(linker, advapi32, "RegRenameKey", FunctionDescriptor.of(ValueLayout.JAVA_INT,
-                ValueLayout.ADDRESS, // hKey
-                ValueLayout.ADDRESS, // lpSubKeyName
-                ValueLayout.ADDRESS)); // lpNewKeyName
+        REG_RENAME_KEY = advapi32.find("RegRenameKey")
+                .map(address -> linker.downcallHandle(address, FunctionDescriptor.of(
+                        ValueLayout.JAVA_INT,
+                        ValueLayout.ADDRESS, // hKey
+                        ValueLayout.ADDRESS, // lpSubKeyName
+                        ValueLayout.ADDRESS))); // lpNewKeyName
 
-        REG_SET_VALUE_EX = functionMethodHandle(linker, advapi32, "RegSetValueExW", FunctionDescriptor.of(ValueLayout.JAVA_INT,
+        REG_SET_VALUE_EX = linker.downcallHandle(advapi32.findOrThrow("RegSetValueExW"), FunctionDescriptor.of(
+                ValueLayout.JAVA_INT,
                 ValueLayout.ADDRESS, // hKey
                 ValueLayout.ADDRESS, // lpValueName
                 ValueLayout.JAVA_INT, // Reserved

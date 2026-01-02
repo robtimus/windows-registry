@@ -15,17 +15,16 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.CaptureState.LAST_ERROR_LAYOUT;
-import static com.github.robtimus.os.windows.registry.foreign.CaptureState.LAST_ERROR_OFFSET;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.IdentityHashMap;
@@ -33,19 +32,31 @@ import java.util.Map;
 import org.mockito.ArgumentMatcher;
 import org.mockito.internal.matchers.ContainsExtraTypeInfo;
 import org.mockito.internal.matchers.text.ValuePrinter;
+import com.github.robtimus.os.windows.registry.foreign.CaptureState;
+import com.github.robtimus.os.windows.registry.foreign.WString;
+import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
-@SuppressWarnings("javadoc")
+@SuppressWarnings({ "javadoc", "nls" })
 public final class ForeignTestUtils {
 
-    public static final Arena ALLOCATOR = ForeignUtils.ARENA;
+    private static ValueLayout.OfInt lastErrorLayout;
+    private static long lastErrorOffset;
+
+    static {
+        assertDoesNotThrow(() -> {
+            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(CaptureState.class, MethodHandles.lookup());
+            lastErrorLayout = (ValueLayout.OfInt) lookup.findStaticVarHandle(CaptureState.class, "LAST_ERROR_LAYOUT", ValueLayout.OfInt.class).get();
+            lastErrorOffset = (long) lookup.findStaticVarHandle(CaptureState.class, "LAST_ERROR_OFFSET", long.class).get();
+        });
+    }
 
     private static int hKeyValue = 0;
 
     private ForeignTestUtils() {
     }
 
-    public static MemorySegment newHKEY() {
-        MemorySegment hKey = ALLOCATOR.allocateFrom(ValueLayout.JAVA_LONG, ++hKeyValue);
+    public static MemorySegment newHKEY(Arena arena) {
+        MemorySegment hKey = arena.allocateFrom(ValueLayout.JAVA_LONG, ++hKeyValue);
 
         assertHKEYNotEquals(WinReg.HKEY_CLASSES_ROOT, hKey);
         assertHKEYNotEquals(WinReg.HKEY_CURRENT_USER, hKey);
@@ -79,7 +90,6 @@ public final class ForeignTestUtils {
         }
 
         @Override
-        @SuppressWarnings("nls")
         public String toString() {
             return "not NULL";
         }
@@ -123,13 +133,11 @@ public final class ForeignTestUtils {
         }
 
         @Override
-        @SuppressWarnings("nls")
         public String toString() {
             return "memory segment containing " + ValuePrinter.print(wanted);
         }
 
         @Override
-        @SuppressWarnings("nls")
         public String toStringWithType(String className) {
             return "(%s) %s".formatted(className, ValuePrinter.print(wanted));
         }
@@ -158,7 +166,7 @@ public final class ForeignTestUtils {
         private final byte[] wanted;
 
         private BytesMatcher(MemorySegment wanted) {
-            this.wanted = toByteArray(wanted);
+            this.wanted = wanted.toArray(ValueLayout.JAVA_BYTE);
         }
 
         @Override
@@ -167,7 +175,7 @@ public final class ForeignTestUtils {
                 return wanted == null;
             }
             if (argument.scope().isAlive()) {
-                byte[] pointerValue = toByteArray(argument);
+                byte[] pointerValue = argument.toArray(ValueLayout.JAVA_BYTE);
                 VALUES.put(argument, pointerValue);
                 return Arrays.equals(wanted, pointerValue);
             }
@@ -176,18 +184,15 @@ public final class ForeignTestUtils {
         }
 
         @Override
-        @SuppressWarnings("nls")
         public String toString() {
             return "memory segment containing bytes " + ValuePrinter.print(wantedAsHex());
         }
 
         @Override
-        @SuppressWarnings("nls")
         public String toStringWithType(String className) {
             return "(%s) %s".formatted(className, ValuePrinter.print(wantedAsHex()));
         }
 
-        @SuppressWarnings("nls")
         private String wantedAsHex() {
             return "0x" + HexFormat.of().formatHex(wanted);
         }
@@ -208,6 +213,6 @@ public final class ForeignTestUtils {
     }
 
     public static void setLastError(MemorySegment captureState, int errorCode) {
-        captureState.set(LAST_ERROR_LAYOUT, LAST_ERROR_OFFSET, errorCode);
+        captureState.set(lastErrorLayout, lastErrorOffset, errorCode);
     }
 }

@@ -17,8 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
 import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
@@ -26,6 +24,7 @@ import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransact
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Function;
@@ -103,7 +102,7 @@ public final class Transaction {
 
     private <T> T status(Function<Status, T> statusMapper, IntFunction<T> errorMapper, IntFunction<T> invalidValueMapper) {
         try (Arena allocator = Arena.ofConfined()) {
-            MemorySegment outcome = allocateInt(allocator);
+            MemorySegment outcome = allocator.allocate(ValueLayout.JAVA_INT);
             MemorySegment captureState = CaptureState.allocate(allocator);
             boolean result = GetTransactionInformation(
                     handle,
@@ -121,11 +120,12 @@ public final class Transaction {
                 }
                 return errorMapper.apply(errorCode);
             }
-            return switch (getInt(outcome)) {
+            int outcomeValue = outcome.get(ValueLayout.JAVA_INT, 0);
+            return switch (outcomeValue) {
                 case WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined -> statusMapper.apply(Status.ACTIVE);
                 case WinNT.TRANSACTION_OUTCOME.TransactionOutcomeCommitted -> statusMapper.apply(Status.COMMITTED);
                 case WinNT.TRANSACTION_OUTCOME.TransactionOutcomeAborted -> statusMapper.apply(Status.ROLLED_BACK);
-                default -> invalidValueMapper.apply(getInt(outcome));
+                default -> invalidValueMapper.apply(outcomeValue);
             };
         }
     }

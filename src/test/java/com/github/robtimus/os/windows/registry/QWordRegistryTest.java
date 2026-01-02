@@ -19,10 +19,10 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytesSegment;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -49,10 +49,12 @@ class QWordRegistryTest {
         @Test
         @DisplayName("from memory segment")
         void testFromBytes() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
-            QWordValue value = new QWordValue("test", data);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
+                QWordValue value = new QWordValue("test", data);
 
-            assertEquals(578437695752307201L, value.value());
+                assertEquals(578437695752307201L, value.value());
+            }
         }
     }
 
@@ -63,19 +65,23 @@ class QWordRegistryTest {
         @Test
         @DisplayName("from long")
         void testFromLong() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
-            QWordValue value = QWordValue.of("test", 578437695752307201L);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
+                QWordValue value = QWordValue.of("test", 578437695752307201L);
 
-            assertContentEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("from memory segment")
         void testFromBytes() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
-            QWordValue value = new QWordValue("test", data);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
+                QWordValue value = new QWordValue("test", data);
 
-            assertContentEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(arena));
+            }
         }
     }
 
@@ -140,9 +146,12 @@ class QWordRegistryTest {
         assertEquals(expected, value.equals(other));
     }
 
+    @SuppressWarnings("resource")
     static Arguments[] equalsArguments() {
-        MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
-        MemorySegment otherData = bytesSegment(1, 2, 3, 4, 5, 6, 7, 0);
+        Arena arena = Arena.ofAuto();
+
+        MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
+        MemorySegment otherData = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 0);
         QWordValue value = new QWordValue("test", data);
 
         return new Arguments[] {

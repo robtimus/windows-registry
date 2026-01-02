@@ -17,6 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqBytes;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqSize;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockSubKeys;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValue;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValues;
@@ -30,11 +34,6 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKe
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqBytes;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqSize;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -466,7 +465,7 @@ class LocalRootKeyTest extends RegistryTestBase {
         @DisplayName("success")
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
-            MemorySegment data = stringValue.rawData(ALLOCATOR);
+            MemorySegment data = stringValue.rawData(arena);
 
             advapi32.when(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
                     .thenReturn(WinError.ERROR_SUCCESS);

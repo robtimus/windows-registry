@@ -19,6 +19,7 @@ package com.github.robtimus.os.windows.registry;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mockStatic;
+import java.lang.foreign.Arena;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.MockedStatic;
@@ -28,10 +29,22 @@ import com.github.robtimus.os.windows.registry.foreign.KtmW32;
 
 class RegistryTestBase {
 
+    static Arena arena;
+
     // Mock all 3 Windows API classes to avoid performing actual calls by accident
     static MockedStatic<Advapi32> advapi32;
     static MockedStatic<KtmW32> ktmW32;
     static MockedStatic<Kernel32> kernel32;
+
+    @BeforeEach
+    void setupArena() {
+        arena = Arena.ofConfined();
+    }
+
+    @AfterEach
+    void closeArena() {
+        arena.close();
+    }
 
     @BeforeEach
     void setupMocks() {

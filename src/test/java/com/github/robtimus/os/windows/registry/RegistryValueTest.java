@@ -17,16 +17,16 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateBytes;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.toByteArray;
+import static java.lang.Math.toIntExact;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
@@ -58,173 +58,203 @@ final class RegistryValueTest {
         @Test
         @DisplayName("REG_NONE")
         void testNone() {
-            MemorySegment data = randomDataBytePointer();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_NONE, data, data.byteSize());
-            assertInstanceOf(NoneValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_NONE, value.type());
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_NONE, data, data.byteSize());
+                assertInstanceOf(NoneValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_NONE, value.type());
+            }
         }
 
         @Test
         @DisplayName("REG_SZ")
         void testString() {
-            MemorySegment data = textAsSegment();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = textAsSegment(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_SZ, data, data.byteSize());
-            StringValue stringValue = assertInstanceOf(StringValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_SZ, value.type());
-            assertContentEquals(data, stringValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_SZ, data, data.byteSize());
+                StringValue stringValue = assertInstanceOf(StringValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_SZ, value.type());
+                assertContentEquals(data, stringValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_EXPAND_SZ")
         void testExpandableString() {
-            MemorySegment data = textAsSegment();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = textAsSegment(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.byteSize());
-            StringValue expandableStringValue = assertInstanceOf(StringValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_EXPAND_SZ, value.type());
-            assertContentEquals(data, expandableStringValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.byteSize());
+                StringValue expandableStringValue = assertInstanceOf(StringValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_EXPAND_SZ, value.type());
+                assertContentEquals(data, expandableStringValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_BINARY")
         void testBinary() {
-            MemorySegment data = randomDataBytePointer();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_BINARY, data, data.byteSize());
-            BinaryValue binaryValue = assertInstanceOf(BinaryValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_BINARY, value.type());
-            assertContentEquals(data, binaryValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_BINARY, data, data.byteSize());
+                BinaryValue binaryValue = assertInstanceOf(BinaryValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_BINARY, value.type());
+                assertContentEquals(data, binaryValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_DWORD")
         void testDWord() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD, data, data.byteSize());
-            DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_DWORD, value.type());
-            assertContentEquals(data, dWordValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD, data, data.byteSize());
+                DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_DWORD, value.type());
+                assertContentEquals(data, dWordValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_DWORD_LITTLE_ENDIAN")
         void testLittleEndianDWord() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data, data.byteSize());
-            DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_DWORD_LITTLE_ENDIAN, value.type());
-            assertContentEquals(data, dWordValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data, data.byteSize());
+                DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_DWORD_LITTLE_ENDIAN, value.type());
+                assertContentEquals(data, dWordValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_DWORD_BIG_ENDIAN")
         void testBigEndianDWord() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_BIG_ENDIAN, data, data.byteSize());
-            DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_DWORD_BIG_ENDIAN, value.type());
-            assertContentEquals(data, dWordValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_BIG_ENDIAN, data, data.byteSize());
+                DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_DWORD_BIG_ENDIAN, value.type());
+                assertContentEquals(data, dWordValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_LINK")
         void testLink() {
-            MemorySegment data = randomDataBytePointer();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_LINK, data, data.byteSize());
-            assertInstanceOf(LinkValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_LINK, value.type());
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_LINK, data, data.byteSize());
+                assertInstanceOf(LinkValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_LINK, value.type());
+            }
         }
 
         @Test
         @DisplayName("REG_MULTI_SZ")
         void testMultiString() {
-            MemorySegment data = textAsSegment("value1", "value2", "value3");
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = textAsSegment(arena, "value1", "value2", "value3");
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_MULTI_SZ, data, data.byteSize());
-            MultiStringValue multiStringValue = assertInstanceOf(MultiStringValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_MULTI_SZ, value.type());
-            assertContentEquals(data, multiStringValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_MULTI_SZ, data, data.byteSize());
+                MultiStringValue multiStringValue = assertInstanceOf(MultiStringValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_MULTI_SZ, value.type());
+                assertContentEquals(data, multiStringValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_RESOURCE_LIST")
         void testResourceList() {
-            MemorySegment data = randomDataBytePointer();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_LIST, data, data.byteSize());
-            assertInstanceOf(ResourceListValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_RESOURCE_LIST, value.type());
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_LIST, data, data.byteSize());
+                assertInstanceOf(ResourceListValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_RESOURCE_LIST, value.type());
+            }
         }
 
         @Test
         @DisplayName("REG_FULL_RESOURCE_DESCRIPTOR")
         void testFullResourceDescriptor() {
-            MemorySegment data = randomDataBytePointer();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_FULL_RESOURCE_DESCRIPTOR, data, data.byteSize());
-            assertInstanceOf(FullResourceDescriptorValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_FULL_RESOURCE_DESCRIPTOR, value.type());
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_FULL_RESOURCE_DESCRIPTOR, data, data.byteSize());
+                assertInstanceOf(FullResourceDescriptorValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_FULL_RESOURCE_DESCRIPTOR, value.type());
+            }
         }
 
         @Test
         @DisplayName("REG_RESOURCE_REQUIREMENTS_LIST")
         void testResourceRequirementsList() {
-            MemorySegment data = randomDataBytePointer();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_REQUIREMENTS_LIST, data, data.byteSize());
-            assertInstanceOf(ResourceRequirementsListValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_RESOURCE_REQUIREMENTS_LIST, value.type());
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_REQUIREMENTS_LIST, data, data.byteSize());
+                assertInstanceOf(ResourceRequirementsListValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_RESOURCE_REQUIREMENTS_LIST, value.type());
+            }
         }
 
         @Test
         @DisplayName("REG_QWORD")
         void testQWord() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD, data, data.byteSize());
-            QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_QWORD, value.type());
-            assertContentEquals(data, qWordValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD, data, data.byteSize());
+                QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_QWORD, value.type());
+                assertContentEquals(data, qWordValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("REG_QWORD_LITTLE_ENDIAN")
         void testLittleEndianQWord() {
-            MemorySegment data = bytesSegment(1, 2, 3, 4, 5, 6, 7, 8);
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
 
-            RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD_LITTLE_ENDIAN, data, data.byteSize());
-            QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
-            assertEquals("test", value.name());
-            assertEquals(WinNT.REG_QWORD_LITTLE_ENDIAN, value.type());
-            assertContentEquals(data, qWordValue.rawData(ALLOCATOR));
+                RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD_LITTLE_ENDIAN, data, data.byteSize());
+                QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
+                assertEquals("test", value.name());
+                assertEquals(WinNT.REG_QWORD_LITTLE_ENDIAN, value.type());
+                assertContentEquals(data, qWordValue.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("unsupported type")
         void testUnsupportedType() {
-            MemorySegment data = randomDataBytePointer();
-            long dataLength = data.byteSize();
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = randomDataBytePointer(arena);
+                long dataLength = data.byteSize();
 
-            assertThrows(IllegalStateException.class, () -> RegistryValue.of("test", -1, data, dataLength));
+                assertThrows(IllegalStateException.class, () -> RegistryValue.of("test", -1, data, dataLength));
+            }
         }
     }
 
@@ -1171,26 +1201,26 @@ final class RegistryValueTest {
         return data;
     }
 
-    static MemorySegment randomDataBytePointer() {
+    static MemorySegment randomDataBytePointer(Arena arena) {
         byte[] bytes = randomData();
-        return allocateBytes(ALLOCATOR, bytes);
+        return arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
     }
 
-    static MemorySegment bytesSegment(int... values) {
+    static MemorySegment bytesSegment(Arena arena, int... values) {
         byte[] data = new byte[values.length];
         for (int i = 0; i < values.length; i++) {
             data[i] = (byte) values[i];
         }
-        return allocateBytes(ALLOCATOR, data);
+        return arena.allocateFrom(ValueLayout.JAVA_BYTE, data);
     }
 
     static byte[] textAsBytes() {
         return textAsBytes(TEXT);
     }
 
-    static MemorySegment textAsSegment() {
+    static MemorySegment textAsSegment(Arena arena) {
         byte[] bytes = textAsBytes();
-        return allocateBytes(ALLOCATOR, bytes);
+        return arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
     }
 
     static byte[] textAsBytes(String... texts) {
@@ -1204,9 +1234,9 @@ final class RegistryValueTest {
         return Arrays.copyOf(result, result.length + 2);
     }
 
-    static MemorySegment textAsSegment(String... texts) {
+    static MemorySegment textAsSegment(Arena arena, String... texts) {
         byte[] bytes = textAsBytes(texts);
-        return allocateBytes(ALLOCATOR, bytes);
+        return arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
     }
 
     private static byte[] textAsBytes(String text) {
@@ -1218,9 +1248,9 @@ final class RegistryValueTest {
         return result;
     }
 
-    static MemorySegment resized(MemorySegment data, long newSize) {
-        byte[] bytes = Arrays.copyOf(toByteArray(data), Math.toIntExact(newSize));
-        return allocateBytes(ALLOCATOR, bytes);
+    static MemorySegment resized(Arena arena, MemorySegment data, long newSize) {
+        byte[] bytes = Arrays.copyOf(data.toArray(ValueLayout.JAVA_BYTE), toIntExact(newSize));
+        return arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
     }
 
     static void assertContentEquals(MemorySegment expected, MemorySegment actual) {
@@ -1228,6 +1258,7 @@ final class RegistryValueTest {
     }
 
     static void assertContentEquals(MemorySegment expected, MemorySegment actual, long dataLength) {
-        assertArrayEquals(toByteArray(expected.asSlice(0, dataLength)), toByteArray(actual.asSlice(0, dataLength)));
+        assertArrayEquals(expected.asSlice(0, dataLength).toArray(ValueLayout.JAVA_BYTE),
+                actual.asSlice(0, dataLength).toArray(ValueLayout.JAVA_BYTE));
     }
 }

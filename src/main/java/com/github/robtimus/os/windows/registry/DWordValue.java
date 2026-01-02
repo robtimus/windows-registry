@@ -17,8 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
@@ -44,7 +42,7 @@ public final class DWordValue extends SettableRegistryValue {
         super(name, type);
 
         this.layout = getLayout(type);
-        this.value = getInt(data, layout);
+        this.value = data.get(layout, 0);
     }
 
     private DWordValue(String name, int type, int value, ValueLayout.OfInt layout) {
@@ -112,7 +110,7 @@ public final class DWordValue extends SettableRegistryValue {
 
     @Override
     MemorySegment rawData(SegmentAllocator allocator) {
-        return allocateInt(allocator, layout, value);
+        return allocator.allocateFrom(layout, value);
     }
 
     @Override

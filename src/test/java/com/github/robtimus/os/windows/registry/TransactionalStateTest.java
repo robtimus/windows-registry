@@ -17,6 +17,8 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.createTransaction;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCloseHandle;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCommitTransaction;
@@ -24,8 +26,6 @@ import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCreat
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockGetTransactionStatus;
 import static com.github.robtimus.os.windows.registry.TransactionOption.description;
 import static com.github.robtimus.os.windows.registry.TransactionOption.timeout;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;

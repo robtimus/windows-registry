@@ -17,6 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.newHKEY;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.setHKEY;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValue;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCloseHandle;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCommitTransaction;
@@ -35,11 +39,6 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKe
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyTransacted;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.newHKEY;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.setHKEY;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
@@ -52,6 +51,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import static org.mockito.Mockito.times;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -147,8 +147,8 @@ class RegistryKeyTest extends RegistryTestBase {
             advapi32.when(() -> RegQueryInfoKey(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
-                        setInt(i.getArgument(4, MemorySegment.class), 10);
-                        setInt(i.getArgument(7, MemorySegment.class), 20);
+                        i.getArgument(4, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, 10);
+                        i.getArgument(7, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, 20);
 
                         MemorySegment fileTime = i.getArgument(11, MemorySegment.class);
                         copyInstantToFileTime(instant, fileTime);
@@ -551,8 +551,8 @@ class RegistryKeyTest extends RegistryTestBase {
                 advapi32.when(() -> RegQueryInfoKey(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
                         .thenAnswer(i -> {
-                            setInt(i.getArgument(4, MemorySegment.class), 10);
-                            setInt(i.getArgument(7, MemorySegment.class), 20);
+                            i.getArgument(4, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, 10);
+                            i.getArgument(7, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, 20);
 
                             MemorySegment fileTime = i.getArgument(11, MemorySegment.class);
                             copyInstantToFileTime(instant, fileTime);
@@ -946,13 +946,13 @@ class RegistryKeyTest extends RegistryTestBase {
         void testDefaultNonTransactional() {
             String path = "path\\non-transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -988,13 +988,13 @@ class RegistryKeyTest extends RegistryTestBase {
         void testNonTransactional() {
             String path = "path\\non-transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1032,7 +1032,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testTransactional() {
             String path = "path\\transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
             mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
@@ -1043,7 +1043,7 @@ class RegistryKeyTest extends RegistryTestBase {
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1090,7 +1090,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testNonTransactionalInTransactional() {
             String path = "path\\transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
             mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
@@ -1101,7 +1101,7 @@ class RegistryKeyTest extends RegistryTestBase {
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1149,7 +1149,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testNestedTransactional() {
             String path = "path\\transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             List<MemorySegment> transactions = mockCreateTransactions(Duration.ofMillis(0), null, 2);
             MemorySegment transaction1 = transactions.get(0);
@@ -1170,7 +1170,7 @@ class RegistryKeyTest extends RegistryTestBase {
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1224,7 +1224,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testTransactionalWithCustomTimeout() {
             String path = "path\\transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(100), null);
             mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
@@ -1235,7 +1235,7 @@ class RegistryKeyTest extends RegistryTestBase {
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1282,7 +1282,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testTransactionalWithInfiniteTimeout() {
             String path = "path\\transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
             mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
@@ -1293,7 +1293,7 @@ class RegistryKeyTest extends RegistryTestBase {
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });
@@ -1340,7 +1340,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testTransactionalWithDescription() {
             String path = "path\\transactional";
 
-            MemorySegment hKey = newHKEY();
+            MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), "test");
             mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
@@ -1351,7 +1351,7 @@ class RegistryKeyTest extends RegistryTestBase {
                     eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        setInt(i.getArgument(8, MemorySegment.class), WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
 
                         return WinError.ERROR_SUCCESS;
                     });

@@ -17,11 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockClose;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockConnectAndClose;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;

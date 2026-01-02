@@ -17,12 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
+import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.RegistryTestBase.arena;
 import static com.github.robtimus.os.windows.registry.RegistryTestBase.kernel32;
 import static com.github.robtimus.os.windows.registry.RegistryTestBase.ktmW32;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.eqPointer;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.isNULL;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.setInt;
 import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
@@ -30,6 +29,7 @@ import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransact
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.IntStream;
@@ -55,7 +55,7 @@ final class TransactionMocks {
     }
 
     static MemorySegment mockCreateTransaction(Duration timeout, String description) {
-        MemorySegment handle = ALLOCATOR.allocate(0);
+        MemorySegment handle = arena.allocate(0);
 
         mockCreateTransaction(handle, timeout, description);
 
@@ -73,7 +73,7 @@ final class TransactionMocks {
 
     static List<MemorySegment> mockCreateTransactions(Duration timeout, String description, int count) {
         List<MemorySegment> handles = IntStream.range(0, count)
-                .mapToObj(_ -> ALLOCATOR.allocate(0))
+                .mapToObj(_ -> arena.allocate(0))
                 .toList();
 
         mockCreateTransactions(handles, timeout, description);
@@ -102,7 +102,7 @@ final class TransactionMocks {
         ktmW32.when(() -> GetTransactionInformation(eq(handle), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()))
                 .thenAnswer(i -> {
                     MemorySegment outcomeSegment = i.getArgument(1);
-                    setInt(outcomeSegment, outcome);
+                    outcomeSegment.set(ValueLayout.JAVA_INT, 0, outcome);
 
                     return true;
                 });

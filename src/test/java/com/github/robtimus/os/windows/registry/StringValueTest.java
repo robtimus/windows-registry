@@ -21,13 +21,13 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.TEXT;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsSegment;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignTestUtils.ALLOCATOR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -59,10 +59,12 @@ class StringValueTest {
         @Test
         @DisplayName("from memory segment")
         void testFromBytePointer() {
-            MemorySegment data = textAsSegment();
-            StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = textAsSegment(arena);
+                StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
 
-            assertEquals(TEXT, value.value());
+                assertEquals(TEXT, value.value());
+            }
         }
     }
 
@@ -146,16 +148,20 @@ class StringValueTest {
         void testFromString() {
             StringValue value = StringValue.of("test", TEXT);
 
-            assertContentEquals(textAsSegment(), value.rawData(ALLOCATOR));
+            try (Arena arena = Arena.ofConfined()) {
+                assertContentEquals(textAsSegment(arena), value.rawData(arena));
+            }
         }
 
         @Test
         @DisplayName("from memory segment")
         void testFromBytePointer() {
-            MemorySegment data = textAsSegment();
-            StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
+            try (Arena arena = Arena.ofConfined()) {
+                MemorySegment data = textAsSegment(arena);
+                StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
 
-            assertContentEquals(data, value.rawData(ALLOCATOR));
+                assertContentEquals(data, value.rawData(arena));
+            }
         }
     }
 
@@ -315,8 +321,11 @@ class StringValueTest {
         assertEquals(expected, value.equals(other));
     }
 
+    @SuppressWarnings("resource")
     static Arguments[] equalsArguments() {
-        MemorySegment data = textAsSegment();
+        Arena arena = Arena.ofAuto();
+
+        MemorySegment data = textAsSegment(arena);
         StringValue value = StringValue.of("test", TEXT);
 
         return new Arguments[] {
@@ -324,7 +333,7 @@ class StringValueTest {
                 arguments(value, StringValue.of("test", TEXT), true),
                 arguments(value, new StringValue("test", WinNT.REG_SZ, data, data.byteSize()), true),
                 arguments(value, new StringValue("test", WinNT.REG_EXPAND_SZ, data, data.byteSize()), false),
-                arguments(value, new StringValue("test", WinNT.REG_SZ, resized(data, data.byteSize() + 10), data.byteSize()), true),
+                arguments(value, new StringValue("test", WinNT.REG_SZ, resized(arena, data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, StringValue.of("test2", TEXT), false),
                 arguments(value, StringValue.of("test", TEXT.substring(0, TEXT.length() - 1)), false),
                 arguments(value, "foo", false),

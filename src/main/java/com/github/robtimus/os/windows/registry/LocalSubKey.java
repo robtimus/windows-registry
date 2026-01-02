@@ -18,11 +18,10 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.allocateInt;
-import static com.github.robtimus.os.windows.registry.foreign.ForeignUtils.getInt;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.ValueLayout;
 import java.lang.ref.Cleaner;
 import java.util.ArrayDeque;
 import java.util.Collections;
@@ -194,7 +193,7 @@ final class LocalSubKey extends RegistryKey {
     private int createOrOpen(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         MemorySegment lpSubKey = WString.allocate(allocator, path);
         MemorySegment phkResult = HKEY.allocateRef(allocator);
-        MemorySegment lpdwDisposition = allocateInt(allocator);
+        MemorySegment lpdwDisposition = allocator.allocate(ValueLayout.JAVA_INT);
 
         int code = Registry.currentContext().createKey(
                 rootHKey,
@@ -205,7 +204,7 @@ final class LocalSubKey extends RegistryKey {
                 lpdwDisposition);
         if (code == WinError.ERROR_SUCCESS) {
             closeKey(HKEY.target(phkResult), path(), machineName);
-            return getInt(lpdwDisposition);
+            return lpdwDisposition.get(ValueLayout.JAVA_INT, 0);
         }
         throw RegistryException.forKey(code, path(), machineName);
     }
