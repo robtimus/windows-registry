@@ -17,12 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_BIG_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.nio.ByteOrder;
 import java.util.Objects;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of DWORD registry values.
@@ -60,7 +61,7 @@ public final class DWordValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name is {@code null}.
      */
     public static DWordValue of(String name, int value) {
-        // WinNT.REG_DWORD is the same as WinNT.REG_DWORD_LITTLE_ENDIAN
+        // REG_DWORD is the same as REG_DWORD_LITTLE_ENDIAN
         return littleEndianOf(name, value);
     }
 
@@ -73,7 +74,7 @@ public final class DWordValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name is {@code null}.
      */
     public static DWordValue littleEndianOf(String name, int value) {
-        return new DWordValue(name, WinNT.REG_DWORD_LITTLE_ENDIAN, value, LAYOUT_LITTLE_ENDIAN);
+        return new DWordValue(name, REG_DWORD_LITTLE_ENDIAN, value, LAYOUT_LITTLE_ENDIAN);
     }
 
     /**
@@ -85,14 +86,14 @@ public final class DWordValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name is {@code null}.
      */
     public static DWordValue bigEndianOf(String name, int value) {
-        return new DWordValue(name, WinNT.REG_DWORD_BIG_ENDIAN, value, LAYOUT_BIG_ENDIAN);
+        return new DWordValue(name, REG_DWORD_BIG_ENDIAN, value, LAYOUT_BIG_ENDIAN);
     }
 
     private static ValueLayout.OfInt getLayout(int type) {
         switch (type) {
-            case WinNT.REG_DWORD_BIG_ENDIAN:
+            case REG_DWORD_BIG_ENDIAN:
                 return LAYOUT_BIG_ENDIAN;
-            case WinNT.REG_DWORD_LITTLE_ENDIAN:
+            case REG_DWORD_LITTLE_ENDIAN:
                 return LAYOUT_LITTLE_ENDIAN;
             default:
                 throw new IllegalArgumentException(Messages.RegistryValue.unsupportedType(type));

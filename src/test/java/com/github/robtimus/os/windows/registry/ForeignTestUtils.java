@@ -34,7 +34,7 @@ import org.mockito.internal.matchers.ContainsExtraTypeInfo;
 import org.mockito.internal.matchers.text.ValuePrinter;
 import com.github.robtimus.os.windows.registry.foreign.CaptureState;
 import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
+import com.github.robtimus.os.windows.registry.foreign.WindowsConstants;
 
 @SuppressWarnings({ "javadoc", "nls" })
 public final class ForeignTestUtils {
@@ -58,11 +58,11 @@ public final class ForeignTestUtils {
     public static MemorySegment newHKEY(Arena arena) {
         MemorySegment hKey = arena.allocateFrom(ValueLayout.JAVA_LONG, ++hKeyValue);
 
-        assertHKEYNotEquals(WinReg.HKEY_CLASSES_ROOT, hKey);
-        assertHKEYNotEquals(WinReg.HKEY_CURRENT_USER, hKey);
-        assertHKEYNotEquals(WinReg.HKEY_LOCAL_MACHINE, hKey);
-        assertHKEYNotEquals(WinReg.HKEY_USERS, hKey);
-        assertHKEYNotEquals(WinReg.HKEY_CURRENT_CONFIG, hKey);
+        assertHKEYNotEquals(WindowsConstants.HKEY_CLASSES_ROOT, hKey);
+        assertHKEYNotEquals(WindowsConstants.HKEY_CURRENT_USER, hKey);
+        assertHKEYNotEquals(WindowsConstants.HKEY_LOCAL_MACHINE, hKey);
+        assertHKEYNotEquals(WindowsConstants.HKEY_USERS, hKey);
+        assertHKEYNotEquals(WindowsConstants.HKEY_CURRENT_CONFIG, hKey);
         return hKey;
     }
 

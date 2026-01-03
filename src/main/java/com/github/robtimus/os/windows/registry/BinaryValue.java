@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -26,7 +27,6 @@ import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
 import java.util.HexFormat;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of binary registry values.
@@ -41,12 +41,12 @@ public final class BinaryValue extends SettableRegistryValue {
     private final byte[] data;
 
     BinaryValue(String name, MemorySegment data, long dataLength) {
-        super(name, WinNT.REG_BINARY);
+        super(name, REG_BINARY);
         this.data = data.asSlice(0, dataLength).toArray(ValueLayout.JAVA_BYTE);
     }
 
     private BinaryValue(String name, byte[] data) {
-        super(name, WinNT.REG_BINARY);
+        super(name, REG_BINARY);
         this.data = data;
     }
 

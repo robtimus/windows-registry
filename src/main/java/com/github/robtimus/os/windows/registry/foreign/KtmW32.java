@@ -94,14 +94,21 @@ public final class KtmW32 extends WindowsApi {
      *   [in, optional] LPWSTR                Description
      * )
      */
-    public static MemorySegment CreateTransaction/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static MemorySegment CreateTransaction(
             MemorySegment lpSecurityAttributes,
-            MemorySegment UOW, // NOSONAR
-            int CreateOptions, // NOSONAR
-            int IsolationLevel, // NOSONAR
-            int IsolationFlags, // NOSONAR
-            int Timeout, // NOSONAR
-            MemorySegment Description, // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment UOW,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int CreateOptions,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int IsolationLevel,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int IsolationFlags,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int Timeout,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment Description,
             MemorySegment captureState) {
 
         MethodHandle createTransactionHandle = CREATE_TRANSACTION.orElseThrow(UnsupportedOperationException::new);
@@ -129,8 +136,10 @@ public final class KtmW32 extends WindowsApi {
      *   [in] HANDLE TransactionHandle
      * )
      */
-    public static boolean CommitTransaction/* NOSONAR */(
-            MemorySegment TransactionHandle, // NOSONAR
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static boolean CommitTransaction(
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment TransactionHandle,
             MemorySegment captureState) {
 
         MethodHandle commitTransactionHandle = COMMIT_TRANSACTION.orElseThrow(UnsupportedOperationException::new);
@@ -152,8 +161,10 @@ public final class KtmW32 extends WindowsApi {
      *   [in] HANDLE TransactionHandle
      * )
      */
-    public static boolean RollbackTransaction/* NOSONAR */(
-            MemorySegment TransactionHandle, // NOSONAR
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static boolean RollbackTransaction(
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment TransactionHandle,
             MemorySegment captureState) {
 
         MethodHandle rollbackTransactionHandle = ROLLBACK_TRANSACTION.orElseThrow(UnsupportedOperationException::new);
@@ -181,14 +192,22 @@ public final class KtmW32 extends WindowsApi {
      *   [out, optional] LPWSTR Description
      * )
      */
-    public static boolean GetTransactionInformation/* NOSONAR */(
-            MemorySegment TransactionHandle, // NOSONAR
-            MemorySegment Outcome, // NOSONAR
-            MemorySegment IsolationLevel, // NOSONAR
-            MemorySegment IsolationFlags, // NOSONAR
-            MemorySegment Timeout, // NOSONAR
-            int BufferLength, // NOSONAR
-            MemorySegment Description, // NOSONAR
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static boolean GetTransactionInformation(
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment TransactionHandle,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment Outcome,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment IsolationLevel,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment IsolationFlags,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment Timeout,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int BufferLength,
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment Description,
             MemorySegment captureState) {
 
         MethodHandle getTransactionInformationHandle = GET_TRANSACTION_INFORMATION.orElseThrow(UnsupportedOperationException::new);

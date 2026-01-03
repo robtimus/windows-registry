@@ -21,6 +21,8 @@ import static com.github.robtimus.os.windows.registry.RegistryValueTest.TEXT;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.resized;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.textAsSegment;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_EXPAND_SZ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -39,7 +41,6 @@ import org.junit.jupiter.api.condition.OS;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
 class StringValueTest {
@@ -61,7 +62,7 @@ class StringValueTest {
         void testFromBytePointer() {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = textAsSegment(arena);
-                StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
+                StringValue value = new StringValue("test", REG_SZ, data, data.byteSize());
 
                 assertEquals(TEXT, value.value());
             }
@@ -158,7 +159,7 @@ class StringValueTest {
         void testFromBytePointer() {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = textAsSegment(arena);
-                StringValue value = new StringValue("test", WinNT.REG_SZ, data, data.byteSize());
+                StringValue value = new StringValue("test", REG_SZ, data, data.byteSize());
 
                 assertContentEquals(data, value.rawData(arena));
             }
@@ -331,9 +332,9 @@ class StringValueTest {
         return new Arguments[] {
                 arguments(value, value, true),
                 arguments(value, StringValue.of("test", TEXT), true),
-                arguments(value, new StringValue("test", WinNT.REG_SZ, data, data.byteSize()), true),
-                arguments(value, new StringValue("test", WinNT.REG_EXPAND_SZ, data, data.byteSize()), false),
-                arguments(value, new StringValue("test", WinNT.REG_SZ, resized(arena, data, data.byteSize() + 10), data.byteSize()), true),
+                arguments(value, new StringValue("test", REG_SZ, data, data.byteSize()), true),
+                arguments(value, new StringValue("test", REG_EXPAND_SZ, data, data.byteSize()), false),
+                arguments(value, new StringValue("test", REG_SZ, resized(arena, data, data.byteSize() + 10), data.byteSize()), true),
                 arguments(value, StringValue.of("test2", TEXT), false),
                 arguments(value, StringValue.of("test", TEXT.substring(0, TEXT.length() - 1)), false),
                 arguments(value, "foo", false),

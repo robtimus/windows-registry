@@ -22,6 +22,10 @@ import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockClose
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockConnectAndClose;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_BAD_NETPATH;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_LOCAL_MACHINE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_USERS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -34,8 +38,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.junit.jupiter.api.TestInstance.Lifecycle;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -48,15 +50,15 @@ class RemoteRegistryTest extends RegistryTestBase {
         @Test
         @DisplayName("succes")
         void testSuccess() {
-            MemorySegment hklmKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
-            MemorySegment hkuKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+            MemorySegment hklmKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
+            MemorySegment hkuKey = mockConnectAndClose(HKEY_USERS, "test-machine");
 
             try (var _ = RemoteRegistry.connect("test-machine")) {
                 // No need to do anything
             }
 
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
             advapi32.verify(() -> RegCloseKey(hklmKey));
             advapi32.verify(() -> RegCloseKey(hkuKey));
         }
@@ -64,30 +66,30 @@ class RemoteRegistryTest extends RegistryTestBase {
         @Test
         @DisplayName("HKLM failure")
         void testHKLMFailure() {
-            advapi32.when(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()))
-                    .thenReturn(WinError.ERROR_BAD_NETPATH);
+            advapi32.when(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()))
+                    .thenReturn(ERROR_BAD_NETPATH);
 
             RegistryException exception = assertThrows(RegistryException.class, () -> RemoteRegistry.connect("test-machine"));
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
 
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()), never());
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("HKU failure")
         void testFailure() {
-            MemorySegment hklmKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
+            MemorySegment hklmKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
 
-            advapi32.when(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()))
-                    .thenReturn(WinError.ERROR_BAD_NETPATH);
+            advapi32.when(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()))
+                    .thenReturn(ERROR_BAD_NETPATH);
 
             RegistryException exception = assertThrows(RegistryException.class, () -> RemoteRegistry.connect("test-machine"));
             assertEquals("HKEY_USERS", exception.path());
 
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
             // Verify that RegCloseKey is called exactly one, with hklmKey
             advapi32.verify(() -> RegCloseKey(hklmKey));
             advapi32.verify(() -> RegCloseKey(notNull()));
@@ -101,10 +103,10 @@ class RemoteRegistryTest extends RegistryTestBase {
         @Test
         @DisplayName("HKLM failure")
         void testHKLMFailure() {
-            MemorySegment hklmKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
-            MemorySegment hkuKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+            MemorySegment hklmKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
+            MemorySegment hkuKey = mockConnectAndClose(HKEY_USERS, "test-machine");
 
-            mockClose(hklmKey, WinError.ERROR_INVALID_HANDLE);
+            mockClose(hklmKey, ERROR_INVALID_HANDLE);
 
             @SuppressWarnings("resource")
             RemoteRegistry remoteRegistry = RemoteRegistry.connect("test-machine");
@@ -113,8 +115,8 @@ class RemoteRegistryTest extends RegistryTestBase {
 
             assertEquals(0, exception.getSuppressed().length);
 
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
             advapi32.verify(() -> RegCloseKey(hklmKey));
             advapi32.verify(() -> RegCloseKey(hkuKey));
         }
@@ -122,10 +124,10 @@ class RemoteRegistryTest extends RegistryTestBase {
         @Test
         @DisplayName("HKU failure")
         void testHKUFailure() {
-            MemorySegment hklmKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
-            MemorySegment hkuKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+            MemorySegment hklmKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
+            MemorySegment hkuKey = mockConnectAndClose(HKEY_USERS, "test-machine");
 
-            mockClose(hkuKey, WinError.ERROR_INVALID_HANDLE);
+            mockClose(hkuKey, ERROR_INVALID_HANDLE);
 
             @SuppressWarnings("resource")
             RemoteRegistry remoteRegistry = RemoteRegistry.connect("test-machine");
@@ -134,8 +136,8 @@ class RemoteRegistryTest extends RegistryTestBase {
 
             assertEquals(0, exception.getSuppressed().length);
 
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
             advapi32.verify(() -> RegCloseKey(hklmKey));
             advapi32.verify(() -> RegCloseKey(hkuKey));
         }
@@ -143,11 +145,11 @@ class RemoteRegistryTest extends RegistryTestBase {
         @Test
         @DisplayName("duplicate failure")
         void testDuplicateFailure() {
-            MemorySegment hklmKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
-            MemorySegment hkuKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+            MemorySegment hklmKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
+            MemorySegment hkuKey = mockConnectAndClose(HKEY_USERS, "test-machine");
 
-            mockClose(hklmKey, WinError.ERROR_INVALID_HANDLE);
-            mockClose(hkuKey, WinError.ERROR_INVALID_HANDLE);
+            mockClose(hklmKey, ERROR_INVALID_HANDLE);
+            mockClose(hkuKey, ERROR_INVALID_HANDLE);
 
             @SuppressWarnings("resource")
             RemoteRegistry remoteRegistry = RemoteRegistry.connect("test-machine");
@@ -160,8 +162,8 @@ class RemoteRegistryTest extends RegistryTestBase {
             RegistryException suppressedException = assertInstanceOf(RegistryException.class, suppressed[0]);
             assertEquals("HKEY_USERS", suppressedException.path());
 
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+            advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
             advapi32.verify(() -> RegCloseKey(hklmKey));
             advapi32.verify(() -> RegCloseKey(hkuKey));
         }

@@ -23,26 +23,30 @@ package com.github.robtimus.os.windows.registry;
  * @author Rob Spoor
  * @since 2.0
  */
+@SuppressWarnings("squid:S6548")
 public final class LocalRegistry extends Registry {
 
     static final LocalRegistry INSTANCE = new LocalRegistry();
 
-    // CHECKSTYLE:OFF: MemberName
-
     /** The HKEY_CLASSES_ROOT root key. */
-    public final RegistryKey HKEY_CLASSES_ROOT = LocalRootKey.HKEY_CLASSES_ROOT; // NOSONAR
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_CLASSES_ROOT = LocalRootKey.HKEY_CLASSES_ROOT;
 
     /** The HKEY_CURRENT_USER root key. */
-    public final RegistryKey HKEY_CURRENT_USER = LocalRootKey.HKEY_CURRENT_USER; // NOSONAR
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_CURRENT_USER = LocalRootKey.HKEY_CURRENT_USER;
 
     /** The HKEY_LOCAL_MACHINE root key. */
-    public final RegistryKey HKEY_LOCAL_MACHINE = LocalRootKey.HKEY_LOCAL_MACHINE; // NOSONAR
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_LOCAL_MACHINE = LocalRootKey.HKEY_LOCAL_MACHINE;
 
     /** The HKEY_USERS root key. */
-    public final RegistryKey HKEY_USERS = LocalRootKey.HKEY_USERS; // NOSONAR
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_USERS = LocalRootKey.HKEY_USERS;
 
     /** The HKEY_CURRENT_CONFIG root key. */
-    public final RegistryKey HKEY_CURRENT_CONFIG = LocalRootKey.HKEY_CURRENT_CONFIG; // NOSONAR
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_CURRENT_CONFIG = LocalRootKey.HKEY_CURRENT_CONFIG;
 
     // CHECKSTYLE:ON: MemberName
 

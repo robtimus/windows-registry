@@ -17,13 +17,24 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_BIG_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_EXPAND_SZ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_LINK;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_MULTI_SZ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_NONE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_QWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_LIST;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_REQUIREMENTS_LIST;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import java.lang.foreign.MemorySegment;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Predicate;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of registry values.
@@ -76,25 +87,25 @@ public abstract sealed class RegistryValue
 
     static RegistryValue of(String name, int type, MemorySegment data, long dataLength) {
         switch (type) {
-            case WinNT.REG_NONE:
+            case REG_NONE:
                 return new NoneValue(name, data, dataLength);
-            case WinNT.REG_SZ, WinNT.REG_EXPAND_SZ:
+            case REG_SZ, REG_EXPAND_SZ:
                 return new StringValue(name, type, data, dataLength);
-            case WinNT.REG_BINARY:
+            case REG_BINARY:
                 return new BinaryValue(name, data, dataLength);
-            case WinNT.REG_DWORD_LITTLE_ENDIAN, WinNT.REG_DWORD_BIG_ENDIAN:
+            case REG_DWORD_LITTLE_ENDIAN, REG_DWORD_BIG_ENDIAN:
                 return new DWordValue(name, type, data);
-            case WinNT.REG_LINK:
+            case REG_LINK:
                 return new LinkValue(name, data, dataLength);
-            case WinNT.REG_MULTI_SZ:
+            case REG_MULTI_SZ:
                 return new MultiStringValue(name, data, dataLength);
-            case WinNT.REG_RESOURCE_LIST:
+            case REG_RESOURCE_LIST:
                 return new ResourceListValue(name, data, dataLength);
-            case WinNT.REG_FULL_RESOURCE_DESCRIPTOR:
+            case REG_FULL_RESOURCE_DESCRIPTOR:
                 return new FullResourceDescriptorValue(name, data, dataLength);
-            case WinNT.REG_RESOURCE_REQUIREMENTS_LIST:
+            case REG_RESOURCE_REQUIREMENTS_LIST:
                 return new ResourceRequirementsListValue(name, data, dataLength);
-            case WinNT.REG_QWORD_LITTLE_ENDIAN:
+            case REG_QWORD_LITTLE_ENDIAN:
                 return new QWordValue(name, data);
             default:
                 throw new IllegalStateException(Messages.RegistryValue.unsupportedType(type));
@@ -127,19 +138,19 @@ public abstract sealed class RegistryValue
 
         private static Class<? extends RegistryValue>[] registryClasses() {
             @SuppressWarnings("unchecked")
-            Class<? extends RegistryValue>[] classes = new Class[WinNT.REG_QWORD_LITTLE_ENDIAN + 1];
-            classes[WinNT.REG_NONE] = NoneValue.class;
-            classes[WinNT.REG_SZ] = StringValue.class;
-            classes[WinNT.REG_EXPAND_SZ] = StringValue.class;
-            classes[WinNT.REG_BINARY] = BinaryValue.class;
-            classes[WinNT.REG_DWORD_LITTLE_ENDIAN] = DWordValue.class;
-            classes[WinNT.REG_DWORD_BIG_ENDIAN] = DWordValue.class;
-            classes[WinNT.REG_LINK] = LinkValue.class;
-            classes[WinNT.REG_MULTI_SZ] = MultiStringValue.class;
-            classes[WinNT.REG_RESOURCE_LIST] = ResourceListValue.class;
-            classes[WinNT.REG_FULL_RESOURCE_DESCRIPTOR] = FullResourceDescriptorValue.class;
-            classes[WinNT.REG_RESOURCE_REQUIREMENTS_LIST] = ResourceRequirementsListValue.class;
-            classes[WinNT.REG_QWORD_LITTLE_ENDIAN] = QWordValue.class;
+            Class<? extends RegistryValue>[] classes = new Class[REG_QWORD_LITTLE_ENDIAN + 1];
+            classes[REG_NONE] = NoneValue.class;
+            classes[REG_SZ] = StringValue.class;
+            classes[REG_EXPAND_SZ] = StringValue.class;
+            classes[REG_BINARY] = BinaryValue.class;
+            classes[REG_DWORD_LITTLE_ENDIAN] = DWordValue.class;
+            classes[REG_DWORD_BIG_ENDIAN] = DWordValue.class;
+            classes[REG_LINK] = LinkValue.class;
+            classes[REG_MULTI_SZ] = MultiStringValue.class;
+            classes[REG_RESOURCE_LIST] = ResourceListValue.class;
+            classes[REG_FULL_RESOURCE_DESCRIPTOR] = FullResourceDescriptorValue.class;
+            classes[REG_RESOURCE_REQUIREMENTS_LIST] = ResourceRequirementsListValue.class;
+            classes[REG_QWORD_LITTLE_ENDIAN] = QWordValue.class;
             return classes;
         }
 

@@ -24,6 +24,13 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumVa
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_MORE_DATA;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_NO_MORE_ITEMS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_SET_VALUE;
 import static java.lang.Math.toIntExact;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -49,9 +56,7 @@ import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.FILETIME;
 
 /**
  * A representation of registry keys.
@@ -96,7 +101,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
      * @since 1.1
      */
     public Instant lastWriteTime() {
-        try (Handle handle = handle(WinNT.KEY_READ)) {
+        try (Handle handle = handle(KEY_READ)) {
             return handle.lastWriteTime();
         }
     }
@@ -108,7 +113,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
      * @since 1.1
      */
     public Attributes attributes() {
-        try (Handle handle = handle(WinNT.KEY_READ)) {
+        try (Handle handle = handle(KEY_READ)) {
             return handle.attributes();
         }
     }
@@ -179,7 +184,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
      */
     @SuppressWarnings("resource")
     public Stream<RegistryKey> subKeys() {
-        Handle handle = handle(WinNT.KEY_READ);
+        Handle handle = handle(KEY_READ);
         try {
             return handle.subKeys()
                     .onClose(handle::close);
@@ -263,7 +268,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
      */
     @SuppressWarnings("resource")
     public Stream<RegistryValue> values() {
-        Handle handle = handle(WinNT.KEY_READ);
+        Handle handle = handle(KEY_READ);
         try {
             return handle.values()
                     .onClose(handle::close);
@@ -289,7 +294,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
      */
     @SuppressWarnings("resource")
     public Stream<RegistryValue> values(RegistryValue.Filter filter) {
-        Handle handle = handle(WinNT.KEY_READ);
+        Handle handle = handle(KEY_READ);
         try {
             return handle.values(filter)
                     .onClose(handle::close);
@@ -316,7 +321,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         Objects.requireNonNull(name);
         Objects.requireNonNull(valueType);
 
-        try (Handle handle = handle(WinNT.KEY_READ)) {
+        try (Handle handle = handle(KEY_READ)) {
             return handle.getValue(name, valueType);
         }
     }
@@ -337,7 +342,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         Objects.requireNonNull(name);
         Objects.requireNonNull(valueType);
 
-        try (Handle handle = handle(WinNT.KEY_READ)) {
+        try (Handle handle = handle(KEY_READ)) {
             return handle.findValue(name, valueType);
         }
     }
@@ -471,7 +476,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
     public void setValue(SettableRegistryValue value) {
         Objects.requireNonNull(value);
 
-        try (Handle handle = handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+        try (Handle handle = handle(KEY_READ | KEY_SET_VALUE)) {
             handle.setValue(value);
         }
     }
@@ -488,7 +493,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
     public void deleteValue(String name) {
         Objects.requireNonNull(name);
 
-        try (Handle handle = handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+        try (Handle handle = handle(KEY_READ | KEY_SET_VALUE)) {
             handle.deleteValue(name);
         }
     }
@@ -505,7 +510,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
     public boolean deleteValueIfExists(String name) {
         Objects.requireNonNull(name);
 
-        try (Handle handle = handle(WinNT.KEY_READ | WinNT.KEY_SET_VALUE)) {
+        try (Handle handle = handle(KEY_READ | KEY_SET_VALUE)) {
             return handle.deleteValueIfExists(name);
         }
     }
@@ -538,7 +543,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
         int samDesired = samDesired(optionSet);
 
-        handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND)
+        handle(samDesired, error -> error == ERROR_FILE_NOT_FOUND)
                 .ifPresent(handle -> runAction(handle, action));
     }
 
@@ -563,7 +568,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
         int samDesired = samDesired(optionSet);
 
-        return handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND)
+        return handle(samDesired, error -> error == ERROR_FILE_NOT_FOUND)
                 .map(handle -> runAction(handle, action));
     }
 
@@ -605,7 +610,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
         int samDesired = samDesired(optionSet);
 
-        handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND || error == WinError.ERROR_ACCESS_DENIED)
+        handle(samDesired, error -> error == ERROR_FILE_NOT_FOUND || error == ERROR_ACCESS_DENIED)
                 .ifPresent(handle -> runAction(handle, action));
     }
 
@@ -630,7 +635,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
         int samDesired = samDesired(optionSet);
 
-        return handle(samDesired, error -> error == WinError.ERROR_FILE_NOT_FOUND || error == WinError.ERROR_ACCESS_DENIED)
+        return handle(samDesired, error -> error == ERROR_FILE_NOT_FOUND || error == ERROR_ACCESS_DENIED)
                 .map(handle -> runAction(handle, action));
     }
 
@@ -712,7 +717,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
      * @throws RegistryException If the handle could not be created for another reason.
      */
     public Handle handle() {
-        return handle(WinNT.KEY_READ);
+        return handle(KEY_READ);
     }
 
     /**
@@ -749,7 +754,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
     abstract Optional<Handle> handle(int samDesired, IntPredicate ignoreError);
 
     private int samDesired(Set<HandleOption> options) {
-        int samDesired = WinNT.KEY_READ;
+        int samDesired = KEY_READ;
         for (HandleOption option : options) {
             samDesired |= option.samDesired;
         }
@@ -778,7 +783,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
 
     static void closeKey(MemorySegment hKey, String path, String machineName) {
         int code = RegCloseKey(hKey);
-        if (code != WinError.ERROR_SUCCESS) {
+        if (code != ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path, machineName);
         }
     }
@@ -883,7 +888,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         MemorySegment.NULL,
                         MemorySegment.NULL,
                         lpftLastWriteTime);
-                if (code != WinError.ERROR_SUCCESS) {
+                if (code != ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, path(), machineName());
                 }
                 return toInstant(lpftLastWriteTime);
@@ -914,7 +919,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         MemorySegment.NULL,
                         MemorySegment.NULL,
                         lpftLastWriteTime);
-                if (code != WinError.ERROR_SUCCESS) {
+                if (code != ERROR_SUCCESS) {
                     throw RegistryException.forKey(code, path(), machineName());
                 }
                 return new Attributes(lpcSubKeys.get(ValueLayout.JAVA_INT, 0), lpcValues.get(ValueLayout.JAVA_INT, 0), toInstant(lpftLastWriteTime));
@@ -981,7 +986,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                     MemorySegment.NULL,
                     MemorySegment.NULL,
                     MemorySegment.NULL);
-            if (code != WinError.ERROR_SUCCESS) {
+            if (code != ERROR_SUCCESS) {
                 throw RegistryException.forKey(code, path(), machineName());
             }
 
@@ -1006,12 +1011,12 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             MemorySegment.NULL,
                             MemorySegment.NULL,
                             MemorySegment.NULL);
-                    if (code == WinError.ERROR_SUCCESS) {
+                    if (code == ERROR_SUCCESS) {
                         index++;
                         // lpcName contains the number of characters excluding the terminating character
                         return WString.getString(lpName, lpcName.get(ValueLayout.JAVA_INT, 0));
                     }
-                    if (code == WinError.ERROR_NO_MORE_ITEMS) {
+                    if (code == ERROR_NO_MORE_ITEMS) {
                         return null;
                     }
                     throw RegistryException.forKey(code, path(), machineName());
@@ -1085,7 +1090,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                     lpcMaxValueLen,
                     MemorySegment.NULL,
                     MemorySegment.NULL);
-            if (code != WinError.ERROR_SUCCESS) {
+            if (code != ERROR_SUCCESS) {
                 throw RegistryException.forKey(code, path(), machineName());
             }
 
@@ -1122,7 +1127,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                                 lpType,
                                 lpData,
                                 lpcbData);
-                        if (code == WinError.ERROR_SUCCESS) {
+                        if (code == ERROR_SUCCESS) {
                             index++;
                             // lpcchValueName contains the number of characters excluding the terminating character
                             String valueName = WString.getString(lpValueName, lpcchValueName.get(ValueLayout.JAVA_INT, 0));
@@ -1132,7 +1137,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             }
                             continue;
                         }
-                        if (code == WinError.ERROR_NO_MORE_ITEMS) {
+                        if (code == ERROR_NO_MORE_ITEMS) {
                             return null;
                         }
                         throw RegistryException.forKey(code, path(), machineName());
@@ -1171,7 +1176,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         lpType,
                         MemorySegment.NULL,
                         lpcbData);
-                if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
+                if (code == ERROR_SUCCESS || code == ERROR_MORE_DATA) {
                     // lpcbData includes the terminating null characters unless the data was stored without them
                     // Add not one but two chars, so for REG_MULTI_SZ both terminating null characters will be added
                     MemorySegment lpData = allocator.allocate(ValueLayout.JAVA_BYTE, lpcbData.get(ValueLayout.JAVA_INT, 0) + 2 * WString.CHAR_SIZE);
@@ -1185,7 +1190,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             MemorySegment.NULL,
                             lpData,
                             lpcbData);
-                    if (code == WinError.ERROR_SUCCESS) {
+                    if (code == ERROR_SUCCESS) {
                         return valueType.cast(RegistryValue.of(
                                 name,
                                 lpType.get(ValueLayout.JAVA_INT, 0),
@@ -1226,10 +1231,10 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         lpType,
                         MemorySegment.NULL,
                         lpcbData);
-                if (code == WinError.ERROR_FILE_NOT_FOUND) {
+                if (code == ERROR_FILE_NOT_FOUND) {
                     return Optional.empty();
                 }
-                if (code == WinError.ERROR_SUCCESS || code == WinError.ERROR_MORE_DATA) {
+                if (code == ERROR_SUCCESS || code == ERROR_MORE_DATA) {
                     // lpcbData includes the terminating null characters unless the data was stored without them
                     // Add not one but two chars, so for REG_MULTI_SZ both terminating null characters will be added
                     MemorySegment lpData = allocator.allocate(ValueLayout.JAVA_BYTE, lpcbData.get(ValueLayout.JAVA_INT, 0) + 2 * WString.CHAR_SIZE);
@@ -1243,7 +1248,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                             MemorySegment.NULL,
                             lpData,
                             lpcbData);
-                    if (code == WinError.ERROR_SUCCESS) {
+                    if (code == ERROR_SUCCESS) {
                         return Optional.of(valueType.cast(RegistryValue.of(
                                 name,
                                 lpType.get(ValueLayout.JAVA_INT, 0),
@@ -1402,7 +1407,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                         value.type(),
                         lpData,
                         toIntExact(lpData.byteSize()));
-                if (code != WinError.ERROR_SUCCESS) {
+                if (code != ERROR_SUCCESS) {
                     throw RegistryException.forValue(code, path(), machineName(), value.name());
                 }
             }
@@ -1425,7 +1430,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 MemorySegment lpValueName = WString.allocate(allocator, name);
 
                 int code = RegDeleteValue(hKey, lpValueName);
-                if (code != WinError.ERROR_SUCCESS) {
+                if (code != ERROR_SUCCESS) {
                     throw RegistryException.forValue(code, path(), machineName(), name);
                 }
             }
@@ -1448,10 +1453,10 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
                 MemorySegment lpValueName = WString.allocate(allocator, name);
 
                 int code = RegDeleteValue(hKey, lpValueName);
-                if (code == WinError.ERROR_SUCCESS) {
+                if (code == ERROR_SUCCESS) {
                     return true;
                 }
-                if (code == WinError.ERROR_FILE_NOT_FOUND) {
+                if (code == ERROR_FILE_NOT_FOUND) {
                     return false;
                 }
                 throw RegistryException.forValue(code, path(), machineName(), name);
@@ -1481,7 +1486,7 @@ public abstract sealed class RegistryKey implements Comparable<RegistryKey> perm
         CREATE(0),
 
         /** Indicates that setting and deleting registry values should be allowed. */
-        MANAGE_VALUES(WinNT.KEY_SET_VALUE),
+        MANAGE_VALUES(KEY_SET_VALUE),
         ;
 
         private final int samDesired;

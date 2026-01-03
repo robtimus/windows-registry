@@ -17,6 +17,20 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_BIG_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_EXPAND_SZ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_LINK;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_MULTI_SZ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_NONE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_QWORD;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_QWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_LIST;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_REQUIREMENTS_LIST;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import static java.lang.Math.toIntExact;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -35,7 +49,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 import com.sun.jna.win32.W32APITypeMapper;
 
 @SuppressWarnings("nls")
@@ -61,10 +74,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = randomDataBytePointer(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_NONE, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_NONE, data, data.byteSize());
                 assertInstanceOf(NoneValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_NONE, value.type());
+                assertEquals(REG_NONE, value.type());
             }
         }
 
@@ -74,10 +87,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = textAsSegment(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_SZ, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_SZ, data, data.byteSize());
                 StringValue stringValue = assertInstanceOf(StringValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_SZ, value.type());
+                assertEquals(REG_SZ, value.type());
                 assertContentEquals(data, stringValue.rawData(arena));
             }
         }
@@ -88,10 +101,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = textAsSegment(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_EXPAND_SZ, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_EXPAND_SZ, data, data.byteSize());
                 StringValue expandableStringValue = assertInstanceOf(StringValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_EXPAND_SZ, value.type());
+                assertEquals(REG_EXPAND_SZ, value.type());
                 assertContentEquals(data, expandableStringValue.rawData(arena));
             }
         }
@@ -102,10 +115,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = randomDataBytePointer(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_BINARY, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_BINARY, data, data.byteSize());
                 BinaryValue binaryValue = assertInstanceOf(BinaryValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_BINARY, value.type());
+                assertEquals(REG_BINARY, value.type());
                 assertContentEquals(data, binaryValue.rawData(arena));
             }
         }
@@ -116,10 +129,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_DWORD, data, data.byteSize());
                 DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_DWORD, value.type());
+                assertEquals(REG_DWORD, value.type());
                 assertContentEquals(data, dWordValue.rawData(arena));
             }
         }
@@ -130,10 +143,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_DWORD_LITTLE_ENDIAN, data, data.byteSize());
                 DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_DWORD_LITTLE_ENDIAN, value.type());
+                assertEquals(REG_DWORD_LITTLE_ENDIAN, value.type());
                 assertContentEquals(data, dWordValue.rawData(arena));
             }
         }
@@ -144,10 +157,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_DWORD_BIG_ENDIAN, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_DWORD_BIG_ENDIAN, data, data.byteSize());
                 DWordValue dWordValue = assertInstanceOf(DWordValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_DWORD_BIG_ENDIAN, value.type());
+                assertEquals(REG_DWORD_BIG_ENDIAN, value.type());
                 assertContentEquals(data, dWordValue.rawData(arena));
             }
         }
@@ -158,10 +171,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = randomDataBytePointer(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_LINK, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_LINK, data, data.byteSize());
                 assertInstanceOf(LinkValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_LINK, value.type());
+                assertEquals(REG_LINK, value.type());
             }
         }
 
@@ -171,10 +184,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = textAsSegment(arena, "value1", "value2", "value3");
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_MULTI_SZ, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_MULTI_SZ, data, data.byteSize());
                 MultiStringValue multiStringValue = assertInstanceOf(MultiStringValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_MULTI_SZ, value.type());
+                assertEquals(REG_MULTI_SZ, value.type());
                 assertContentEquals(data, multiStringValue.rawData(arena));
             }
         }
@@ -185,10 +198,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = randomDataBytePointer(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_LIST, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_RESOURCE_LIST, data, data.byteSize());
                 assertInstanceOf(ResourceListValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_RESOURCE_LIST, value.type());
+                assertEquals(REG_RESOURCE_LIST, value.type());
             }
         }
 
@@ -198,10 +211,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = randomDataBytePointer(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_FULL_RESOURCE_DESCRIPTOR, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_FULL_RESOURCE_DESCRIPTOR, data, data.byteSize());
                 assertInstanceOf(FullResourceDescriptorValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_FULL_RESOURCE_DESCRIPTOR, value.type());
+                assertEquals(REG_FULL_RESOURCE_DESCRIPTOR, value.type());
             }
         }
 
@@ -211,10 +224,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = randomDataBytePointer(arena);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_RESOURCE_REQUIREMENTS_LIST, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_RESOURCE_REQUIREMENTS_LIST, data, data.byteSize());
                 assertInstanceOf(ResourceRequirementsListValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_RESOURCE_REQUIREMENTS_LIST, value.type());
+                assertEquals(REG_RESOURCE_REQUIREMENTS_LIST, value.type());
             }
         }
 
@@ -224,10 +237,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_QWORD, data, data.byteSize());
                 QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_QWORD, value.type());
+                assertEquals(REG_QWORD, value.type());
                 assertContentEquals(data, qWordValue.rawData(arena));
             }
         }
@@ -238,10 +251,10 @@ final class RegistryValueTest {
             try (Arena arena = Arena.ofConfined()) {
                 MemorySegment data = bytesSegment(arena, 1, 2, 3, 4, 5, 6, 7, 8);
 
-                RegistryValue value = RegistryValue.of("test", WinNT.REG_QWORD_LITTLE_ENDIAN, data, data.byteSize());
+                RegistryValue value = RegistryValue.of("test", REG_QWORD_LITTLE_ENDIAN, data, data.byteSize());
                 QWordValue qWordValue = assertInstanceOf(QWordValue.class, value);
                 assertEquals("test", value.name());
-                assertEquals(WinNT.REG_QWORD_LITTLE_ENDIAN, value.type());
+                assertEquals(REG_QWORD_LITTLE_ENDIAN, value.type());
                 assertContentEquals(data, qWordValue.rawData(arena));
             }
         }
@@ -268,7 +281,7 @@ final class RegistryValueTest {
             RegistryValue.Filter filter = RegistryValue.filter();
 
             String name = UUID.randomUUID().toString();
-            for (int type = WinNT.REG_NONE; type <= WinNT.REG_QWORD_LITTLE_ENDIAN; type++) {
+            for (int type = REG_NONE; type <= REG_QWORD_LITTLE_ENDIAN; type++) {
                 assertTrue(filter.matches(name, type));
             }
         }
@@ -283,7 +296,7 @@ final class RegistryValueTest {
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> s.startsWith("v"));
 
                 String name = "value";
-                for (int type = WinNT.REG_NONE; type <= WinNT.REG_QWORD_LITTLE_ENDIAN; type++) {
+                for (int type = REG_NONE; type <= REG_QWORD_LITTLE_ENDIAN; type++) {
                     assertTrue(filter.matches(name, type));
                 }
             }
@@ -294,7 +307,7 @@ final class RegistryValueTest {
                 RegistryValue.Filter filter = RegistryValue.filter().name(s -> !s.startsWith("v"));
 
                 String name = "value";
-                for (int type = WinNT.REG_NONE; type <= WinNT.REG_QWORD_LITTLE_ENDIAN; type++) {
+                for (int type = REG_NONE; type <= REG_QWORD_LITTLE_ENDIAN; type++) {
                     assertFalse(filter.matches(name, type));
                 }
             }
@@ -314,7 +327,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_SZ));
+                    assertTrue(filter.matches(name, REG_SZ));
                 }
 
                 @Test
@@ -323,7 +336,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                    assertTrue(filter.matches(name, REG_EXPAND_SZ));
                 }
 
                 @Test
@@ -332,7 +345,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                    assertTrue(filter.matches(name, REG_MULTI_SZ));
                 }
             }
 
@@ -346,7 +359,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                    assertFalse(filter.matches(name, REG_NONE));
                 }
 
                 @Test
@@ -355,7 +368,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_BINARY));
+                    assertFalse(filter.matches(name, REG_BINARY));
                 }
 
                 @Test
@@ -364,7 +377,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_DWORD));
+                    assertFalse(filter.matches(name, REG_DWORD));
                 }
 
                 @Test
@@ -373,7 +386,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                    assertFalse(filter.matches(name, REG_DWORD_LITTLE_ENDIAN));
                 }
 
                 @Test
@@ -382,7 +395,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                    assertFalse(filter.matches(name, REG_DWORD_BIG_ENDIAN));
                 }
 
                 @Test
@@ -391,7 +404,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                    assertFalse(filter.matches(name, REG_LINK));
                 }
 
                 @Test
@@ -400,7 +413,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_LIST));
                 }
 
                 @Test
@@ -409,7 +422,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                    assertFalse(filter.matches(name, REG_FULL_RESOURCE_DESCRIPTOR));
                 }
 
                 @Test
@@ -418,7 +431,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_REQUIREMENTS_LIST));
                 }
 
                 @Test
@@ -427,7 +440,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_QWORD));
+                    assertFalse(filter.matches(name, REG_QWORD));
                 }
 
                 @Test
@@ -436,7 +449,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                    assertFalse(filter.matches(name, REG_QWORD_LITTLE_ENDIAN));
                 }
             }
         }
@@ -455,7 +468,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                    assertTrue(filter.matches(name, REG_BINARY));
                 }
             }
 
@@ -469,7 +482,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                    assertFalse(filter.matches(name, REG_NONE));
                 }
 
                 @Test
@@ -478,7 +491,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_SZ));
+                    assertFalse(filter.matches(name, REG_SZ));
                 }
 
                 @Test
@@ -487,7 +500,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                    assertFalse(filter.matches(name, REG_EXPAND_SZ));
                 }
 
                 @Test
@@ -496,7 +509,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_DWORD));
+                    assertFalse(filter.matches(name, REG_DWORD));
                 }
 
                 @Test
@@ -505,7 +518,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                    assertFalse(filter.matches(name, REG_DWORD_LITTLE_ENDIAN));
                 }
 
                 @Test
@@ -514,7 +527,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                    assertFalse(filter.matches(name, REG_DWORD_BIG_ENDIAN));
                 }
 
                 @Test
@@ -523,7 +536,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                    assertFalse(filter.matches(name, REG_LINK));
                 }
 
                 @Test
@@ -532,7 +545,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_MULTI_SZ));
+                    assertFalse(filter.matches(name, REG_MULTI_SZ));
                 }
 
                 @Test
@@ -541,7 +554,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_LIST));
                 }
 
                 @Test
@@ -550,7 +563,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                    assertFalse(filter.matches(name, REG_FULL_RESOURCE_DESCRIPTOR));
                 }
 
                 @Test
@@ -559,7 +572,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_REQUIREMENTS_LIST));
                 }
 
                 @Test
@@ -568,7 +581,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_QWORD));
+                    assertFalse(filter.matches(name, REG_QWORD));
                 }
 
                 @Test
@@ -577,7 +590,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().binaries();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                    assertFalse(filter.matches(name, REG_QWORD_LITTLE_ENDIAN));
                 }
             }
         }
@@ -596,7 +609,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                    assertTrue(filter.matches(name, REG_DWORD));
                 }
 
                 @Test
@@ -605,7 +618,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                    assertTrue(filter.matches(name, REG_DWORD_LITTLE_ENDIAN));
                 }
 
                 @Test
@@ -614,7 +627,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                    assertTrue(filter.matches(name, REG_DWORD_BIG_ENDIAN));
                 }
 
                 @Test
@@ -623,7 +636,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                    assertTrue(filter.matches(name, REG_QWORD));
                 }
 
                 @Test
@@ -632,7 +645,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                    assertTrue(filter.matches(name, REG_QWORD_LITTLE_ENDIAN));
                 }
             }
 
@@ -646,7 +659,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                    assertFalse(filter.matches(name, REG_NONE));
                 }
 
                 @Test
@@ -655,7 +668,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_SZ));
+                    assertFalse(filter.matches(name, REG_SZ));
                 }
 
                 @Test
@@ -664,7 +677,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                    assertFalse(filter.matches(name, REG_EXPAND_SZ));
                 }
 
                 @Test
@@ -673,7 +686,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_BINARY));
+                    assertFalse(filter.matches(name, REG_BINARY));
                 }
 
                 @Test
@@ -682,7 +695,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                    assertFalse(filter.matches(name, REG_LINK));
                 }
 
                 @Test
@@ -691,7 +704,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_MULTI_SZ));
+                    assertFalse(filter.matches(name, REG_MULTI_SZ));
                 }
 
                 @Test
@@ -700,7 +713,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_LIST));
                 }
 
                 @Test
@@ -709,7 +722,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                    assertFalse(filter.matches(name, REG_FULL_RESOURCE_DESCRIPTOR));
                 }
 
                 @Test
@@ -718,7 +731,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().words();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_REQUIREMENTS_LIST));
                 }
             }
         }
@@ -737,7 +750,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_SZ));
+                    assertTrue(filter.matches(name, REG_SZ));
                 }
 
                 @Test
@@ -746,7 +759,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                    assertTrue(filter.matches(name, REG_EXPAND_SZ));
                 }
 
                 @Test
@@ -755,7 +768,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                    assertTrue(filter.matches(name, REG_BINARY));
                 }
 
                 @Test
@@ -764,7 +777,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                    assertTrue(filter.matches(name, REG_DWORD));
                 }
 
                 @Test
@@ -773,7 +786,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                    assertTrue(filter.matches(name, REG_DWORD_LITTLE_ENDIAN));
                 }
 
                 @Test
@@ -782,7 +795,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                    assertTrue(filter.matches(name, REG_DWORD_BIG_ENDIAN));
                 }
 
                 @Test
@@ -791,7 +804,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                    assertTrue(filter.matches(name, REG_MULTI_SZ));
                 }
 
                 @Test
@@ -800,7 +813,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                    assertTrue(filter.matches(name, REG_QWORD));
                 }
 
                 @Test
@@ -809,7 +822,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                    assertTrue(filter.matches(name, REG_QWORD_LITTLE_ENDIAN));
                 }
             }
 
@@ -823,7 +836,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_NONE));
+                    assertFalse(filter.matches(name, REG_NONE));
                 }
 
                 @Test
@@ -832,7 +845,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_LINK));
+                    assertFalse(filter.matches(name, REG_LINK));
                 }
 
                 @Test
@@ -841,7 +854,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_LIST));
                 }
 
                 @Test
@@ -850,7 +863,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                    assertFalse(filter.matches(name, REG_FULL_RESOURCE_DESCRIPTOR));
                 }
 
                 @Test
@@ -859,7 +872,7 @@ final class RegistryValueTest {
                     RegistryValue.Filter filter = RegistryValue.filter().settable();
 
                     String name = UUID.randomUUID().toString();
-                    assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                    assertFalse(filter.matches(name, REG_RESOURCE_REQUIREMENTS_LIST));
                 }
             }
         }
@@ -882,7 +895,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_NONE));
+                        assertTrue(filter.matches(name, REG_NONE));
                     }
 
                     @Test
@@ -891,7 +904,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_SZ));
+                        assertTrue(filter.matches(name, REG_SZ));
                     }
 
                     @Test
@@ -900,7 +913,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                        assertTrue(filter.matches(name, REG_EXPAND_SZ));
                     }
 
                     @Test
@@ -909,7 +922,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                        assertTrue(filter.matches(name, REG_BINARY));
                     }
 
                     @Test
@@ -918,7 +931,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                        assertTrue(filter.matches(name, REG_DWORD));
                     }
 
                     @Test
@@ -927,7 +940,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                        assertTrue(filter.matches(name, REG_DWORD_LITTLE_ENDIAN));
                     }
 
                     @Test
@@ -936,7 +949,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                        assertTrue(filter.matches(name, REG_DWORD_BIG_ENDIAN));
                     }
 
                     @Test
@@ -945,7 +958,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_LINK));
+                        assertTrue(filter.matches(name, REG_LINK));
                     }
 
                     @Test
@@ -954,7 +967,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                        assertTrue(filter.matches(name, REG_MULTI_SZ));
                     }
 
                     @Test
@@ -963,7 +976,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                        assertTrue(filter.matches(name, REG_RESOURCE_LIST));
                     }
 
                     @Test
@@ -972,7 +985,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                        assertTrue(filter.matches(name, REG_FULL_RESOURCE_DESCRIPTOR));
                     }
 
                     @Test
@@ -981,7 +994,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                        assertTrue(filter.matches(name, REG_RESOURCE_REQUIREMENTS_LIST));
                     }
 
                     @Test
@@ -990,7 +1003,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                        assertTrue(filter.matches(name, REG_QWORD));
                     }
 
                     @Test
@@ -999,7 +1012,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(RegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                        assertTrue(filter.matches(name, REG_QWORD_LITTLE_ENDIAN));
                     }
                 }
             }
@@ -1018,7 +1031,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_SZ));
+                        assertTrue(filter.matches(name, REG_SZ));
                     }
 
                     @Test
@@ -1027,7 +1040,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_EXPAND_SZ));
+                        assertTrue(filter.matches(name, REG_EXPAND_SZ));
                     }
 
                     @Test
@@ -1036,7 +1049,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_BINARY));
+                        assertTrue(filter.matches(name, REG_BINARY));
                     }
 
                     @Test
@@ -1045,7 +1058,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_DWORD));
+                        assertTrue(filter.matches(name, REG_DWORD));
                     }
 
                     @Test
@@ -1054,7 +1067,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_DWORD_LITTLE_ENDIAN));
+                        assertTrue(filter.matches(name, REG_DWORD_LITTLE_ENDIAN));
                     }
 
                     @Test
@@ -1063,7 +1076,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_DWORD_BIG_ENDIAN));
+                        assertTrue(filter.matches(name, REG_DWORD_BIG_ENDIAN));
                     }
 
                     @Test
@@ -1072,7 +1085,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_MULTI_SZ));
+                        assertTrue(filter.matches(name, REG_MULTI_SZ));
                     }
 
                     @Test
@@ -1081,7 +1094,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_QWORD));
+                        assertTrue(filter.matches(name, REG_QWORD));
                     }
 
                     @Test
@@ -1090,7 +1103,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertTrue(filter.matches(name, WinNT.REG_QWORD_LITTLE_ENDIAN));
+                        assertTrue(filter.matches(name, REG_QWORD_LITTLE_ENDIAN));
                     }
                 }
 
@@ -1104,7 +1117,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertFalse(filter.matches(name, WinNT.REG_NONE));
+                        assertFalse(filter.matches(name, REG_NONE));
                     }
 
                     @Test
@@ -1113,7 +1126,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertFalse(filter.matches(name, WinNT.REG_LINK));
+                        assertFalse(filter.matches(name, REG_LINK));
                     }
 
                     @Test
@@ -1122,7 +1135,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertFalse(filter.matches(name, WinNT.REG_RESOURCE_LIST));
+                        assertFalse(filter.matches(name, REG_RESOURCE_LIST));
                     }
 
                     @Test
@@ -1131,7 +1144,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertFalse(filter.matches(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR));
+                        assertFalse(filter.matches(name, REG_FULL_RESOURCE_DESCRIPTOR));
                     }
 
                     @Test
@@ -1140,7 +1153,7 @@ final class RegistryValueTest {
                         RegistryValue.Filter filter = RegistryValue.filter().classes(SettableRegistryValue.class);
 
                         String name = UUID.randomUUID().toString();
-                        assertFalse(filter.matches(name, WinNT.REG_RESOURCE_REQUIREMENTS_LIST));
+                        assertFalse(filter.matches(name, REG_RESOURCE_REQUIREMENTS_LIST));
                     }
                 }
             }

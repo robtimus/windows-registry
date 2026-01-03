@@ -17,8 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_KEY_DELETED;
 import com.github.robtimus.os.windows.registry.foreign.Kernel32;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 /**
  * Thrown when an error occurred while trying to access or modify the Windows registry.
@@ -99,11 +102,11 @@ public class RegistryException extends RuntimeException {
 
     static RegistryException forKey(int errorCode, String path, String machineName) {
         switch (errorCode) {
-            case WinError.ERROR_KEY_DELETED, WinError.ERROR_FILE_NOT_FOUND:
+            case ERROR_KEY_DELETED, ERROR_FILE_NOT_FOUND:
                 return new NoSuchRegistryKeyException(errorCode, path, machineName);
-            case WinError.ERROR_ACCESS_DENIED:
+            case ERROR_ACCESS_DENIED:
                 return new RegistryAccessDeniedException(path, machineName);
-            case WinError.ERROR_INVALID_HANDLE:
+            case ERROR_INVALID_HANDLE:
                 return new InvalidRegistryHandleException(path, machineName);
             default:
                 return new RegistryException(errorCode, path, machineName);
@@ -112,13 +115,13 @@ public class RegistryException extends RuntimeException {
 
     static RegistryException forValue(int errorCode, String path, String machineName, String name) {
         switch (errorCode) {
-            case WinError.ERROR_KEY_DELETED:
+            case ERROR_KEY_DELETED:
                 return new NoSuchRegistryKeyException(errorCode, path, machineName);
-            case WinError.ERROR_FILE_NOT_FOUND:
+            case ERROR_FILE_NOT_FOUND:
                 return new NoSuchRegistryValueException(path, machineName, name);
-            case WinError.ERROR_ACCESS_DENIED:
+            case ERROR_ACCESS_DENIED:
                 return new RegistryAccessDeniedException(path, machineName);
-            case WinError.ERROR_INVALID_HANDLE:
+            case ERROR_INVALID_HANDLE:
                 return new InvalidRegistryHandleException(path, machineName);
             default:
                 return new RegistryException(errorCode, path, machineName);

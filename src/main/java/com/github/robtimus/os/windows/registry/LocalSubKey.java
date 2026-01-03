@@ -18,6 +18,13 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_CREATED_NEW_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPENED_EXISTING_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPTION_NON_VOLATILE;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
@@ -29,9 +36,7 @@ import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HKEY;
 
 final class LocalSubKey extends RegistryKey {
 
@@ -123,10 +128,10 @@ final class LocalSubKey extends RegistryKey {
 
     boolean exists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         int code = checkSubKey(rootHKey, allocator, machineName);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return true;
         }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+        if (code == ERROR_FILE_NOT_FOUND) {
             return false;
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -141,10 +146,10 @@ final class LocalSubKey extends RegistryKey {
 
     boolean isAccessible(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
         int code = checkSubKey(rootHKey, allocator, machineName);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return true;
         }
-        if (code == WinError.ERROR_FILE_NOT_FOUND || code == WinError.ERROR_ACCESS_DENIED) {
+        if (code == ERROR_FILE_NOT_FOUND || code == ERROR_ACCESS_DENIED) {
             return false;
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -158,9 +163,9 @@ final class LocalSubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 0,
-                WinNT.KEY_READ | SAM_DESIRED_REGISTRY_VIEW,
+                KEY_READ | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             closeKey(HKEY.target(phkResult), path(), machineName);
         }
         return code;
@@ -174,7 +179,7 @@ final class LocalSubKey extends RegistryKey {
     }
 
     void create(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
-        if (createOrOpen(rootHKey, allocator, machineName) == WinNT.REG_OPENED_EXISTING_KEY) {
+        if (createOrOpen(rootHKey, allocator, machineName) == REG_OPENED_EXISTING_KEY) {
             throw new RegistryKeyAlreadyExistsException(path(), machineName);
         }
     }
@@ -187,7 +192,7 @@ final class LocalSubKey extends RegistryKey {
     }
 
     boolean createIfNotExists(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
-        return createOrOpen(rootHKey, allocator, machineName) == WinNT.REG_CREATED_NEW_KEY;
+        return createOrOpen(rootHKey, allocator, machineName) == REG_CREATED_NEW_KEY;
     }
 
     private int createOrOpen(MemorySegment rootHKey, SegmentAllocator allocator, String machineName) {
@@ -198,11 +203,11 @@ final class LocalSubKey extends RegistryKey {
         int code = Registry.currentContext().createKey(
                 rootHKey,
                 lpSubKey,
-                WinNT.REG_OPTION_NON_VOLATILE,
-                WinNT.KEY_READ | SAM_DESIRED_REGISTRY_VIEW,
+                REG_OPTION_NON_VOLATILE,
+                KEY_READ | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult,
                 lpdwDisposition);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             closeKey(HKEY.target(phkResult), path(), machineName);
             return lpdwDisposition.get(ValueLayout.JAVA_INT, 0);
         }
@@ -230,10 +235,10 @@ final class LocalSubKey extends RegistryKey {
         MemorySegment lpNewKeyName = WString.allocate(allocator, newName);
 
         int code = RegRenameKey(rootHKey, lpSubKeyName, lpNewKeyName);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return renamed;
         }
-        if (code == WinError.ERROR_ACCESS_DENIED && renamed.exists(rootHKey, allocator, machineName)) {
+        if (code == ERROR_ACCESS_DENIED && renamed.exists(rootHKey, allocator, machineName)) {
             throw new RegistryKeyAlreadyExistsException(renamed.path(), machineName);
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -253,7 +258,7 @@ final class LocalSubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 SAM_DESIRED_REGISTRY_VIEW);
-        if (code != WinError.ERROR_SUCCESS) {
+        if (code != ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path(), machineName);
         }
     }
@@ -272,10 +277,10 @@ final class LocalSubKey extends RegistryKey {
                 rootHKey,
                 lpSubKey,
                 SAM_DESIRED_REGISTRY_VIEW);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return true;
         }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+        if (code == ERROR_FILE_NOT_FOUND) {
             return false;
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -325,11 +330,11 @@ final class LocalSubKey extends RegistryKey {
         int code = Registry.currentContext().createKey(
                 rootHKey,
                 lpSubKey,
-                WinNT.REG_OPTION_NON_VOLATILE,
+                REG_OPTION_NON_VOLATILE,
                 samDesired | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult,
                 MemorySegment.NULL);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return HKEY.target(phkResult);
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -345,7 +350,7 @@ final class LocalSubKey extends RegistryKey {
                 0,
                 samDesired | SAM_DESIRED_REGISTRY_VIEW,
                 phkResult);
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return HKEY.target(phkResult);
         }
         if (ignoreError.test(code)) {

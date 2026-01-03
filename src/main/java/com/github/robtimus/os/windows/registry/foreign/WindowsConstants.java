@@ -1,5 +1,5 @@
 /*
- * WinNT.java
+ * WindowsConstants.java
  * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +17,20 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import java.lang.foreign.MemorySegment;
+
 @SuppressWarnings("javadoc")
-public final class WinNT {
+public final class WindowsConstants {
+
+    public static final int ERROR_SUCCESS = 0;
+    public static final int ERROR_FILE_NOT_FOUND = 2;
+    public static final int ERROR_ACCESS_DENIED = 5;
+    public static final int ERROR_INVALID_HANDLE = 6;
+    public static final int ERROR_BAD_NETPATH = 53;
+    public static final int ERROR_ALREADY_EXISTS = 183;
+    public static final int ERROR_MORE_DATA = 234;
+    public static final int ERROR_NO_MORE_ITEMS = 259;
+    public static final int ERROR_KEY_DELETED = 1018;
 
     public static final int READ_CONTROL = 0x00020000;
     public static final int SYNCHRONIZE = 0x00100000;
@@ -55,22 +67,18 @@ public final class WinNT {
     public static final int REG_QWORD = 11;
     public static final int REG_QWORD_LITTLE_ENDIAN = 11;
 
-    private WinNT() {
+    public static final MemorySegment HKEY_CLASSES_ROOT = hKey(0x80000000);
+    public static final MemorySegment HKEY_CURRENT_USER = hKey(0x80000001);
+    public static final MemorySegment HKEY_LOCAL_MACHINE = hKey(0x80000002);
+    public static final MemorySegment HKEY_USERS = hKey(0x80000003);
+    public static final MemorySegment HKEY_CURRENT_CONFIG = hKey(0x80000005);
+
+    public static final int TRANSACTION_DO_NOT_PROMOTE = 0x00000001;
+
+    private WindowsConstants() {
     }
 
-    /*
-     * typedef enum _TRANSACTION_OUTCOME:
-     *   TransactionOutcomeUndetermined = 1,
-     *   TransactionOutcomeCommitted,
-     *   TransactionOutcomeAborted
-     */
-    public static final class TRANSACTION_OUTCOME { // NOSONAR
-
-        public static final int TransactionOutcomeUndetermined = 1; // NOSONAR
-        public static final int TransactionOutcomeCommitted = 2; // NOSONAR
-        public static final int TransactionOutcomeAborted = 3; // NOSONAR
-
-        private TRANSACTION_OUTCOME() {
-        }
+    private static MemorySegment hKey(int address) {
+        return MemorySegment.ofAddress(address);
     }
 }

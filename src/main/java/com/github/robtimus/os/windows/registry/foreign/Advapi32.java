@@ -196,7 +196,8 @@ public final class Advapi32 extends WindowsApi {
      *   [in] HKEY hKey
      * )
      */
-    public static int RegCloseKey/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegCloseKey(
             MemorySegment hKey) {
 
         try {
@@ -214,7 +215,8 @@ public final class Advapi32 extends WindowsApi {
      *   [out]          PHKEY   phkResult
      * )
      */
-    public static int RegConnectRegistry/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegConnectRegistry(
             MemorySegment lpMachineName,
             MemorySegment hKey,
             MemorySegment phkResult) {
@@ -242,10 +244,12 @@ public final class Advapi32 extends WindowsApi {
      *   [out, optional] LPDWORD                     lpdwDisposition
      * )
      */
-    public static int RegCreateKeyEx/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static int RegCreateKeyEx(
             MemorySegment hKey,
             MemorySegment lpSubKey,
-            int Reserved, // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int Reserved,
             MemorySegment lpClass,
             int dwOptions,
             int samDesired,
@@ -284,10 +288,12 @@ public final class Advapi32 extends WindowsApi {
      *                   PVOID                       pExtendedParemeter
      * )
      */
-    public static int RegCreateKeyTransacted/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static int RegCreateKeyTransacted(
             MemorySegment hKey,
             MemorySegment lpSubKey,
-            int Reserved, // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int Reserved,
             MemorySegment lpClass,
             int dwOptions,
             int samDesired,
@@ -328,11 +334,13 @@ public final class Advapi32 extends WindowsApi {
      *        DWORD   Reserved
      * )
      */
-    public static int RegDeleteKeyEx/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegDeleteKeyEx(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int samDesired,
-            int Reserved) { // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int Reserved) {
 
         try {
             return (int) REG_DELETE_KEY_EX.invokeExact(
@@ -355,11 +363,13 @@ public final class Advapi32 extends WindowsApi {
      *        PVOID   pExtendedParameter
      * )
      */
-    public static int RegDeleteKeyTransacted/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegDeleteKeyTransacted(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int samDesired,
-            int Reserved, // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int Reserved,
             MemorySegment hTransaction,
             MemorySegment pExtendedParameter) {
 
@@ -387,7 +397,8 @@ public final class Advapi32 extends WindowsApi {
      *   [in, optional] LPCWSTR lpValueName
      * )
      */
-    public static int RegDeleteValue/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegDeleteValue(
             MemorySegment hKey,
             MemorySegment lpValueName) {
 
@@ -412,7 +423,8 @@ public final class Advapi32 extends WindowsApi {
      *   [out, optional]     PFILETIME lpftLastWriteTime
      * )
      */
-    public static int RegEnumKeyEx/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static int RegEnumKeyEx(
             MemorySegment hKey,
             int dwIndex,
             MemorySegment lpName,
@@ -449,7 +461,8 @@ public final class Advapi32 extends WindowsApi {
      *   [in, out, optional] LPDWORD lpcbData
      * )
      */
-    public static int RegEnumValue/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static int RegEnumValue(
             MemorySegment hKey,
             int dwIndex,
             MemorySegment lpValueName,
@@ -483,7 +496,8 @@ public final class Advapi32 extends WindowsApi {
      *   [out]          PHKEY   phkResult
      * )
      */
-    public static int RegOpenKeyEx/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegOpenKeyEx(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int ulOptions,
@@ -513,7 +527,8 @@ public final class Advapi32 extends WindowsApi {
      *                 PVOID   pExtendedParemeter
      *)
      */
-    public static int RegOpenKeyTransacted/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegOpenKeyTransacted(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int ulOptions,
@@ -557,7 +572,8 @@ public final class Advapi32 extends WindowsApi {
      *  [out, optional]     PFILETIME lpftLastWriteTime
      *)
      */
-    public static int RegQueryInfoKey/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
+    public static int RegQueryInfoKey(
             MemorySegment hKey,
             MemorySegment lpClass,
             MemorySegment lpcchClass,
@@ -600,7 +616,8 @@ public final class Advapi32 extends WindowsApi {
      *   [in, out, optional] LPDWORD lpcbData
      * )
      */
-    public static int RegQueryValueEx/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegQueryValueEx(
             MemorySegment hKey,
             MemorySegment lpValueName,
             MemorySegment lpReserved,
@@ -628,7 +645,8 @@ public final class Advapi32 extends WindowsApi {
      *   LPCWSTR lpNewKeyName
      * )
      */
-    public static int RegRenameKey/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegRenameKey(
             MemorySegment hKey,
             MemorySegment lpSubKeyName,
             MemorySegment lpNewKeyName) {
@@ -658,10 +676,12 @@ public final class Advapi32 extends WindowsApi {
      *   [in]           DWORD      cbData
      * )
      */
-    public static int RegSetValueEx/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static int RegSetValueEx(
             MemorySegment hKey,
             MemorySegment lpValueName,
-            int Reserved, // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            int Reserved,
             int dwType,
             MemorySegment lpData,
             int cbData) {

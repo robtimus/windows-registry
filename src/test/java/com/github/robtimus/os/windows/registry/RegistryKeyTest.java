@@ -43,6 +43,14 @@ import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHand
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_CURRENT_USER;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_CREATED_NEW_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPTION_NON_VOLATILE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -67,11 +75,8 @@ import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.FILETIME;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
 import com.sun.jna.platform.win32.WinBase.SYSTEMTIME;
 
 @SuppressWarnings("nls")
@@ -98,7 +103,7 @@ class RegistryKeyTest extends RegistryTestBase {
                         MemorySegment fileTime = i.getArgument(11, MemorySegment.class);
                         copyInstantToFileTime(instant, fileTime);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -115,7 +120,7 @@ class RegistryKeyTest extends RegistryTestBase {
                         FILETIME.dwHighDateTime(fileTime, -1);
                         FILETIME.dwLowDateTime(fileTime, 0);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -127,7 +132,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegQueryInfoKey(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::lastWriteTime);
@@ -153,7 +158,7 @@ class RegistryKeyTest extends RegistryTestBase {
                         MemorySegment fileTime = i.getArgument(11, MemorySegment.class);
                         copyInstantToFileTime(instant, fileTime);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -169,7 +174,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegQueryInfoKey(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::attributes);
@@ -186,7 +191,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+            mockValue(HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             String value = registryKey.getStringValue("string");
@@ -196,8 +201,8 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getStringValue("string"));
@@ -208,7 +213,7 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(HKEY_CURRENT_USER, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getStringValue("string"));
@@ -220,7 +225,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             DWordValue dwordValue = DWordValue.of("dword", 13);
 
-            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+            mockValue(HKEY_CURRENT_USER, dwordValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.getStringValue("dword"));
@@ -236,7 +241,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+            mockValue(HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             Optional<String> value = registryKey.findStringValue("string");
@@ -246,8 +251,8 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             Optional<String> value = registryKey.findStringValue("string");
@@ -257,7 +262,7 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(HKEY_CURRENT_USER, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -270,7 +275,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             DWordValue dwordValue = DWordValue.of("dword", 13);
 
-            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+            mockValue(HKEY_CURRENT_USER, dwordValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.findStringValue("dword"));
@@ -286,7 +291,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testSuccess() {
             DWordValue dwordValue = DWordValue.of("dword", 13);
 
-            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+            mockValue(HKEY_CURRENT_USER, dwordValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             int value = registryKey.getDWordValue("dword");
@@ -296,8 +301,8 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getDWordValue("dword"));
@@ -308,7 +313,7 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+            mockValue(HKEY_CURRENT_USER, DWordValue.of("dword", 13), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getDWordValue("dword"));
@@ -320,7 +325,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             StringValue stringValue = StringValue.of("string", "test");
 
-            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+            mockValue(HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.getDWordValue("string"));
@@ -336,7 +341,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testSuccess() {
             DWordValue dwordValue = DWordValue.of("dword", 13);
 
-            mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+            mockValue(HKEY_CURRENT_USER, dwordValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             OptionalInt value = registryKey.findDWordValue("dword");
@@ -346,8 +351,8 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             OptionalInt value = registryKey.findDWordValue("dword");
@@ -357,7 +362,7 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+            mockValue(HKEY_CURRENT_USER, DWordValue.of("dword", 13), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findDWordValue("dword"));
@@ -369,7 +374,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             StringValue stringValue = StringValue.of("string", "test");
 
-            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+            mockValue(HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.findDWordValue("string"));
@@ -385,7 +390,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testSuccess() {
             QWordValue qwordValue = QWordValue.of("qword", 13L);
 
-            mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+            mockValue(HKEY_CURRENT_USER, qwordValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             long value = registryKey.getQWordValue("qword");
@@ -395,8 +400,8 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.getQWordValue("qword"));
@@ -407,7 +412,7 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+            mockValue(HKEY_CURRENT_USER, QWordValue.of("qword", 13L), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.getQWordValue("qword"));
@@ -419,7 +424,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             StringValue stringValue = StringValue.of("string", "test");
 
-            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+            mockValue(HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.getQWordValue("string"));
@@ -435,7 +440,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testSuccess() {
             QWordValue qwordValue = QWordValue.of("qword", 13L);
 
-            mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+            mockValue(HKEY_CURRENT_USER, qwordValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             OptionalLong value = registryKey.findQWordValue("qword");
@@ -445,8 +450,8 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             OptionalLong value = registryKey.findQWordValue("qword");
@@ -456,7 +461,7 @@ class RegistryKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+            mockValue(HKEY_CURRENT_USER, QWordValue.of("qword", 13L), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.findQWordValue("qword"));
@@ -468,7 +473,7 @@ class RegistryKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             StringValue stringValue = StringValue.of("string", "test");
 
-            mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+            mockValue(HKEY_CURRENT_USER, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
             assertThrows(ClassCastException.class, () -> registryKey.findQWordValue("string"));
@@ -496,7 +501,7 @@ class RegistryKeyTest extends RegistryTestBase {
                             MemorySegment fileTime = i.getArgument(11, MemorySegment.class);
                             copyInstantToFileTime(instant, fileTime);
 
-                            return WinError.ERROR_SUCCESS;
+                            return ERROR_SUCCESS;
                         });
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -515,7 +520,7 @@ class RegistryKeyTest extends RegistryTestBase {
                             FILETIME.dwHighDateTime(fileTime, -1);
                             FILETIME.dwLowDateTime(fileTime, 0);
 
-                            return WinError.ERROR_SUCCESS;
+                            return ERROR_SUCCESS;
                         });
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -529,7 +534,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testFailure() {
                 advapi32.when(() -> RegQueryInfoKey(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                        .thenReturn(ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -557,7 +562,7 @@ class RegistryKeyTest extends RegistryTestBase {
                             MemorySegment fileTime = i.getArgument(11, MemorySegment.class);
                             copyInstantToFileTime(instant, fileTime);
 
-                            return WinError.ERROR_SUCCESS;
+                            return ERROR_SUCCESS;
                         });
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
@@ -575,7 +580,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testFailure() {
                 advapi32.when(() -> RegQueryInfoKey(notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                        .thenReturn(ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -594,7 +599,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testSuccess() {
                 StringValue stringValue = StringValue.of("string", "value");
 
-                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+                mockValue(HKEY_CURRENT_USER, stringValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -606,8 +611,8 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -620,7 +625,7 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+                mockValue(HKEY_CURRENT_USER, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -635,7 +640,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testWrongValueType() {
                 DWordValue dwordValue = DWordValue.of("dword", 13);
 
-                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+                mockValue(HKEY_CURRENT_USER, dwordValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -653,7 +658,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testSuccess() {
                 StringValue stringValue = StringValue.of("string", "value");
 
-                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+                mockValue(HKEY_CURRENT_USER, stringValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -665,8 +670,8 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -678,7 +683,7 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                mockValue(WinReg.HKEY_CURRENT_USER, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+                mockValue(HKEY_CURRENT_USER, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -693,7 +698,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testWrongValueType() {
                 DWordValue dwordValue = DWordValue.of("dword", 13);
 
-                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+                mockValue(HKEY_CURRENT_USER, dwordValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -711,7 +716,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testSuccess() {
                 DWordValue dwordValue = DWordValue.of("dword", 13);
 
-                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+                mockValue(HKEY_CURRENT_USER, dwordValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -723,8 +728,8 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -737,7 +742,7 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+                mockValue(HKEY_CURRENT_USER, DWordValue.of("dword", 13), ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -752,7 +757,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testWrongValueType() {
                 StringValue stringValue = StringValue.of("string", "test");
 
-                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+                mockValue(HKEY_CURRENT_USER, stringValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -770,7 +775,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testSuccess() {
                 DWordValue dwordValue = DWordValue.of("dword", 13);
 
-                mockValue(WinReg.HKEY_CURRENT_USER, dwordValue);
+                mockValue(HKEY_CURRENT_USER, dwordValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -782,8 +787,8 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -795,7 +800,7 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                mockValue(WinReg.HKEY_CURRENT_USER, DWordValue.of("dword", 13), WinError.ERROR_INVALID_HANDLE);
+                mockValue(HKEY_CURRENT_USER, DWordValue.of("dword", 13), ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -810,7 +815,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testWrongValueType() {
                 StringValue stringValue = StringValue.of("string", "test");
 
-                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+                mockValue(HKEY_CURRENT_USER, stringValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -828,7 +833,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testSuccess() {
                 QWordValue qwordValue = QWordValue.of("qword", 13L);
 
-                mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+                mockValue(HKEY_CURRENT_USER, qwordValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -840,8 +845,8 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -854,7 +859,7 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+                mockValue(HKEY_CURRENT_USER, QWordValue.of("qword", 13L), ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -869,7 +874,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testWrongValueType() {
                 StringValue stringValue = StringValue.of("string", "test");
 
-                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+                mockValue(HKEY_CURRENT_USER, stringValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -887,7 +892,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testSuccess() {
                 QWordValue qwordValue = QWordValue.of("qword", 13L);
 
-                mockValue(WinReg.HKEY_CURRENT_USER, qwordValue);
+                mockValue(HKEY_CURRENT_USER, qwordValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -899,8 +904,8 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("non-existing value")
             void testNonExistingValue() {
-                advapi32.when(() -> RegQueryValueEx(eq(WinReg.HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegQueryValueEx(eq(HKEY_CURRENT_USER), notNull(), notNull(), notNull(), isNULL(), notNull()))
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -912,7 +917,7 @@ class RegistryKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("failure")
             void testFailure() {
-                mockValue(WinReg.HKEY_CURRENT_USER, QWordValue.of("qword", 13L), WinError.ERROR_INVALID_HANDLE);
+                mockValue(HKEY_CURRENT_USER, QWordValue.of("qword", 13L), ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -927,7 +932,7 @@ class RegistryKeyTest extends RegistryTestBase {
             void testWrongValueType() {
                 StringValue stringValue = StringValue.of("string", "test");
 
-                mockValue(WinReg.HKEY_CURRENT_USER, stringValue);
+                mockValue(HKEY_CURRENT_USER, stringValue);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER;
                 try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -948,22 +953,22 @@ class RegistryKeyTest extends RegistryTestBase {
 
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()))
+            advapi32.when(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -971,10 +976,10 @@ class RegistryKeyTest extends RegistryTestBase {
             assertTrue(registryKey.exists());
             registryKey.delete();
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()));
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()));
-            advapi32.verify(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0)));
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull()));
+            advapi32.verify(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0)));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -990,22 +995,22 @@ class RegistryKeyTest extends RegistryTestBase {
 
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()))
+            advapi32.when(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1015,10 +1020,10 @@ class RegistryKeyTest extends RegistryTestBase {
                 registryKey.delete();
             });
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()));
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()));
-            advapi32.verify(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0)));
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull()));
+            advapi32.verify(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0)));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -1035,28 +1040,28 @@ class RegistryKeyTest extends RegistryTestBase {
             MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
-            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction);
             mockCloseHandle(transaction);
 
-            advapi32.when(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+            advapi32.when(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.when(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1066,17 +1071,16 @@ class RegistryKeyTest extends RegistryTestBase {
                 registryKey.delete();
             });
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
-                    notNull(), notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0), notNull(), notNull()));
             ktmW32.verify(() -> GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
             ktmW32.verify(() -> CommitTransaction(eq(transaction), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction), notNull()));
 
-            advapi32.verify(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
-            advapi32.verify(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.verify(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()));
-            advapi32.verify(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -1093,26 +1097,26 @@ class RegistryKeyTest extends RegistryTestBase {
             MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
-            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction);
             mockCloseHandle(transaction);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()))
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()))
+            advapi32.when(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0))).thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1126,16 +1130,15 @@ class RegistryKeyTest extends RegistryTestBase {
             }));
             assertEquals(expectedResult, result);
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
-                    notNull(), notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0), notNull(), notNull()));
             ktmW32.verify(() -> GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
             ktmW32.verify(() -> CommitTransaction(eq(transaction), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction), notNull()));
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull()));
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull()));
-            advapi32.verify(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0)));
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull()));
+            advapi32.verify(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0)));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -1153,11 +1156,11 @@ class RegistryKeyTest extends RegistryTestBase {
 
             List<MemorySegment> transactions = mockCreateTransactions(Duration.ofMillis(0), null, 2);
             MemorySegment transaction1 = transactions.get(0);
-            mockGetTransactionStatus(transaction1, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction1, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction1);
             mockCloseHandle(transaction1);
             MemorySegment transaction2 = transactions.get(1);
-            mockGetTransactionStatus(transaction2, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction2, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction2);
             mockCloseHandle(transaction2);
 
@@ -1166,24 +1169,24 @@ class RegistryKeyTest extends RegistryTestBase {
             kernel32.when(() -> CloseHandle(eq(transaction1), notNull())).thenReturn(true);
             kernel32.when(() -> CloseHandle(eq(transaction2), notNull())).thenReturn(true);
 
-            advapi32.when(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL()))
+            advapi32.when(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.when(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction2), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL()))
+                    .thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1197,8 +1200,8 @@ class RegistryKeyTest extends RegistryTestBase {
             }));
             assertEquals(expectedResult, result);
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
-                    notNull(), notNull()), times(2));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0), notNull(), notNull()),
+                    times(2));
             ktmW32.verify(() -> GetTransactionInformation(eq(transaction1), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
             ktmW32.verify(() -> CommitTransaction(eq(transaction1), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction1), notNull()));
@@ -1206,11 +1209,11 @@ class RegistryKeyTest extends RegistryTestBase {
             ktmW32.verify(() -> CommitTransaction(eq(transaction2), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction2), notNull()));
 
-            advapi32.verify(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL()));
-            advapi32.verify(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.verify(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction2), isNULL()));
+            advapi32.verify(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction2), isNULL()));
-            advapi32.verify(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL()));
+            advapi32.verify(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction2), isNULL()));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -1227,28 +1230,28 @@ class RegistryKeyTest extends RegistryTestBase {
             MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(100), null);
-            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction);
             mockCloseHandle(transaction);
 
-            advapi32.when(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+            advapi32.when(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.when(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1258,17 +1261,16 @@ class RegistryKeyTest extends RegistryTestBase {
                 registryKey.delete();
             });
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100),
-                    notNull(), notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), notNull(), notNull()));
             ktmW32.verify(() -> GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
             ktmW32.verify(() -> CommitTransaction(eq(transaction), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction), notNull()));
 
-            advapi32.verify(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
-            advapi32.verify(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.verify(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()));
-            advapi32.verify(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -1285,28 +1287,28 @@ class RegistryKeyTest extends RegistryTestBase {
             MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), null);
-            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction);
             mockCloseHandle(transaction);
 
-            advapi32.when(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+            advapi32.when(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.when(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1316,17 +1318,16 @@ class RegistryKeyTest extends RegistryTestBase {
                 registryKey.delete();
             });
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
-                    notNull(), notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0), notNull(), notNull()));
             ktmW32.verify(() -> GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
             ktmW32.verify(() -> CommitTransaction(eq(transaction), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction), notNull()));
 
-            advapi32.verify(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
-            advapi32.verify(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.verify(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()));
-            advapi32.verify(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 
@@ -1343,28 +1344,28 @@ class RegistryKeyTest extends RegistryTestBase {
             MemorySegment hKey = newHKEY(arena);
 
             MemorySegment transaction = mockCreateTransaction(Duration.ofMillis(0), "test");
-            mockGetTransactionStatus(transaction, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(transaction, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(transaction);
             mockCloseHandle(transaction);
 
-            advapi32.when(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
+            advapi32.when(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), isNULL(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.when(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(4, MemorySegment.class), hKey);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
-            advapi32.when(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
-            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()))
+                    .thenReturn(ERROR_SUCCESS);
+            advapi32.when(() -> RegCloseKey(hKey)).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve(path);
 
@@ -1374,17 +1375,17 @@ class RegistryKeyTest extends RegistryTestBase {
                 registryKey.delete();
             });
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0),
-                    eqPointer("test"), notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(0), eqPointer("test"),
+                    notNull()));
             ktmW32.verify(() -> GetTransactionInformation(eq(transaction), notNull(), isNULL(), isNULL(), isNULL(), eq(0), isNULL(), notNull()));
             ktmW32.verify(() -> CommitTransaction(eq(transaction), notNull()));
             kernel32.verify(() -> CloseHandle(eq(transaction), notNull()));
 
-            advapi32.verify(() -> RegCreateKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
-                    eq(WinNT.REG_OPTION_NON_VOLATILE), eq(WinNT.KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
-            advapi32.verify(() -> RegOpenKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(WinNT.KEY_READ), notNull(),
+            advapi32.verify(() -> RegCreateKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), notNull(),
+                    eq(REG_OPTION_NON_VOLATILE), eq(KEY_READ), isNULL(), notNull(), notNull(), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegOpenKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(KEY_READ), notNull(),
                     eq(transaction), isNULL()));
-            advapi32.verify(() -> RegDeleteKeyTransacted(eq(WinReg.HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
+            advapi32.verify(() -> RegDeleteKeyTransacted(eq(HKEY_CURRENT_USER), eqPointer(path), eq(0), eq(0), eq(transaction), isNULL()));
             // Closed as part of create and exist calls
             advapi32.verify(() -> RegCloseKey(hKey), times(2));
 

@@ -18,10 +18,10 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_LIST;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of resource list registry values.
@@ -33,7 +33,7 @@ public final class ResourceListValue extends RegistryValue {
     private final byte[] data;
 
     ResourceListValue(String name, MemorySegment data, long dataLength) {
-        super(name, WinNT.REG_RESOURCE_LIST);
+        super(name, REG_RESOURCE_LIST);
         this.data = data.asSlice(0, dataLength).toArray(ValueLayout.JAVA_BYTE);
     }
 

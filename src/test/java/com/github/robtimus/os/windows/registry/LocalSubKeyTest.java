@@ -42,6 +42,16 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryI
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_CURRENT_USER;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_SET_VALUE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_CREATED_NEW_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPENED_EXISTING_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.instanceOf;
@@ -75,9 +85,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
 class LocalSubKeyTest extends RegistryTestBase {
@@ -224,7 +231,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         }
 
         private RegistryKey testKey() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft");
 
             mockSubKeys(hKey, "Prefs");
 
@@ -242,7 +249,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             mockSubKeys(hKey, "child1", "child2", "child3");
 
@@ -259,20 +266,20 @@ class LocalSubKeyTest extends RegistryTestBase {
                 assertEquals(expected, subKeys);
             }
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
@@ -283,37 +290,37 @@ class LocalSubKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("with successful close")
             void testSuccessfulClose() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
                 advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
             @DisplayName("with close failure")
             void testCloseFailure() {
-                MemorySegment hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+                MemorySegment hKey = mockOpen(HKEY_CURRENT_USER, "path\\failure");
 
-                mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                mockClose(hKey, ERROR_INVALID_HANDLE);
 
                 advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
                 assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
         }
@@ -321,14 +328,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
             advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             advapi32.when(() -> RegEnumKeyEx(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
@@ -336,7 +343,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             }
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -368,7 +375,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("subKeys first")
             void testSubKeysFirst() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path");
 
                 mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
 
@@ -386,7 +393,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
                 advapi32.verify(() -> RegCloseKey(notNull()));
@@ -395,7 +402,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("subKeys not first")
             void testSubKeysNotFirst() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path");
 
                 mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
 
@@ -413,7 +420,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
                 advapi32.verify(() -> RegCloseKey(notNull()));
@@ -426,20 +433,21 @@ class LocalSubKeyTest extends RegistryTestBase {
 
             @Test
             @DisplayName("subKeys first")
+            @SuppressWarnings("squid:S5961")
             void testSubKeysFirst() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path");
-                MemorySegment subKey1 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1");
-                MemorySegment subKey2 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2");
-                MemorySegment subKey3 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3");
-                MemorySegment subKey11 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1\\subKey11");
-                MemorySegment subKey12 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1\\subKey12");
-                MemorySegment subKey13 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1\\subKey13");
-                MemorySegment subKey21 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2\\subKey21");
-                MemorySegment subKey22 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2\\subKey22");
-                MemorySegment subKey23 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2\\subKey23");
-                MemorySegment subKey31 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3\\subKey31");
-                MemorySegment subKey32 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3\\subKey32");
-                MemorySegment subKey33 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3\\subKey33");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path");
+                MemorySegment subKey1 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1");
+                MemorySegment subKey2 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2");
+                MemorySegment subKey3 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3");
+                MemorySegment subKey11 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1\\subKey11");
+                MemorySegment subKey12 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1\\subKey12");
+                MemorySegment subKey13 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1\\subKey13");
+                MemorySegment subKey21 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2\\subKey21");
+                MemorySegment subKey22 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2\\subKey22");
+                MemorySegment subKey23 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2\\subKey23");
+                MemorySegment subKey31 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3\\subKey31");
+                MemorySegment subKey32 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3\\subKey32");
+                MemorySegment subKey33 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3\\subKey33");
 
                 mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
                 mockSubKeys(subKey1, "subKey11", "subKey12", "subKey13");
@@ -478,28 +486,19 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), times(13));
                 advapi32.verify(() -> RegCloseKey(hKey));
                 advapi32.verify(() -> RegCloseKey(subKey1));
@@ -519,20 +518,21 @@ class LocalSubKeyTest extends RegistryTestBase {
 
             @Test
             @DisplayName("subKeys not first")
+            @SuppressWarnings("squid:S5961")
             void testSubKeysNotFirst() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path");
-                MemorySegment subKey1 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1");
-                MemorySegment subKey2 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2");
-                MemorySegment subKey3 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3");
-                MemorySegment subKey11 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1\\subKey11");
-                MemorySegment subKey12 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1\\subKey12");
-                MemorySegment subKey13 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey1\\subKey13");
-                MemorySegment subKey21 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2\\subKey21");
-                MemorySegment subKey22 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2\\subKey22");
-                MemorySegment subKey23 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey2\\subKey23");
-                MemorySegment subKey31 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3\\subKey31");
-                MemorySegment subKey32 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3\\subKey32");
-                MemorySegment subKey33 = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\subKey3\\subKey33");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path");
+                MemorySegment subKey1 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1");
+                MemorySegment subKey2 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2");
+                MemorySegment subKey3 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3");
+                MemorySegment subKey11 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1\\subKey11");
+                MemorySegment subKey12 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1\\subKey12");
+                MemorySegment subKey13 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey1\\subKey13");
+                MemorySegment subKey21 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2\\subKey21");
+                MemorySegment subKey22 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2\\subKey22");
+                MemorySegment subKey23 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey2\\subKey23");
+                MemorySegment subKey31 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3\\subKey31");
+                MemorySegment subKey32 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3\\subKey32");
+                MemorySegment subKey33 = mockOpenAndClose(HKEY_CURRENT_USER, "path\\subKey3\\subKey33");
 
                 mockSubKeys(hKey, "subKey1", "subKey2", "subKey3");
                 mockSubKeys(subKey1, "subKey11", "subKey12", "subKey13");
@@ -571,28 +571,19 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, registryKeys);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(),
-                        notNull()));
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey11"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey12"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey1\\subKey13"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey21"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey22"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey2\\subKey23"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey31"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey32"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\subKey3\\subKey33"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), times(13));
                 advapi32.verify(() -> RegCloseKey(hKey));
                 advapi32.verify(() -> RegCloseKey(subKey1));
@@ -634,7 +625,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                 BinaryValue binaryValue = BinaryValue.of("binary", randomData());
                 DWordValue wordValue = DWordValue.of("dword", 13);
 
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
                 mockValues(hKey, stringValue, binaryValue, wordValue);
 
@@ -647,8 +638,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, values);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
@@ -659,7 +649,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                 BinaryValue binaryValue = BinaryValue.of("binary", randomData());
                 DWordValue wordValue = DWordValue.of("dword", 13);
 
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
                 mockValues(hKey, stringValue, binaryValue, wordValue);
 
@@ -673,8 +663,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, values);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
@@ -685,7 +674,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                 BinaryValue binaryValue = BinaryValue.of("binary", randomData());
                 DWordValue wordValue = DWordValue.of("dword", 13);
 
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
                 mockValues(hKey, stringValue, binaryValue, wordValue);
 
@@ -699,8 +688,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals(expected, values);
                 }
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
         }
@@ -708,13 +696,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
@@ -729,37 +717,37 @@ class LocalSubKeyTest extends RegistryTestBase {
                 @Test
                 @DisplayName("with successful close")
                 void testSuccessfulClose() {
-                    MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+                    MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-                    advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                     advapi32.verify(() -> RegCloseKey(hKey));
                 }
 
                 @Test
                 @DisplayName("with close failure")
                 void testCloseFailure() {
-                    MemorySegment hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+                    MemorySegment hKey = mockOpen(HKEY_CURRENT_USER, "path\\failure");
 
-                    mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                    mockClose(hKey, ERROR_INVALID_HANDLE);
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-                    advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                     advapi32.verify(() -> RegCloseKey(hKey));
                 }
             }
@@ -771,31 +759,31 @@ class LocalSubKeyTest extends RegistryTestBase {
                 @Test
                 @DisplayName("with successful close")
                 void testSuccessfulClose() {
-                    MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+                    MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.values(filter));
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-                    advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                     advapi32.verify(() -> RegCloseKey(hKey));
                 }
 
                 @Test
                 @DisplayName("with close failure")
                 void testCloseFailure() {
-                    MemorySegment hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+                    MemorySegment hKey = mockOpen(HKEY_CURRENT_USER, "path\\failure");
 
-                    mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                    mockClose(hKey, ERROR_INVALID_HANDLE);
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
@@ -803,7 +791,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                     assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
                     assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-                    advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                    advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                     advapi32.verify(() -> RegCloseKey(hKey));
                 }
             }
@@ -812,14 +800,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("enum failure")
         void testEnumFailure() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
             advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             advapi32.when(() -> RegEnumValue(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             try (Stream<RegistryValue> stream = registryKey.values()) {
@@ -827,7 +815,7 @@ class LocalSubKeyTest extends RegistryTestBase {
                 assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             }
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -841,7 +829,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             mockValue(hKey, stringValue);
 
@@ -849,31 +837,31 @@ class LocalSubKeyTest extends RegistryTestBase {
             StringValue value = registryKey.getValue("string", StringValue.class);
             assertEquals(stringValue, value);
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\non-existing");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\non-existing");
 
             advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
@@ -881,23 +869,23 @@ class LocalSubKeyTest extends RegistryTestBase {
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
             assertEquals("string", exception.name());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
-            mockValue(hKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.getValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -906,14 +894,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             mockValue(hKey, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertThrows(ClassCastException.class, () -> registryKey.getValue("string", DWordValue.class));
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -927,7 +915,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testSuccess() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             mockValue(hKey, stringValue);
 
@@ -935,53 +923,53 @@ class LocalSubKeyTest extends RegistryTestBase {
             Optional<StringValue> value = registryKey.findValue("string", StringValue.class);
             assertEquals(Optional.of(stringValue), value);
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("non-existing value")
         void testNonExistingValue() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\non-existing");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\non-existing");
 
             advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
             assertEquals(Optional.empty(), value);
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
-            mockValue(hKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.findValue("string", RegistryValue.class));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -990,14 +978,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testWrongValueType() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             mockValue(hKey, stringValue);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             assertThrows(ClassCastException.class, () -> registryKey.findValue("string", DWordValue.class));
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -1012,17 +1000,17 @@ class LocalSubKeyTest extends RegistryTestBase {
             StringValue stringValue = StringValue.of("string", "value");
             MemorySegment data = stringValue.rawData(arena);
 
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(REG_SZ), eqBytes(data), eqSize(data)))
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             registryKey.setValue(stringValue);
 
-            advapi32.verify(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)));
+            advapi32.verify(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(REG_SZ), eqBytes(data), eqSize(data)));
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1031,13 +1019,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testNonExistingKey() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
             advapi32.verify(() -> RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()), never());
         }
@@ -1047,16 +1035,16 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testFailure() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
-            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), notNull(), anyInt()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(REG_SZ), notNull(), anyInt()))
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -1068,29 +1056,29 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("success")
         void testSuccess() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             registryKey.deleteValue("string");
 
             advapi32.verify(() -> RegDeleteValue(eq(hKey), eqPointer("string")));
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
             advapi32.verify(() -> RegDeleteValue(notNull(), notNull()), never());
         }
@@ -1098,16 +1086,16 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
-            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             assertEquals("string", exception.name());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -1123,34 +1111,32 @@ class LocalSubKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("value existed")
             void testExisted() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
+                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_SUCCESS);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 assertTrue(registryKey.deleteValueIfExists("string"));
 
                 advapi32.verify(() -> RegDeleteValue(eq(hKey), eqPointer("string")));
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
             @Test
             @DisplayName("value didn't exist")
             void testValueDidntExist() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
-                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
                 assertFalse(registryKey.deleteValueIfExists("string"));
 
                 advapi32.verify(() -> RegDeleteValue(eq(hKey), eqPointer("string")));
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(),
-                        notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
         }
@@ -1158,13 +1144,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
             advapi32.verify(() -> RegDeleteValue(notNull(), notNull()), never());
         }
@@ -1172,16 +1158,16 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\failure");
 
-            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
                     () -> registryKey.deleteValueIfExists("string"));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
     }
@@ -1193,37 +1179,37 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testExisting() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\existing");
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.exists());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.exists());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::exists);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
@@ -1240,7 +1226,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("success")
             @SuppressWarnings("resource")
             void testSuccess() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\existing");
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
@@ -1251,7 +1237,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
@@ -1259,7 +1245,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\not-found", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\not-found");
 
@@ -1270,7 +1256,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
@@ -1278,7 +1264,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
@@ -1290,7 +1276,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
@@ -1302,7 +1288,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("success")
             void testSuccess() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\existing");
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
@@ -1312,7 +1298,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 assertEquals(Optional.of("new handle"), result);
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
@@ -1320,7 +1306,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\not-found", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\not-found");
 
@@ -1331,7 +1317,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).apply(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\not-found"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
@@ -1339,7 +1325,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
@@ -1351,7 +1337,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).apply(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
@@ -1364,49 +1350,49 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testExisting() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\existing");
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.isAccessible());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.isAccessible());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("non-accessible")
         void testNonAccessible() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\non-accessible", ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-accessible");
             assertFalse(registryKey.isAccessible());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-accessible"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-accessible"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
 
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::isAccessible);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
     }
@@ -1423,7 +1409,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("success")
             @SuppressWarnings("resource")
             void testSuccess() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\existing");
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
@@ -1434,7 +1420,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
@@ -1442,7 +1428,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
 
@@ -1453,7 +1439,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
@@ -1461,7 +1447,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("access denied")
             @SuppressWarnings("resource")
             void testAccessDenied() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\access-denied", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\access-denied");
 
@@ -1472,7 +1458,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
@@ -1480,7 +1466,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
@@ -1492,7 +1478,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).accept(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
@@ -1504,7 +1490,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @Test
             @DisplayName("success")
             void testSuccess() {
-                MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\existing");
+                MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\existing");
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
 
@@ -1514,7 +1500,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 assertEquals(Optional.of("new handle"), result);
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(hKey));
             }
 
@@ -1522,7 +1508,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
 
@@ -1533,7 +1519,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).apply(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
@@ -1541,7 +1527,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("access denied")
             @SuppressWarnings("resource")
             void testAccessDenied() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\access-denied", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\access-denied");
 
@@ -1552,7 +1538,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).apply(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\access-denied"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
 
@@ -1560,7 +1546,7 @@ class LocalSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+                mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
 
@@ -1572,7 +1558,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
                 verify(action, never()).apply(any());
 
-                advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+                advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
                 advapi32.verify(() -> RegCloseKey(notNull()), never());
             }
         }
@@ -1587,19 +1573,19 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testCreateNonExisting() {
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\new");
             registryKey.create();
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
@@ -1609,20 +1595,20 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testCreateExisting() {
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_OPENED_EXISTING_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_OPENED_EXISTING_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, registryKey::create);
             assertEquals("HKEY_CURRENT_USER\\path\\existing", exception.path());
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
@@ -1630,15 +1616,15 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::create);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1653,19 +1639,19 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testCreateNonExisting() {
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\new");
             assertTrue(registryKey.createIfNotExists());
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\new"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\new"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
@@ -1675,19 +1661,19 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testCreateExisting() {
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_OPENED_EXISTING_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_OPENED_EXISTING_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertFalse(registryKey.createIfNotExists());
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
@@ -1695,15 +1681,15 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1716,14 +1702,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testRenameExisting() {
-            advapi32.when(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKey renamed = registryKey.renameTo("foo");
             assertEquals(registryKey.resolve("..\\foo"), renamed);
 
-            advapi32.verify(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1731,14 +1717,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            advapi32.when(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eqPointer("foo")))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\non-existing", exception.path());
 
-            advapi32.verify(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eqPointer("foo")));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1746,34 +1732,34 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("target exists")
         void testTargetExists() {
-            advapi32.when(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+            advapi32.when(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
-            MemorySegment targetHkey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "path\\foo");
+            MemorySegment targetHkey = mockOpenAndClose(HKEY_CURRENT_USER, "path\\foo");
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryKeyAlreadyExistsException exception = assertThrows(RegistryKeyAlreadyExistsException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\foo", exception.path());
 
-            advapi32.verify(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull()), never());
+            advapi32.verify(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(not(eq(targetHkey))), never());
         }
 
         @Test
         @DisplayName("access denied")
         void testAccessDenied() {
-            advapi32.when(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+            advapi32.when(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\foo", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\foo", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\existing", exception.path());
 
-            advapi32.verify(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
-            advapi32.verify(() -> RegOpenKeyEx(not(eq(WinReg.HKEY_CURRENT_USER)), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull()),
+            advapi32.verify(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegOpenKeyEx(not(eq(HKEY_CURRENT_USER)), not(eqPointer("path\\foo")), anyInt(), anyInt(), notNull()),
                     never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1781,14 +1767,14 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            advapi32.when(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")))
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
             assertEquals("HKEY_CURRENT_USER\\path\\existing", exception.path());
 
-            advapi32.verify(() -> RegRenameKey(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
+            advapi32.verify(() -> RegRenameKey(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eqPointer("foo")));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1814,13 +1800,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)))
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             registryKey.delete();
 
-            advapi32.verify(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)));
+            advapi32.verify(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1828,8 +1814,8 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0)))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::delete);
@@ -1842,8 +1828,8 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), eq(0), eq(0)))
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
@@ -1861,13 +1847,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("existing")
         void testDeleteExisting() {
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)))
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\existing");
             assertTrue(registryKey.deleteIfExists());
 
-            advapi32.verify(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)));
+            advapi32.verify(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\existing"), eq(0), eq(0)));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1875,13 +1861,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0)))
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\non-existing");
             assertFalse(registryKey.deleteIfExists());
 
-            advapi32.verify(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0)));
+            advapi32.verify(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\non-existing"), eq(0), eq(0)));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
         }
@@ -1889,8 +1875,8 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            advapi32.when(() -> RegDeleteKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegDeleteKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), eq(0), eq(0)))
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
@@ -1908,7 +1894,7 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("with no arguments")
         void testNoArguments() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (var _ = registryKey.handle()) {
@@ -1917,8 +1903,7 @@ class LocalSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), eq(WinNT.KEY_READ), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(KEY_READ), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1927,13 +1912,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testWithCreate() {
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
                         // disposition doesn't matter
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
@@ -1942,15 +1927,15 @@ class LocalSubKeyTest extends RegistryTestBase {
             }
 
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ), notNull(), notNull(), notNull()));
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), notNull(), anyInt(), eq(KEY_READ), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("with MANAGE_VALUES")
         void testWithManageValues() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (var _ = registryKey.handle(RegistryKey.HandleOption.MANAGE_VALUES)) {
@@ -1959,8 +1944,8 @@ class LocalSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(),
-                    eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), eq(KEY_READ | KEY_SET_VALUE), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1969,13 +1954,13 @@ class LocalSubKeyTest extends RegistryTestBase {
         void testWithCreateAndManageValues() {
             MemorySegment hKey = newHKEY(arena);
 
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
                         // disposition doesn't matter
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
@@ -1984,15 +1969,15 @@ class LocalSubKeyTest extends RegistryTestBase {
             }
 
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull(), notNull(), notNull()));
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), notNull(), anyInt(), eq(KEY_READ | KEY_SET_VALUE), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("close twice")
         void testCloseTwice() {
-            MemorySegment hKey = mockOpenAndClose(WinReg.HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
+            MemorySegment hKey = mockOpenAndClose(HKEY_CURRENT_USER, "Software\\JavaSoft\\Prefs");
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("Software\\JavaSoft\\Prefs");
             try (RegistryKey.Handle handle = registryKey.handle()) {
@@ -2001,21 +1986,21 @@ class LocalSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), eq(WinNT.KEY_READ), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), eq(KEY_READ), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("open failure")
         void testOpenFailure() {
-            mockOpenFailure(WinReg.HKEY_CURRENT_USER, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(HKEY_CURRENT_USER, "path\\failure", ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::handle);
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
@@ -2024,16 +2009,16 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("create failure")
         void testCreateFailure() {
-            advapi32.when(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
+            advapi32.when(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class,
                     () -> registryKey.handle(RegistryKey.HandleOption.CREATE));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
 
-            advapi32.verify(() -> RegCreateKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"),
+            advapi32.verify(() -> RegCreateKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"),
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCloseKey(notNull()), never());
@@ -2042,18 +2027,18 @@ class LocalSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("close failure")
         void testCloseFailure() {
-            MemorySegment hKey = mockOpen(WinReg.HKEY_CURRENT_USER, "path\\failure");
+            MemorySegment hKey = mockOpen(HKEY_CURRENT_USER, "path\\failure");
 
-            mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+            mockClose(hKey, ERROR_INVALID_HANDLE);
 
-            mockValue(hKey, StringValue.of("test", "test"), WinError.ERROR_ACCESS_DENIED);
+            mockValue(hKey, StringValue.of("test", "test"), ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = REGISTRY.HKEY_CURRENT_USER.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));
             assertEquals("HKEY_CURRENT_USER\\path\\failure", exception.path());
             assertThat(exception.getSuppressed(), arrayContaining(instanceOf(InvalidRegistryHandleException.class)));
 
-            advapi32.verify(() -> RegOpenKeyEx(eq(WinReg.HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(HKEY_CURRENT_USER), eqPointer("path\\failure"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 

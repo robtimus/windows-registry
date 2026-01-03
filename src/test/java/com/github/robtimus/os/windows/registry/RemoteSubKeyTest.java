@@ -44,6 +44,17 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryI
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_LOCAL_MACHINE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_USERS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_SET_VALUE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_CREATED_NEW_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPENED_EXISTING_KEY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.hamcrest.Matchers.arrayContaining;
 import static org.hamcrest.Matchers.instanceOf;
@@ -81,9 +92,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -99,8 +107,8 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
     @BeforeEach
     void setup() {
-        hklmHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
-        hkuHKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+        hklmHKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
+        hkuHKey = mockConnectAndClose(HKEY_USERS, "test-machine");
         rootHKey = hklmHKey;
 
         remoteRegistry = Registry.at("test-machine").connect();
@@ -111,8 +119,8 @@ class RemoteSubKeyTest extends RegistryTestBase {
     void teardown() {
         remoteRegistry.close();
 
-        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
         advapi32.verify(() -> RegCloseKey(hklmHKey));
         advapi32.verify(() -> RegCloseKey(hkuHKey));
     }
@@ -213,7 +221,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -235,7 +243,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
                 advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -251,11 +259,11 @@ class RemoteSubKeyTest extends RegistryTestBase {
             void testCloseFailure() {
                 MemorySegment hKey = mockOpen(rootHKey, "path\\failure");
 
-                mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                mockClose(hKey, ERROR_INVALID_HANDLE);
 
                 advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                 NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -275,10 +283,10 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             advapi32.when(() -> RegEnumKeyEx(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
@@ -377,6 +385,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             @Test
             @DisplayName("subKeys first")
+            @SuppressWarnings("squid:S5961")
             void testSubKeysFirst() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "path");
                 MemorySegment subKey1 = mockOpenAndClose(rootHKey, "path\\subKey1");
@@ -461,6 +470,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             @Test
             @DisplayName("subKeys not first")
+            @SuppressWarnings("squid:S5961")
             void testSubKeysNotFirst() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "path");
                 MemorySegment subKey1 = mockOpenAndClose(rootHKey, "path\\subKey1");
@@ -638,7 +648,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -664,7 +674,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -680,11 +690,11 @@ class RemoteSubKeyTest extends RegistryTestBase {
                 void testCloseFailure() {
                     MemorySegment hKey = mockOpen(rootHKey, "path\\failure");
 
-                    mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                    mockClose(hKey, ERROR_INVALID_HANDLE);
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                     NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -708,7 +718,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
@@ -725,11 +735,11 @@ class RemoteSubKeyTest extends RegistryTestBase {
                 void testCloseFailure() {
                     MemorySegment hKey = mockOpen(rootHKey, "path\\failure");
 
-                    mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+                    mockClose(hKey, ERROR_INVALID_HANDLE);
 
                     advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                             notNull(), notNull(), notNull(), notNull()))
-                            .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                            .thenReturn(ERROR_FILE_NOT_FOUND);
 
                     RegistryKey registryKey = remoteRoot.resolve("path\\failure");
                     RegistryValue.Filter filter = RegistryValue.filter().strings();
@@ -751,10 +761,10 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.when(() -> RegQueryInfoKey(eq(hKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             advapi32.when(() -> RegEnumValue(eq(hKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             try (Stream<RegistryValue> stream = registryKey.values()) {
@@ -792,7 +802,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
@@ -810,7 +820,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\non-existing");
 
             advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
@@ -828,7 +838,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            mockValue(hKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -881,7 +891,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class,
@@ -899,7 +909,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\non-existing");
 
             advapi32.when(() -> RegQueryValueEx(eq(hKey), eqPointer("string"), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
@@ -914,7 +924,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            mockValue(hKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(hKey, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -955,13 +965,13 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(REG_SZ), eqBytes(data), eqSize(data)))
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             registryKey.setValue(stringValue);
 
-            advapi32.verify(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)));
+            advapi32.verify(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(REG_SZ), eqBytes(data), eqSize(data)));
 
             advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), anyInt(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
@@ -972,7 +982,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testNonExistingKey() {
             StringValue stringValue = StringValue.of("string", "value");
 
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.setValue(stringValue));
@@ -991,8 +1001,8 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), notNull(), anyInt()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegSetValueEx(eq(hKey), eqPointer("string"), anyInt(), eq(REG_SZ), notNull(), anyInt()))
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
@@ -1013,7 +1023,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testSuccess() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
             registryKey.deleteValue("string");
@@ -1027,7 +1037,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValue("string"));
@@ -1044,7 +1054,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -1070,7 +1080,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             void testExisted() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_SUCCESS);
+                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_SUCCESS);
 
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 assertTrue(registryKey.deleteValueIfExists("string"));
@@ -1086,7 +1096,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             void testValueDidntExist() {
                 MemorySegment hKey = mockOpenAndClose(rootHKey, "Software\\JavaSoft\\Prefs");
 
-                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
                 assertFalse(registryKey.deleteValueIfExists("string"));
@@ -1101,7 +1111,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing key")
         void testNonExistingKey() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.deleteValueIfExists("string"));
@@ -1118,7 +1128,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testFailure() {
             MemorySegment hKey = mockOpenAndClose(rootHKey, "path\\failure");
 
-            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(WinError.ERROR_INVALID_HANDLE);
+            advapi32.when(() -> RegDeleteValue(eq(hKey), eqPointer("string"))).thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -1150,7 +1160,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.exists());
@@ -1162,7 +1172,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(rootHKey, "path\\failure", ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::exists);
@@ -1205,7 +1215,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(rootHKey, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(rootHKey, "path\\not-found", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\not-found");
 
@@ -1224,7 +1234,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(rootHKey, "path\\failure", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
 
@@ -1267,7 +1277,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(rootHKey, "path\\not-found", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(rootHKey, "path\\not-found", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\not-found");
 
@@ -1286,7 +1296,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(rootHKey, "path\\failure", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
 
@@ -1324,7 +1334,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-existing")
         void testNonExisting() {
-            mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.isAccessible());
@@ -1336,7 +1346,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("non-accessible")
         void testNonAccessible() {
-            mockOpenFailure(rootHKey, "path\\non-accessible", WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(rootHKey, "path\\non-accessible", ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-accessible");
             assertFalse(registryKey.isAccessible());
@@ -1348,7 +1358,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+            mockOpenFailure(rootHKey, "path\\failure", ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::isAccessible);
@@ -1391,7 +1401,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
 
@@ -1410,7 +1420,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("access denied")
             @SuppressWarnings("resource")
             void testAccessDenied() {
-                mockOpenFailure(rootHKey, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(rootHKey, "path\\access-denied", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\access-denied");
 
@@ -1429,7 +1439,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+                mockOpenFailure(rootHKey, "path\\failure", ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
 
@@ -1472,7 +1482,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("non-existing")
             @SuppressWarnings("resource")
             void testNonExisting() {
-                mockOpenFailure(rootHKey, "path\\non-existing", WinError.ERROR_FILE_NOT_FOUND);
+                mockOpenFailure(rootHKey, "path\\non-existing", ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
 
@@ -1491,7 +1501,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("access denied")
             @SuppressWarnings("resource")
             void testAccessDenied() {
-                mockOpenFailure(rootHKey, "path\\access-denied", WinError.ERROR_ACCESS_DENIED);
+                mockOpenFailure(rootHKey, "path\\access-denied", ERROR_ACCESS_DENIED);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\access-denied");
 
@@ -1510,7 +1520,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
             @DisplayName("failure")
             @SuppressWarnings("resource")
             void testFailure() {
-                mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_INVALID_HANDLE);
+                mockOpenFailure(rootHKey, "path\\failure", ERROR_INVALID_HANDLE);
 
                 RegistryKey registryKey = remoteRoot.resolve("path\\failure");
 
@@ -1542,9 +1552,9 @@ class RemoteSubKeyTest extends RegistryTestBase {
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("path\\new");
@@ -1564,9 +1574,9 @@ class RemoteSubKeyTest extends RegistryTestBase {
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_OPENED_EXISTING_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_OPENED_EXISTING_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
@@ -1584,7 +1594,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
                     notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::create);
@@ -1610,9 +1620,9 @@ class RemoteSubKeyTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_CREATED_NEW_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_CREATED_NEW_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("path\\new");
@@ -1632,9 +1642,9 @@ class RemoteSubKeyTest extends RegistryTestBase {
                     anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
-                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, WinNT.REG_OPENED_EXISTING_KEY);
+                        i.getArgument(8, MemorySegment.class).set(ValueLayout.JAVA_INT, 0, REG_OPENED_EXISTING_KEY);
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
@@ -1650,7 +1660,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
                     notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::createIfNotExists);
@@ -1671,7 +1681,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("existing")
         void testRenameExisting() {
             advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             RegistryKey renamed = registryKey.renameTo("foo");
@@ -1686,7 +1696,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("non-existing")
         void testNonExisting() {
             advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\non-existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, () -> registryKey.renameTo("foo"));
@@ -1702,7 +1712,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("target exists")
         void testTargetExists() {
             advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
             MemorySegment targetHkey = mockOpenAndClose(rootHKey, "path\\foo");
 
@@ -1720,9 +1730,9 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("access denied")
         void testAccessDenied() {
             advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
-            mockOpenFailure(rootHKey, "path\\foo", WinError.ERROR_FILE_NOT_FOUND);
+            mockOpenFailure(rootHKey, "path\\foo", ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> registryKey.renameTo("foo"));
@@ -1738,7 +1748,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("failure")
         void testFailure() {
             advapi32.when(() -> RegRenameKey(eq(rootHKey), eqPointer("path\\existing"), eqPointer("foo")))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.renameTo("foo"));
@@ -1772,7 +1782,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("existing")
         void testDeleteExisting() {
             advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             registryKey.delete();
@@ -1786,7 +1796,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
             advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::delete);
@@ -1801,7 +1811,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("failure")
         void testFailure() {
             advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::delete);
@@ -1821,7 +1831,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("existing")
         void testDeleteExisting() {
             advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\existing");
             assertTrue(registryKey.deleteIfExists());
@@ -1835,7 +1845,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("non-existing")
         void testDeleteNonExisting() {
             advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\non-existing"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\non-existing");
             assertFalse(registryKey.deleteIfExists());
@@ -1849,7 +1859,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         @DisplayName("failure")
         void testFailure() {
             advapi32.when(() -> RegDeleteKeyEx(eq(rootHKey), eqPointer("path\\failure"), eq(0), eq(0)))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, registryKey::deleteIfExists);
@@ -1877,7 +1887,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
-            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(KEY_READ), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1892,7 +1902,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
                         // disposition doesn't matter
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
@@ -1902,7 +1912,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ), notNull(), notNull(), notNull()));
+                    anyInt(), notNull(), anyInt(), eq(KEY_READ), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1918,8 +1928,8 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
-            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(),
-                    eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
+                    anyInt(), eq(KEY_READ | KEY_SET_VALUE), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1934,7 +1944,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
                         setHKEY(i.getArgument(7, MemorySegment.class), hKey);
                         // disposition doesn't matter
 
-                        return WinError.ERROR_SUCCESS;
+                        return ERROR_SUCCESS;
                     });
 
             RegistryKey registryKey = remoteRoot.resolve("Software\\JavaSoft\\Prefs");
@@ -1944,7 +1954,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegOpenKeyEx(notNull(), notNull(), anyInt(), anyInt(), notNull()), never());
             advapi32.verify(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"),
-                    anyInt(), notNull(), anyInt(), eq(WinNT.KEY_READ | WinNT.KEY_SET_VALUE), notNull(), notNull(), notNull()));
+                    anyInt(), notNull(), anyInt(), eq(KEY_READ | KEY_SET_VALUE), notNull(), notNull(), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
@@ -1960,14 +1970,14 @@ class RemoteSubKeyTest extends RegistryTestBase {
 
             advapi32.verify(() -> RegCreateKeyEx(notNull(), notNull(), anyInt(), notNull(), anyInt(), anyInt(), notNull(), notNull(), notNull()),
                     never());
-            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(WinNT.KEY_READ), notNull()));
+            advapi32.verify(() -> RegOpenKeyEx(eq(rootHKey), eqPointer("Software\\JavaSoft\\Prefs"), anyInt(), eq(KEY_READ), notNull()));
             advapi32.verify(() -> RegCloseKey(hKey));
         }
 
         @Test
         @DisplayName("open failure")
         void testOpenFailure() {
-            mockOpenFailure(rootHKey, "path\\failure", WinError.ERROR_ACCESS_DENIED);
+            mockOpenFailure(rootHKey, "path\\failure", ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, registryKey::handle);
@@ -1985,7 +1995,7 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testCreateFailure() {
             advapi32.when(() -> RegCreateKeyEx(eq(rootHKey), eqPointer("path\\failure"), anyInt(), notNull(), anyInt(), anyInt(), notNull(),
                     notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class,
@@ -2004,9 +2014,9 @@ class RemoteSubKeyTest extends RegistryTestBase {
         void testCloseFailure() {
             MemorySegment hKey = mockOpen(rootHKey, "path\\failure");
 
-            mockClose(hKey, WinError.ERROR_INVALID_HANDLE);
+            mockClose(hKey, ERROR_INVALID_HANDLE);
 
-            mockValue(hKey, StringValue.of("test", "test"), WinError.ERROR_ACCESS_DENIED);
+            mockValue(hKey, StringValue.of("test", "test"), ERROR_ACCESS_DENIED);
 
             RegistryKey registryKey = remoteRoot.resolve("path\\failure");
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, () -> triggerCloseFailure(registryKey));

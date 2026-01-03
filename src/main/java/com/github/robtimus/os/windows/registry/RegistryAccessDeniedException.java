@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.WinError;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
 
 /**
  * Thrown when access is denied for a requested operation.
@@ -44,6 +44,6 @@ public class RegistryAccessDeniedException extends RegistryException {
      * @since 1.1
      */
     public RegistryAccessDeniedException(String path, String machineName) {
-        super(WinError.ERROR_ACCESS_DENIED, path, machineName);
+        super(ERROR_ACCESS_DENIED, path, machineName);
     }
 }

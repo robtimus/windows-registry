@@ -18,11 +18,13 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
 
 final class RemoteRootKey extends RegistryKey {
 
@@ -95,10 +97,10 @@ final class RemoteRootKey extends RegistryKey {
     @Override
     public boolean exists() {
         int code = checkHKEY();
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return true;
         }
-        if (code == WinError.ERROR_FILE_NOT_FOUND) {
+        if (code == ERROR_FILE_NOT_FOUND) {
             return false;
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -107,10 +109,10 @@ final class RemoteRootKey extends RegistryKey {
     @Override
     public boolean isAccessible() {
         int code = checkHKEY();
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return true;
         }
-        if (code == WinError.ERROR_FILE_NOT_FOUND || code == WinError.ERROR_ACCESS_DENIED) {
+        if (code == ERROR_FILE_NOT_FOUND || code == ERROR_ACCESS_DENIED) {
             return false;
         }
         throw RegistryException.forKey(code, path(), machineName);
@@ -148,7 +150,7 @@ final class RemoteRootKey extends RegistryKey {
     @Override
     RegistryKey.Handle handle(int samDesired, boolean create) {
         int code = checkHKEY();
-        if (code != WinError.ERROR_SUCCESS) {
+        if (code != ERROR_SUCCESS) {
             throw RegistryException.forKey(code, path(), machineName());
         }
         return handle;
@@ -157,7 +159,7 @@ final class RemoteRootKey extends RegistryKey {
     @Override
     Optional<RegistryKey.Handle> handle(int samDesired, IntPredicate ignoreError) {
         int code = checkHKEY();
-        if (code == WinError.ERROR_SUCCESS) {
+        if (code == ERROR_SUCCESS) {
             return Optional.of(handle);
         }
         if (ignoreError.test(code)) {

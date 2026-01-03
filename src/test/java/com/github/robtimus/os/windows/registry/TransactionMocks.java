@@ -26,6 +26,7 @@ import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHand
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.notNull;
 import java.lang.foreign.MemorySegment;
@@ -33,7 +34,6 @@ import java.lang.foreign.ValueLayout;
 import java.time.Duration;
 import java.util.List;
 import java.util.stream.IntStream;
-import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
 
 final class TransactionMocks {
 
@@ -66,7 +66,7 @@ final class TransactionMocks {
 
         int timeoutInMillis = Math.toIntExact(timeout.toMillis());
 
-        ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
+        ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
                 eqPointer(description), notNull()))
                 .thenReturn(handle);
     }
@@ -85,7 +85,7 @@ final class TransactionMocks {
 
         int timeoutInMillis = Math.toIntExact(timeout.toMillis());
 
-        ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
+        ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(timeoutInMillis),
                 eqPointer(description), notNull()))
                 .thenReturn(handles.getFirst(), (Object[]) handles.subList(0, handles.size()).toArray(MemorySegment[]::new));
     }

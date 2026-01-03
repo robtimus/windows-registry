@@ -115,7 +115,8 @@ public final class Kernel32 extends WindowsApi {
      *   [in]            DWORD   nSize
      * )
      */
-    private static int ExpandEnvironmentStrings/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S1845" })
+    private static int ExpandEnvironmentStrings(
             MemorySegment lpSrc,
             MemorySegment lpDst,
             int nSize,
@@ -173,14 +174,16 @@ public final class Kernel32 extends WindowsApi {
      *   [in, optional] va_list *Arguments
      * )
      */
-    private static int FormatMessage/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107", "squid:S1845" })
+    private static int FormatMessage(
             int dwFlags,
             MemorySegment lpSource,
             int dwMessageId,
             int dwLanguageId,
             MemorySegment lpBuffer,
             int nSize,
-            MemorySegment Arguments, // NOSONAR
+            @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
+            MemorySegment Arguments,
             MemorySegment captureState) {
 
         try {
@@ -214,7 +217,8 @@ public final class Kernel32 extends WindowsApi {
      *   [in] _Frees_ptr_opt_ HLOCAL hMem
      * )
      */
-    private static MemorySegment LocalFree/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    private static MemorySegment LocalFree(
             MemorySegment hMem,
             MemorySegment captureState) {
 
@@ -232,7 +236,8 @@ public final class Kernel32 extends WindowsApi {
      *   [in] HANDLE hObject
      * )
      */
-    public static boolean CloseHandle/* NOSONAR */(
+    @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
+    public static boolean CloseHandle(
             MemorySegment hObject,
             MemorySegment captureState) {
 

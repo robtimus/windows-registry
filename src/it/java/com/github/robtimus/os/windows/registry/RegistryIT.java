@@ -58,7 +58,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import com.github.robtimus.os.windows.registry.RegistryKey.HandleOption;
 import com.github.robtimus.os.windows.registry.RegistryKey.TraverseOption;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WindowsConstants;
 
 @SuppressWarnings("nls")
 class RegistryIT {
@@ -758,24 +758,24 @@ class RegistryIT {
     }
 
     private enum ValueType {
-        REG_NONE(WinNT.REG_NONE),
-        REG_SZ(WinNT.REG_SZ),
-        REG_EXPAND_SZ(WinNT.REG_EXPAND_SZ),
+        REG_NONE(WindowsConstants.REG_NONE),
+        REG_SZ(WindowsConstants.REG_SZ),
+        REG_EXPAND_SZ(WindowsConstants.REG_EXPAND_SZ),
         // Binary: values are in upper case and are missing leading 0x
-        REG_BINARY(WinNT.REG_BINARY, s -> "0x" + s.toLowerCase()),
+        REG_BINARY(WindowsConstants.REG_BINARY, s -> "0x" + s.toLowerCase()),
         // DWORD: values are hex-encoded
-        REG_DWORD(WinNT.REG_DWORD, s -> Integer.decode(s).toString()),
-        REG_DWORD_LITTLE_ENDIAN(WinNT.REG_DWORD_LITTLE_ENDIAN, s -> Integer.decode(s).toString()),
-        REG_DWORD_BIG_ENDIAN(WinNT.REG_DWORD_BIG_ENDIAN, ValueType::convertBigEndian),
-        REG_LINK(WinNT.REG_LINK),
+        REG_DWORD(WindowsConstants.REG_DWORD, s -> Integer.decode(s).toString()),
+        REG_DWORD_LITTLE_ENDIAN(WindowsConstants.REG_DWORD_LITTLE_ENDIAN, s -> Integer.decode(s).toString()),
+        REG_DWORD_BIG_ENDIAN(WindowsConstants.REG_DWORD_BIG_ENDIAN, ValueType::convertBigEndian),
+        REG_LINK(WindowsConstants.REG_LINK),
         // Multi string: values are separated with \0
-        REG_MULTI_SZ(WinNT.REG_MULTI_SZ, s -> "[" + s.replace("\\0", ", ") + "]"),
-        REG_RESOURCE_LIST(WinNT.REG_RESOURCE_LIST),
-        REG_FULL_RESOURCE_DESCRIPTOR(WinNT.REG_FULL_RESOURCE_DESCRIPTOR),
-        REG_RESOURCE_REQUIREMENTS_LIST(WinNT.REG_RESOURCE_REQUIREMENTS_LIST),
+        REG_MULTI_SZ(WindowsConstants.REG_MULTI_SZ, s -> "[" + s.replace("\\0", ", ") + "]"),
+        REG_RESOURCE_LIST(WindowsConstants.REG_RESOURCE_LIST),
+        REG_FULL_RESOURCE_DESCRIPTOR(WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR),
+        REG_RESOURCE_REQUIREMENTS_LIST(WindowsConstants.REG_RESOURCE_REQUIREMENTS_LIST),
         // QWORD: values are hex-encoded
-        REG_QWORD(WinNT.REG_QWORD, s -> Long.decode(s).toString()),
-        REG_QWORD_LITTLE_ENDIAN(WinNT.REG_QWORD_LITTLE_ENDIAN, s -> Long.decode(s).toString()),
+        REG_QWORD(WindowsConstants.REG_QWORD, s -> Long.decode(s).toString()),
+        REG_QWORD_LITTLE_ENDIAN(WindowsConstants.REG_QWORD_LITTLE_ENDIAN, s -> Long.decode(s).toString()),
         ;
 
         private final int value;

@@ -26,6 +26,9 @@ import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTrans
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -45,9 +48,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import com.github.robtimus.os.windows.registry.foreign.Kernel32;
-import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
 
 @SuppressWarnings("nls")
 class TransactionTest extends RegistryTestBase {
@@ -71,8 +72,7 @@ class TransactionTest extends RegistryTestBase {
             assertEquals(timeout, transaction.timeout());
             assertEquals(Optional.empty(), transaction.description());
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), isNULL(),
-                    notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), isNULL(), notNull()));
         }
 
         @Test
@@ -90,8 +90,8 @@ class TransactionTest extends RegistryTestBase {
             assertEquals(timeout, transaction.timeout());
             assertEquals(Optional.of("test"), transaction.description());
 
-            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(KtmTypes.TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100),
-                    eqPointer("test"), notNull()));
+            ktmW32.verify(() -> CreateTransaction(isNULL(), isNULL(), eq(TRANSACTION_DO_NOT_PROMOTE), eq(0), eq(0), eq(100), eqPointer("test"),
+                    notNull()));
         }
 
         @Test
@@ -103,14 +103,14 @@ class TransactionTest extends RegistryTestBase {
             ktmW32.when(() -> CreateTransaction(isNULL(), isNULL(), anyInt(), anyInt(), anyInt(), anyInt(), notNull(), notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
-                        setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
+                        setLastError(captureState, ERROR_INVALID_HANDLE);
 
                         return handle;
                     });
 
             TransactionException exception = assertThrows(TransactionException.class, () -> Transaction.create(timeout, null));
-            assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(ERROR_INVALID_HANDLE, exception.errorCode());
+            assertEquals(Kernel32.formatMessage(ERROR_INVALID_HANDLE), exception.getMessage());
         }
     }
 
@@ -170,7 +170,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
-                        setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
+                        setLastError(captureState, ERROR_INVALID_HANDLE);
 
                         return false;
                     });
@@ -187,14 +187,14 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
-                        setLastError(captureState, WinError.ERROR_ACCESS_DENIED);
+                        setLastError(captureState, ERROR_ACCESS_DENIED);
 
                         return false;
                     });
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::status);
-            assertEquals(WinError.ERROR_ACCESS_DENIED, exception.errorCode());
-            assertEquals(Kernel32.formatMessage(WinError.ERROR_ACCESS_DENIED), exception.getMessage());
+            assertEquals(ERROR_ACCESS_DENIED, exception.errorCode());
+            assertEquals(Kernel32.formatMessage(ERROR_ACCESS_DENIED), exception.getMessage());
         }
     }
 
@@ -224,14 +224,14 @@ class TransactionTest extends RegistryTestBase {
         void testFailure() {
             ktmW32.when(() -> CommitTransaction(eq(transaction.handle()), notNull())).thenAnswer(i -> {
                 MemorySegment captureState = i.getArgument(1);
-                setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
+                setLastError(captureState, ERROR_INVALID_HANDLE);
 
                 return false;
             });
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::commit);
-            assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(ERROR_INVALID_HANDLE, exception.errorCode());
+            assertEquals(Kernel32.formatMessage(ERROR_INVALID_HANDLE), exception.getMessage());
 
             ktmW32.verify(() -> CommitTransaction(eq(transaction.handle()), notNull()));
         }
@@ -263,14 +263,14 @@ class TransactionTest extends RegistryTestBase {
         void testFailure() {
             ktmW32.when(() -> RollbackTransaction(eq(transaction.handle()), notNull())).thenAnswer(i -> {
                 MemorySegment captureState = i.getArgument(1);
-                setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
+                setLastError(captureState, ERROR_INVALID_HANDLE);
 
                 return false;
             });
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::rollback);
-            assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(ERROR_INVALID_HANDLE, exception.errorCode());
+            assertEquals(Kernel32.formatMessage(ERROR_INVALID_HANDLE), exception.getMessage());
 
             ktmW32.verify(() -> RollbackTransaction(eq(transaction.handle()), notNull()));
         }
@@ -292,7 +292,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
 
                         return true;
                     });
@@ -359,7 +359,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
-                        setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
+                        setLastError(captureState, ERROR_INVALID_HANDLE);
 
                         return false;
                     });
@@ -379,7 +379,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment captureState = i.getArgument(7);
-                        setLastError(captureState, WinError.ERROR_ACCESS_DENIED);
+                        setLastError(captureState, ERROR_ACCESS_DENIED);
 
                         return false;
                     });
@@ -400,7 +400,7 @@ class TransactionTest extends RegistryTestBase {
                     notNull()))
                     .thenAnswer(i -> {
                         MemorySegment outcomeSegment = i.getArgument(1);
-                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeCommitted);
+                        outcomeSegment.set(ValueLayout.JAVA_INT, 0, TRANSACTION_OUTCOME.TransactionOutcomeCommitted);
 
                         return true;
                     });
@@ -439,14 +439,14 @@ class TransactionTest extends RegistryTestBase {
         void testFailure() {
             kernel32.when(() -> CloseHandle(eq(transaction.handle()), notNull())).thenAnswer(i -> {
                 MemorySegment captureState = i.getArgument(1);
-                setLastError(captureState, WinError.ERROR_INVALID_HANDLE);
+                setLastError(captureState, ERROR_INVALID_HANDLE);
 
                 return false;
             });
 
             TransactionException exception = assertThrows(TransactionException.class, transaction::close);
-            assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
-            assertEquals(Kernel32.formatMessage(WinError.ERROR_INVALID_HANDLE), exception.getMessage());
+            assertEquals(ERROR_INVALID_HANDLE, exception.errorCode());
+            assertEquals(Kernel32.formatMessage(ERROR_INVALID_HANDLE), exception.getMessage());
 
             kernel32.verify(() -> CloseHandle(eq(transaction.handle()), notNull()));
         }

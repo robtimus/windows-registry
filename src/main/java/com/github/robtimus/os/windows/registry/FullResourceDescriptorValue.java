@@ -18,10 +18,10 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of full resource descriptor registry values.
@@ -33,7 +33,7 @@ public final class FullResourceDescriptorValue extends RegistryValue {
     private final byte[] data;
 
     FullResourceDescriptorValue(String name, MemorySegment data, long dataLength) {
-        super(name, WinNT.REG_FULL_RESOURCE_DESCRIPTOR);
+        super(name, REG_FULL_RESOURCE_DESCRIPTOR);
         this.data = data.asSlice(0, dataLength).toArray(ValueLayout.JAVA_BYTE);
     }
 

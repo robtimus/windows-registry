@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.WinError;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
 
 /**
  * Thrown when an attempt is made to access a registry key using a handle that is no longer valid.
@@ -44,6 +44,6 @@ public class InvalidRegistryHandleException extends RegistryException {
      * @since 1.1
      */
     public InvalidRegistryHandleException(String path, String machineName) {
-        super(WinError.ERROR_INVALID_HANDLE, path, machineName);
+        super(ERROR_INVALID_HANDLE, path, machineName);
     }
 }

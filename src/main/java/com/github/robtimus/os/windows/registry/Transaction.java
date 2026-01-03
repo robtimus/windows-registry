@@ -22,6 +22,8 @@ import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTrans
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
 import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -30,11 +32,9 @@ import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntFunction;
 import com.github.robtimus.os.windows.registry.foreign.CaptureState;
-import com.github.robtimus.os.windows.registry.foreign.KtmTypes;
 import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HANDLE;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HANDLE;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
 
 /**
  * A representation of transactions for working with the Windows registry.
@@ -115,16 +115,16 @@ public final class Transaction {
                     captureState);
             if (!result) {
                 int errorCode = CaptureState.getLastError(captureState);
-                if (errorCode == WinError.ERROR_INVALID_HANDLE) {
+                if (errorCode == ERROR_INVALID_HANDLE) {
                     return statusMapper.apply(Status.CLOSED);
                 }
                 return errorMapper.apply(errorCode);
             }
             int outcomeValue = outcome.get(ValueLayout.JAVA_INT, 0);
             return switch (outcomeValue) {
-                case WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined -> statusMapper.apply(Status.ACTIVE);
-                case WinNT.TRANSACTION_OUTCOME.TransactionOutcomeCommitted -> statusMapper.apply(Status.COMMITTED);
-                case WinNT.TRANSACTION_OUTCOME.TransactionOutcomeAborted -> statusMapper.apply(Status.ROLLED_BACK);
+                case TRANSACTION_OUTCOME.TransactionOutcomeUndetermined -> statusMapper.apply(Status.ACTIVE);
+                case TRANSACTION_OUTCOME.TransactionOutcomeCommitted -> statusMapper.apply(Status.COMMITTED);
+                case TRANSACTION_OUTCOME.TransactionOutcomeAborted -> statusMapper.apply(Status.ROLLED_BACK);
                 default -> invalidValueMapper.apply(outcomeValue);
             };
         }
@@ -201,7 +201,7 @@ public final class Transaction {
             MemorySegment handle = CreateTransaction(
                     MemorySegment.NULL,
                     MemorySegment.NULL,
-                    KtmTypes.TRANSACTION_DO_NOT_PROMOTE,
+                    TRANSACTION_DO_NOT_PROMOTE,
                     0,
                     0,
                     timeoutInMillis,

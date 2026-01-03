@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.WinError;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
 
 /**
  * Thrown when an attempt is made to access a registry value that does not exist.
@@ -49,7 +49,7 @@ public class NoSuchRegistryValueException extends RegistryException {
      * @since 1.1
      */
     public NoSuchRegistryValueException(String path, String machineName, String name) {
-        super(WinError.ERROR_FILE_NOT_FOUND, path, machineName);
+        super(ERROR_FILE_NOT_FOUND, path, machineName);
         this.name = name;
     }
 

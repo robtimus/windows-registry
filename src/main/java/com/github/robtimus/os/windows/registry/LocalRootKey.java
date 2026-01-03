@@ -25,19 +25,19 @@ import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
+import com.github.robtimus.os.windows.registry.foreign.WindowsConstants;
 
 final class LocalRootKey extends RegistryKey {
 
-    static final LocalRootKey HKEY_CLASSES_ROOT = new LocalRootKey(WinReg.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_CLASSES_ROOT = new LocalRootKey(WindowsConstants.HKEY_CLASSES_ROOT, "HKEY_CLASSES_ROOT"); //$NON-NLS-1$
 
-    static final LocalRootKey HKEY_CURRENT_USER = new LocalRootKey(WinReg.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_CURRENT_USER = new LocalRootKey(WindowsConstants.HKEY_CURRENT_USER, "HKEY_CURRENT_USER"); //$NON-NLS-1$
 
-    static final LocalRootKey HKEY_LOCAL_MACHINE = new LocalRootKey(WinReg.HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_LOCAL_MACHINE = new LocalRootKey(WindowsConstants.HKEY_LOCAL_MACHINE, "HKEY_LOCAL_MACHINE"); //$NON-NLS-1$
 
-    static final LocalRootKey HKEY_USERS = new LocalRootKey(WinReg.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_USERS = new LocalRootKey(WindowsConstants.HKEY_USERS, "HKEY_USERS"); //$NON-NLS-1$
 
-    static final LocalRootKey HKEY_CURRENT_CONFIG = new LocalRootKey(WinReg.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
+    static final LocalRootKey HKEY_CURRENT_CONFIG = new LocalRootKey(WindowsConstants.HKEY_CURRENT_CONFIG, "HKEY_CURRENT_CONFIG"); //$NON-NLS-1$
 
     private static final Pattern PATH_SPLIT_PATTERN = Pattern.compile(Pattern.quote(SEPARATOR));
 

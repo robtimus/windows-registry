@@ -17,6 +17,7 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
@@ -135,6 +136,6 @@ class KtmW32Test {
 
     private void assertInvalidHandle(boolean result, MemorySegment captureState) {
         assertFalse(result);
-        assertEquals(WinError.ERROR_INVALID_HANDLE, CaptureState.getLastError(captureState));
+        assertEquals(ERROR_INVALID_HANDLE, CaptureState.getLastError(captureState));
     }
 }

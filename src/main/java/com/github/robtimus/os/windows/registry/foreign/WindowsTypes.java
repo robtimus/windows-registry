@@ -1,6 +1,6 @@
 /*
- * WinDef.java
- * Copyright 2023 Rob Spoor
+ * WindowsTypes.java
+ * Copyright 2026 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,9 +28,9 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.VarHandle;
 
 @SuppressWarnings("javadoc")
-public final class WinDef {
+public final class WindowsTypes {
 
-    private WinDef() {
+    private WindowsTypes() {
     }
 
     public static final class HANDLE {
@@ -98,6 +98,23 @@ public final class WinDef {
 
         public static void dwHighDateTime(MemorySegment segment, int value) {
             DW_HIGH_DATE_TIME.set(segment, value);
+        }
+    }
+
+    /*
+     * typedef enum _TRANSACTION_OUTCOME:
+     *   TransactionOutcomeUndetermined = 1,
+     *   TransactionOutcomeCommitted,
+     *   TransactionOutcomeAborted
+     */
+    @SuppressWarnings({ "checkstyle:TypeName", "squid:S101", "squid:S115" })
+    public static final class TRANSACTION_OUTCOME {
+
+        public static final int TransactionOutcomeUndetermined = 1;
+        public static final int TransactionOutcomeCommitted = 2;
+        public static final int TransactionOutcomeAborted = 3;
+
+        private TRANSACTION_OUTCOME() {
         }
     }
 }

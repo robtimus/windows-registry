@@ -18,13 +18,13 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
 import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HKEY;
 
 /**
  * A representation of a Windows registry on a remote machine.
@@ -34,15 +34,13 @@ import com.github.robtimus.os.windows.registry.foreign.WinError;
  */
 public final class RemoteRegistry extends Registry implements AutoCloseable {
 
-    // CHECKSTYLE:OFF: MemberName
-
     /** The HKEY_LOCAL_MACHINE root key on the remote machine. */
-    public final RegistryKey HKEY_LOCAL_MACHINE; // NOSONAR
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_LOCAL_MACHINE;
 
     /** The HKEY_USERS root key on the remote machine. */
-    public final RegistryKey HKEY_USERS; // NOSONAR
-
-    // CHECKSTYLE:ON: MemberName
+    @SuppressWarnings({ "checkstyle:MemberName", "squid:S116", "squid:S1170" })
+    public final RegistryKey HKEY_USERS;
 
     private final Cleaner.Cleanable cleanable;
 
@@ -82,7 +80,7 @@ public final class RemoteRegistry extends Registry implements AutoCloseable {
 
     private static RemoteRootKey connect(LocalRootKey rootKey, String machineName, MemorySegment lpMachineName, MemorySegment phkResult) {
         int code = RegConnectRegistry(lpMachineName, rootKey.hKey(), phkResult);
-        if (code != WinError.ERROR_SUCCESS) {
+        if (code != ERROR_SUCCESS) {
             throw RegistryException.forKey(code, rootKey.path(), machineName);
         }
         return new RemoteRootKey(machineName, rootKey, HKEY.target(phkResult));

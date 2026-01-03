@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.WinError;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ALREADY_EXISTS;
 
 /**
  * Thrown when an attempt is made to create a registry key that already exists.
@@ -44,6 +44,6 @@ public class RegistryKeyAlreadyExistsException extends RegistryException {
      * @since 1.1
      */
     public RegistryKeyAlreadyExistsException(String path, String machineName) {
-        super(WinError.ERROR_ALREADY_EXISTS, path, machineName);
+        super(ERROR_ALREADY_EXISTS, path, machineName);
     }
 }

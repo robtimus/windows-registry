@@ -19,6 +19,8 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.assertContentEquals;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.bytesSegment;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_BIG_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.params.provider.Arguments.arguments;
@@ -30,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 @SuppressWarnings("nls")
 class DWordValueTest {
@@ -72,7 +73,7 @@ class DWordValueTest {
             void testLittleEndian() {
                 try (Arena arena = Arena.ofConfined()) {
                     MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
-                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
+                    DWordValue value = new DWordValue("test", REG_DWORD_LITTLE_ENDIAN, data);
 
                     assertEquals(67305985, value.value());
                 }
@@ -83,7 +84,7 @@ class DWordValueTest {
             void testBigEndian() {
                 try (Arena arena = Arena.ofConfined()) {
                     MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
-                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
+                    DWordValue value = new DWordValue("test", REG_DWORD_BIG_ENDIAN, data);
 
                     assertEquals(16909060, value.value());
                 }
@@ -142,7 +143,7 @@ class DWordValueTest {
             void testBigEndian() {
                 try (Arena arena = Arena.ofConfined()) {
                     MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
-                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data);
+                    DWordValue value = new DWordValue("test", REG_DWORD_BIG_ENDIAN, data);
 
                     assertContentEquals(data, value.rawData(arena));
                 }
@@ -153,7 +154,7 @@ class DWordValueTest {
             void testLittleEndian() {
                 try (Arena arena = Arena.ofConfined()) {
                     MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
-                    DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
+                    DWordValue value = new DWordValue("test", REG_DWORD_LITTLE_ENDIAN, data);
 
                     assertContentEquals(data, value.rawData(arena));
                 }
@@ -530,14 +531,14 @@ class DWordValueTest {
         Arena arena = Arena.ofAuto();
 
         MemorySegment data = bytesSegment(arena, 1, 2, 3, 4);
-        DWordValue value = new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data);
+        DWordValue value = new DWordValue("test", REG_DWORD_LITTLE_ENDIAN, data);
 
         return new Arguments[] {
                 arguments(value, value, true),
-                arguments(value, new DWordValue("test", WinNT.REG_DWORD_LITTLE_ENDIAN, data), true),
+                arguments(value, new DWordValue("test", REG_DWORD_LITTLE_ENDIAN, data), true),
                 arguments(value, DWordValue.of("test", 67305985), true),
-                arguments(value, new DWordValue("test", WinNT.REG_DWORD_BIG_ENDIAN, data), false),
-                arguments(value, new DWordValue("test2", WinNT.REG_DWORD_LITTLE_ENDIAN, data), false),
+                arguments(value, new DWordValue("test", REG_DWORD_BIG_ENDIAN, data), false),
+                arguments(value, new DWordValue("test2", REG_DWORD_LITTLE_ENDIAN, data), false),
                 arguments(value, DWordValue.of("test", 67305984), false),
                 arguments(value, "foo", false),
                 arguments(value, null, false),

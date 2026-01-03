@@ -17,6 +17,9 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ALREADY_EXISTS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import org.junit.jupiter.api.DisplayName;
@@ -47,7 +50,7 @@ class Kernel32Test {
 
         @ParameterizedTest
         @DisplayName("success")
-        @ValueSource(ints = { WinError.ERROR_SUCCESS, WinError.ERROR_ACCESS_DENIED, WinError.ERROR_ALREADY_EXISTS })
+        @ValueSource(ints = { ERROR_SUCCESS, ERROR_ACCESS_DENIED, ERROR_ALREADY_EXISTS })
         void testFormatMessage(int code) {
             String result = Kernel32.formatMessage(code);
 

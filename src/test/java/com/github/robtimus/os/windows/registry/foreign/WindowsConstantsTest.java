@@ -1,5 +1,5 @@
 /*
- * WinRegTest.java
+ * WindowsConstantsTest.java
  * Copyright 2023 Rob Spoor
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -29,13 +29,14 @@ import org.junit.jupiter.params.provider.ArgumentsProvider;
 import org.junit.jupiter.params.provider.ArgumentsSource;
 import org.junit.jupiter.params.support.ParameterDeclarations;
 import com.sun.jna.Pointer;
+import com.sun.jna.platform.win32.WinReg;
 
-class WinRegTest {
+class WindowsConstantsTest {
 
     @ParameterizedTest(name = "HKEY = {0}, expected = {1}")
     @ArgumentsSource(HKEYArgumentsProvider.class)
     @DisplayName("HKEY constants")
-    void testHKEY(MemorySegment hKey, com.sun.jna.platform.win32.WinReg.HKEY expected) {
+    void testHKEY(MemorySegment hKey, WinReg.HKEY expected) {
         Pointer pointer = expected.getPointer();
 
         assertEquals(Pointer.nativeValue(pointer), hKey.address());
@@ -46,11 +47,11 @@ class WinRegTest {
         @Override
         public Stream<? extends Arguments> provideArguments(ParameterDeclarations parameters, ExtensionContext context) {
             return Stream.of(
-                    arguments(WinReg.HKEY_CLASSES_ROOT, com.sun.jna.platform.win32.WinReg.HKEY_CLASSES_ROOT),
-                    arguments(WinReg.HKEY_CURRENT_USER, com.sun.jna.platform.win32.WinReg.HKEY_CURRENT_USER),
-                    arguments(WinReg.HKEY_LOCAL_MACHINE, com.sun.jna.platform.win32.WinReg.HKEY_LOCAL_MACHINE),
-                    arguments(WinReg.HKEY_USERS, com.sun.jna.platform.win32.WinReg.HKEY_USERS),
-                    arguments(WinReg.HKEY_CURRENT_CONFIG, com.sun.jna.platform.win32.WinReg.HKEY_CURRENT_CONFIG)
+                    arguments(WindowsConstants.HKEY_CLASSES_ROOT, WinReg.HKEY_CLASSES_ROOT),
+                    arguments(WindowsConstants.HKEY_CURRENT_USER, WinReg.HKEY_CURRENT_USER),
+                    arguments(WindowsConstants.HKEY_LOCAL_MACHINE, WinReg.HKEY_LOCAL_MACHINE),
+                    arguments(WindowsConstants.HKEY_USERS, WinReg.HKEY_USERS),
+                    arguments(WindowsConstants.HKEY_CURRENT_CONFIG, WinReg.HKEY_CURRENT_CONFIG)
             );
         }
     }

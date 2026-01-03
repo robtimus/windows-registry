@@ -17,6 +17,11 @@
 
 package com.github.robtimus.os.windows.registry.foreign;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPTION_NON_VOLATILE;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.lang.foreign.Arena;
@@ -26,8 +31,8 @@ import java.nio.ByteOrder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WinDef.HKEY;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.FILETIME;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HKEY;
 
 @SuppressWarnings("nls")
 class Advapi32Test {
@@ -91,8 +96,8 @@ class Advapi32Test {
                         lpSubKey,
                         0,
                         MemorySegment.NULL,
-                        WinNT.REG_OPTION_NON_VOLATILE,
-                        WinNT.KEY_READ,
+                        REG_OPTION_NON_VOLATILE,
+                        KEY_READ,
                         MemorySegment.NULL,
                         phkResult,
                         MemorySegment.NULL);
@@ -116,8 +121,8 @@ class Advapi32Test {
                         lpSubKey,
                         0,
                         MemorySegment.NULL,
-                        WinNT.REG_OPTION_NON_VOLATILE,
-                        WinNT.KEY_READ,
+                        REG_OPTION_NON_VOLATILE,
+                        KEY_READ,
                         MemorySegment.NULL,
                         phkResult,
                         lpdwDisposition);
@@ -293,7 +298,7 @@ class Advapi32Test {
                     INVALID_HKEY,
                     lpSubKey,
                     0,
-                    WinNT.KEY_READ,
+                    KEY_READ,
                     phkResult);
 
             assertInvalidHandle(code);
@@ -458,7 +463,7 @@ class Advapi32Test {
                     INVALID_HKEY,
                     MemorySegment.NULL,
                     0,
-                    WinNT.REG_BINARY,
+                    REG_BINARY,
                     MemorySegment.NULL,
                     0);
 
@@ -476,7 +481,7 @@ class Advapi32Test {
                         INVALID_HKEY,
                         lpValueName,
                         0,
-                        WinNT.REG_DWORD_LITTLE_ENDIAN,
+                        REG_DWORD_LITTLE_ENDIAN,
                         lpData,
                         100);
 
@@ -486,7 +491,7 @@ class Advapi32Test {
     }
 
     private void assertInvalidHandle(int code) {
-        assertEquals(WinError.ERROR_INVALID_HANDLE, code);
+        assertEquals(ERROR_INVALID_HANDLE, code);
     }
 
     private void assertNullReference(MemorySegment phkResult) {

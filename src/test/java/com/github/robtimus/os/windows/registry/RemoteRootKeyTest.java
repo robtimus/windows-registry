@@ -37,6 +37,13 @@ import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKe
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_LOCAL_MACHINE;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_USERS;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -70,9 +77,6 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.MethodSource;
-import com.github.robtimus.os.windows.registry.foreign.WinError;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
-import com.github.robtimus.os.windows.registry.foreign.WinReg;
 
 @SuppressWarnings("nls")
 @TestInstance(Lifecycle.PER_CLASS)
@@ -91,8 +95,8 @@ class RemoteRootKeyTest extends RegistryTestBase {
 
     @BeforeEach
     void setup() {
-        hklmHKey = mockConnectAndClose(WinReg.HKEY_LOCAL_MACHINE, "test-machine");
-        hkuHKey = mockConnectAndClose(WinReg.HKEY_USERS, "test-machine");
+        hklmHKey = mockConnectAndClose(HKEY_LOCAL_MACHINE, "test-machine");
+        hkuHKey = mockConnectAndClose(HKEY_USERS, "test-machine");
         rootHKey = hklmHKey;
 
         remoteRegistry = Registry.at("test-machine").connect();
@@ -107,8 +111,8 @@ class RemoteRootKeyTest extends RegistryTestBase {
         remoteRegistry.close();
         remoteRegistry.close();
 
-        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_LOCAL_MACHINE), notNull()));
-        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(WinReg.HKEY_USERS), notNull()));
+        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_LOCAL_MACHINE), notNull()));
+        advapi32.verify(() -> RegConnectRegistry(eqPointer("test-machine"), eq(HKEY_USERS), notNull()));
         advapi32.verify(() -> RegCloseKey(hklmHKey));
         advapi32.verify(() -> RegCloseKey(hkuHKey));
 
@@ -199,7 +203,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testQueryFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNULL(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::subKeys);
@@ -212,10 +216,10 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testEnumFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             advapi32.when(() -> RegEnumKeyEx(eq(rootHKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             try (Stream<RegistryKey> stream = registryKey.subKeys()) {
@@ -374,7 +378,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testQueryFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNULL(),
                     notNULL(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryKeyException exception = assertThrows(NoSuchRegistryKeyException.class, registryKey::values);
@@ -387,10 +391,10 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testEnumFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             advapi32.when(() -> RegEnumValue(eq(rootHKey), eq(0), notNull(), notNull(), notNull(), notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             try (Stream<RegistryValue> stream = registryKey.values()) {
@@ -421,7 +425,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @DisplayName("non-existing value")
         void testNonExistingValue() {
             advapi32.when(() -> RegQueryValueEx(eq(rootHKey), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class,
@@ -434,7 +438,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(rootHKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(rootHKey, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -475,7 +479,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @DisplayName("non-existing value")
         void testNonExistingValue() {
             advapi32.when(() -> RegQueryValueEx(eq(rootHKey), notNull(), notNull(), notNull(), isNULL(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             Optional<DWordValue> value = registryKey.findValue("string", DWordValue.class);
@@ -485,7 +489,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @Test
         @DisplayName("failure")
         void testFailure() {
-            mockValue(rootHKey, StringValue.of("string", "value"), WinError.ERROR_INVALID_HANDLE);
+            mockValue(rootHKey, StringValue.of("string", "value"), ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -516,13 +520,13 @@ class RemoteRootKeyTest extends RegistryTestBase {
             StringValue stringValue = StringValue.of("string", "value");
             MemorySegment data = stringValue.rawData(arena);
 
-            advapi32.when(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), anyInt()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+            advapi32.when(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(REG_SZ), eqBytes(data), anyInt()))
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot;
             registryKey.setValue(stringValue);
 
-            advapi32.verify(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(WinNT.REG_SZ), eqBytes(data), eqSize(data)));
+            advapi32.verify(() -> RegSetValueEx(notNull(), eqPointer("string"), anyInt(), eq(REG_SZ), eqBytes(data), eqSize(data)));
         }
 
         @Test
@@ -531,7 +535,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             StringValue stringValue = StringValue.of("string", "value");
 
             advapi32.when(() -> RegSetValueEx(notNull(), notNull(), anyInt(), anyInt(), notNull(), anyInt()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, () -> registryKey.setValue(stringValue));
@@ -548,7 +552,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @DisplayName("success")
         void testSuccess() {
             advapi32.when(() -> RegDeleteValue(notNull(), eqPointer("string")))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             RegistryKey registryKey = remoteRoot;
             registryKey.deleteValue("string");
@@ -560,7 +564,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @DisplayName("failure")
         void testFailure() {
             advapi32.when(() -> RegDeleteValue(notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             RegistryKey registryKey = remoteRoot;
             NoSuchRegistryValueException exception = assertThrows(NoSuchRegistryValueException.class, () -> registryKey.deleteValue("string"));
@@ -582,7 +586,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             @DisplayName("value existed")
             void testExisted() {
                 advapi32.when(() -> RegDeleteValue(notNull(), eqPointer("string")))
-                        .thenReturn(WinError.ERROR_SUCCESS);
+                        .thenReturn(ERROR_SUCCESS);
 
                 RegistryKey registryKey = remoteRoot;
                 assertTrue(registryKey.deleteValueIfExists("string"));
@@ -594,7 +598,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             @DisplayName("value didn't exist")
             void testValueDidntExist() {
                 advapi32.when(() -> RegDeleteValue(notNull(), eqPointer("string")))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 RegistryKey registryKey = remoteRoot;
                 assertFalse(registryKey.deleteValueIfExists("string"));
@@ -607,7 +611,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         @DisplayName("failure")
         void testFailure() {
             advapi32.when(() -> RegDeleteValue(notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             RegistryKey registryKey = remoteRoot;
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class,
@@ -626,7 +630,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testSuccess() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             assertTrue(remoteRoot.exists());
 
@@ -639,7 +643,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testNonExisting() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             assertFalse(remoteRoot.exists());
 
@@ -652,7 +656,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
             RegistryAccessDeniedException exception = assertThrows(RegistryAccessDeniedException.class, remoteRoot::exists);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
@@ -676,7 +680,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testSuccess() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_SUCCESS);
+                        .thenReturn(ERROR_SUCCESS);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -697,7 +701,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testNonExisting() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -716,7 +720,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testFailure() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                        .thenReturn(ERROR_ACCESS_DENIED);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -741,7 +745,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testSuccess() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_SUCCESS);
+                        .thenReturn(ERROR_SUCCESS);
 
                 Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
@@ -761,7 +765,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testNonExisting() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -780,7 +784,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testFailure() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                        .thenReturn(ERROR_ACCESS_DENIED);
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -806,7 +810,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testSuccess() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             assertTrue(remoteRoot.isAccessible());
 
@@ -819,7 +823,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testNonExisting() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                    .thenReturn(ERROR_FILE_NOT_FOUND);
 
             assertFalse(remoteRoot.isAccessible());
 
@@ -832,7 +836,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testAccessDenied() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                    .thenReturn(ERROR_ACCESS_DENIED);
 
             assertFalse(remoteRoot.isAccessible());
 
@@ -845,7 +849,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, remoteRoot::isAccessible);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
@@ -869,7 +873,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testSuccess() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_SUCCESS);
+                        .thenReturn(ERROR_SUCCESS);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -890,7 +894,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testNonExisting() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -909,7 +913,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testAccessDenied() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                        .thenReturn(ERROR_ACCESS_DENIED);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -928,7 +932,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testFailure() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                        .thenReturn(ERROR_INVALID_HANDLE);
 
                 @SuppressWarnings("unchecked")
                 Consumer<RegistryKey.Handle> action = mock(Consumer.class);
@@ -953,7 +957,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testSuccess() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_SUCCESS);
+                        .thenReturn(ERROR_SUCCESS);
 
                 Function<RegistryKey.Handle, String> action = RegistryKey.Handle::toString;
 
@@ -973,7 +977,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testNonExisting() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_FILE_NOT_FOUND);
+                        .thenReturn(ERROR_FILE_NOT_FOUND);
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -994,7 +998,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testAccessDenied() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_ACCESS_DENIED);
+                        .thenReturn(ERROR_ACCESS_DENIED);
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1015,7 +1019,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
             void testFailure() {
                 advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                         notNull(), notNull(), notNull(), notNull()))
-                        .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                        .thenReturn(ERROR_INVALID_HANDLE);
 
                 @SuppressWarnings("unchecked")
                 Function<RegistryKey.Handle, String> action = mock(Function.class);
@@ -1052,7 +1056,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testSuccess() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_SUCCESS);
+                    .thenReturn(ERROR_SUCCESS);
 
             assertFalse(remoteRoot::createIfNotExists);
 
@@ -1065,7 +1069,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, remoteRoot::createIfNotExists);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());
@@ -1169,7 +1173,7 @@ class RemoteRootKeyTest extends RegistryTestBase {
         void testVerifyFailure() {
             advapi32.when(() -> RegQueryInfoKey(eq(rootHKey), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(), notNull(),
                     notNull(), notNull(), notNull()))
-                    .thenReturn(WinError.ERROR_INVALID_HANDLE);
+                    .thenReturn(ERROR_INVALID_HANDLE);
 
             InvalidRegistryHandleException exception = assertThrows(InvalidRegistryHandleException.class, remoteRoot::handle);
             assertEquals("HKEY_LOCAL_MACHINE", exception.path());

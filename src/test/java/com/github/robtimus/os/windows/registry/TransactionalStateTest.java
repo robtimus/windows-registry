@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
+import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
 
 @SuppressWarnings("nls")
 class TransactionalStateTest extends RegistryTestBase {
@@ -108,7 +108,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), null);
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -171,7 +171,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(100), null);
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -237,7 +237,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), "test");
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -301,7 +301,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(100), "test");
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -388,7 +388,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), null);
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -419,7 +419,7 @@ class TransactionalStateTest extends RegistryTestBase {
                 Transaction transaction = createTransaction();
 
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), null);
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -463,7 +463,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(100), null);
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -494,7 +494,7 @@ class TransactionalStateTest extends RegistryTestBase {
                 Transaction transaction = createTransaction(Duration.ofMillis(0), null);
 
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(100), null);
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -541,7 +541,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), "test");
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -572,7 +572,7 @@ class TransactionalStateTest extends RegistryTestBase {
                 Transaction transaction = createTransaction(Duration.ofMillis(0), null);
 
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), "test");
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -617,7 +617,7 @@ class TransactionalStateTest extends RegistryTestBase {
             @DisplayName("called without current transaction")
             void testWithoutCurrentTransaction() {
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(100), "test");
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -648,7 +648,7 @@ class TransactionalStateTest extends RegistryTestBase {
                 Transaction transaction = createTransaction(Duration.ofMillis(0), null);
 
                 MemorySegment handle = mockCreateTransaction(Duration.ofMillis(100), "test");
-                mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+                mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
                 mockCommitTransaction(handle);
                 mockCloseHandle(handle);
 
@@ -843,7 +843,7 @@ class TransactionalStateTest extends RegistryTestBase {
         @DisplayName("autoCommit and active")
         void testAutoCommitAndActive() {
             MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), null);
-            mockGetTransactionStatus(handle, WinNT.TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
+            mockGetTransactionStatus(handle, TRANSACTION_OUTCOME.TransactionOutcomeUndetermined);
             mockCommitTransaction(handle);
             mockCloseHandle(handle);
 
@@ -863,8 +863,8 @@ class TransactionalStateTest extends RegistryTestBase {
         @ParameterizedTest
         @DisplayName("autoCommit and not active")
         @ValueSource(ints = {
-                WinNT.TRANSACTION_OUTCOME.TransactionOutcomeCommitted,
-                WinNT.TRANSACTION_OUTCOME.TransactionOutcomeAborted
+                TRANSACTION_OUTCOME.TransactionOutcomeCommitted,
+                TRANSACTION_OUTCOME.TransactionOutcomeAborted
         })
         void testAutoCommitAndNotActive(int outcome) {
             MemorySegment handle = mockCreateTransaction(Duration.ofMillis(0), null);

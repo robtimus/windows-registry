@@ -17,11 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.sun.jna.platform.win32.WinError.ERROR_INVALID_HANDLE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import com.sun.jna.platform.win32.WinError;
 
 @SuppressWarnings("nls")
 class InvalidRegistryHandleExceptionTest {
@@ -31,7 +31,7 @@ class InvalidRegistryHandleExceptionTest {
     void testConstructorWithoutMachineName() {
         InvalidRegistryHandleException exception = new InvalidRegistryHandleException("path");
 
-        assertEquals(WinError.ERROR_INVALID_HANDLE, exception.errorCode());
+        assertEquals(ERROR_INVALID_HANDLE, exception.errorCode());
         assertEquals("path", exception.path());
         assertNull(exception.machineName());
     }

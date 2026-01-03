@@ -17,11 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.sun.jna.platform.win32.WinError.ERROR_FILE_NOT_FOUND;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import com.sun.jna.platform.win32.WinError;
 
 @SuppressWarnings("nls")
 class NoSuchRegistryKeyExceptionTest {
@@ -31,7 +31,7 @@ class NoSuchRegistryKeyExceptionTest {
     void testConstructorWithoutMachineName() {
         NoSuchRegistryKeyException exception = new NoSuchRegistryKeyException("path");
 
-        assertEquals(WinError.ERROR_FILE_NOT_FOUND, exception.errorCode());
+        assertEquals(ERROR_FILE_NOT_FOUND, exception.errorCode());
         assertEquals("path", exception.path());
         assertNull(exception.machineName());
     }

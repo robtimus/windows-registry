@@ -17,12 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_EXPAND_SZ;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.Objects;
 import com.github.robtimus.os.windows.registry.foreign.Kernel32;
 import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * A representation of string registry values.
@@ -56,7 +57,7 @@ public final class StringValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name or value is {@code null}.
      */
     public static StringValue of(String name, String value) {
-        return new StringValue(name, WinNT.REG_SZ, value);
+        return new StringValue(name, REG_SZ, value);
     }
 
     /**
@@ -68,7 +69,7 @@ public final class StringValue extends SettableRegistryValue {
      * @throws NullPointerException If the given name or value is {@code null}.
      */
     public static StringValue expandableOf(String name, String value) {
-        return new StringValue(name, WinNT.REG_EXPAND_SZ, value);
+        return new StringValue(name, REG_EXPAND_SZ, value);
     }
 
     /**
@@ -89,7 +90,7 @@ public final class StringValue extends SettableRegistryValue {
      * @see #expandedValue()
      */
     public boolean isExpandable() {
-        return type() == WinNT.REG_EXPAND_SZ;
+        return type() == REG_EXPAND_SZ;
     }
 
     /**

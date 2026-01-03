@@ -18,10 +18,10 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
+import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_NONE;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
-import com.github.robtimus.os.windows.registry.foreign.WinNT;
 
 /**
  * Represents registry values with no defined value types.
@@ -33,7 +33,7 @@ public final class NoneValue extends RegistryValue {
     private final byte[] data;
 
     NoneValue(String name, MemorySegment data, long dataLength) {
-        super(name, WinNT.REG_NONE);
+        super(name, REG_NONE);
         this.data = data.asSlice(0, dataLength).toArray(ValueLayout.JAVA_BYTE);
     }
 
