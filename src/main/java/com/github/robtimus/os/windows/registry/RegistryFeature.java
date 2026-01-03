@@ -17,9 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.Advapi32;
-import com.github.robtimus.os.windows.registry.foreign.KtmW32;
-
 /**
  * An enumeration over optional registry features.
  *

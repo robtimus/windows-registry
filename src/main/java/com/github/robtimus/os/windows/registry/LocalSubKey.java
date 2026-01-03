@@ -17,14 +17,14 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegRenameKey;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_CREATED_NEW_KEY;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPENED_EXISTING_KEY;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPTION_NON_VOLATILE;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegRenameKey;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_CREATED_NEW_KEY;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_OPENED_EXISTING_KEY;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_OPTION_NON_VOLATILE;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
@@ -35,8 +35,7 @@ import java.util.Collections;
 import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
-import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HKEY;
+import com.github.robtimus.os.windows.registry.WindowsTypes.HKEY;
 
 final class LocalSubKey extends RegistryKey {
 

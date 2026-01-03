@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
 
 /**
  * Thrown when access is denied for a requested operation.

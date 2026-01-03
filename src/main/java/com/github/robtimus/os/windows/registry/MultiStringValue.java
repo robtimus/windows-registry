@@ -17,14 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_MULTI_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_MULTI_SZ;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import com.github.robtimus.os.windows.registry.foreign.WString;
 
 /**
  * A representation of multi-string registry values.

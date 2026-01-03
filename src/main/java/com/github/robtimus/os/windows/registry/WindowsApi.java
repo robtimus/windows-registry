@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.SymbolLookup;

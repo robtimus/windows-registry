@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
 
 /**
  * Thrown when an attempt is made to access a registry key using a handle that is no longer valid.

@@ -19,6 +19,10 @@ package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
+import static com.github.robtimus.os.windows.registry.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.KtmW32.GetTransactionInformation;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.createTransaction;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCloseHandle;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCommitTransaction;
@@ -26,10 +30,6 @@ import static com.github.robtimus.os.windows.registry.TransactionMocks.mockCreat
 import static com.github.robtimus.os.windows.registry.TransactionMocks.mockGetTransactionStatus;
 import static com.github.robtimus.os.windows.registry.TransactionOption.description;
 import static com.github.robtimus.os.windows.registry.TransactionOption.timeout;
-import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -49,7 +49,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
+import com.github.robtimus.os.windows.registry.WindowsTypes.TRANSACTION_OUTCOME;
 
 @SuppressWarnings("nls")
 class TransactionalStateTest extends RegistryTestBase {

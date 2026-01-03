@@ -17,6 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegConnectRegistry;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegEnumKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegEnumValue;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegOpenKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryValueEx;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.copyData;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
@@ -25,16 +32,9 @@ import static com.github.robtimus.os.windows.registry.ForeignTestUtils.notNULL;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.setHKEY;
 import static com.github.robtimus.os.windows.registry.RegistryTestBase.advapi32;
 import static com.github.robtimus.os.windows.registry.RegistryTestBase.arena;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumValue;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_MORE_DATA;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_NO_MORE_ITEMS;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_MORE_DATA;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_NO_MORE_ITEMS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_SUCCESS;
 import static java.lang.Math.toIntExact;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,7 +42,6 @@ import static org.mockito.ArgumentMatchers.notNull;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;
-import com.github.robtimus.os.windows.registry.foreign.WString;
 
 final class RegistryKeyMocks {
 

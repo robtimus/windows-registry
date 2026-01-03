@@ -17,14 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegConnectRegistry;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_SUCCESS;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.Objects;
-import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HKEY;
+import com.github.robtimus.os.windows.registry.WindowsTypes.HKEY;
 
 /**
  * A representation of a Windows registry on a remote machine.

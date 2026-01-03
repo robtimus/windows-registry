@@ -116,9 +116,7 @@
           <groupId>org.apache.maven.plugins</groupId>
           <artifactId>maven-javadoc-plugin</artifactId>
           <configuration>
-            <excludePackageNames>com.github.robtimus.os.windows.registry.foreign</excludePackageNames>
             <release>${version.java}</release>
-            <additionalOptions>--enable-preview</additionalOptions>
           </configuration>
         </plugin>
       </plugins>
@@ -128,11 +126,6 @@
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <compilerArgs>
-            <arg>--enable-preview</arg>
-          </compilerArgs>
-        </configuration>
       </plugin>
 
       <plugin>
@@ -191,21 +184,6 @@
               <suppressWarnings>nls</suppressWarnings>
             </configuration>
           </execution>
-          <execution>
-            <id>generate-foreign-messages</id>
-            <goals>
-              <goal>generate</goal>
-            </goals>
-            <configuration>
-              <bundleName>com.github.robtimus.os.windows.registry.windows-registry-foreign</bundleName>
-              <className>com.github.robtimus.os.windows.registry.foreign.Messages</className>
-              <licenseText>Apache-2.0</licenseText>
-              <licenseCopyrightHolder>Rob Spoor</licenseCopyrightHolder>
-              <licenseCopyrightYear>2023</licenseCopyrightYear>
-              <publicVisibility>false</publicVisibility>
-              <suppressWarnings>nls</suppressWarnings>
-            </configuration>
-          </execution>
         </executions>
       </plugin>
 
@@ -239,7 +217,8 @@
             -javaagent:${org.mockito:mockito-core:jar}
             <!-- Allow JUnit to access the test classes -->
             --add-opens com.github.robtimus.os.windows.registry/com.github.robtimus.os.windows.registry=ALL-UNNAMED
-            --enable-preview
+            <!-- ALL-UNNAMED for JNA, which is not part of the module path due to it being a test-dependency only -->
+            --enable-native-access=com.github.robtimus.os.windows.registry,ALL-UNNAMED
           </argLine>
         </configuration>
       </plugin>

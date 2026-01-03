@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;

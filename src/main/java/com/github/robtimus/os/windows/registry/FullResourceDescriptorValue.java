@@ -18,7 +18,7 @@
 package com.github.robtimus.os.windows.registry;
 
 import static com.github.robtimus.os.windows.registry.BinaryValue.HEX_FORMAT;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
 import java.util.Arrays;

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -25,8 +25,8 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Optional;
 
-@SuppressWarnings({ "javadoc", "nls" })
-public final class KtmW32 extends WindowsApi {
+@SuppressWarnings("nls")
+final class KtmW32 extends WindowsApi {
 
     private static final Optional<MethodHandle> CREATE_TRANSACTION;
     private static final Optional<MethodHandle> COMMIT_TRANSACTION;
@@ -95,7 +95,7 @@ public final class KtmW32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static MemorySegment CreateTransaction(
+    static MemorySegment CreateTransaction(
             MemorySegment lpSecurityAttributes,
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
             MemorySegment UOW,
@@ -127,7 +127,7 @@ public final class KtmW32 extends WindowsApi {
         }
     }
 
-    public static boolean isCreateTransactionEnabled() {
+    static boolean isCreateTransactionEnabled() {
         return CREATE_TRANSACTION.isPresent();
     }
 
@@ -137,7 +137,7 @@ public final class KtmW32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static boolean CommitTransaction(
+    static boolean CommitTransaction(
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
             MemorySegment TransactionHandle,
             MemorySegment captureState) {
@@ -152,7 +152,7 @@ public final class KtmW32 extends WindowsApi {
         }
     }
 
-    public static boolean isCommitTransactionEnabled() {
+    static boolean isCommitTransactionEnabled() {
         return COMMIT_TRANSACTION.isPresent();
     }
 
@@ -162,7 +162,7 @@ public final class KtmW32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static boolean RollbackTransaction(
+    static boolean RollbackTransaction(
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
             MemorySegment TransactionHandle,
             MemorySegment captureState) {
@@ -177,7 +177,7 @@ public final class KtmW32 extends WindowsApi {
         }
     }
 
-    public static boolean isRollbackTransactionEnabled() {
+    static boolean isRollbackTransactionEnabled() {
         return ROLLBACK_TRANSACTION.isPresent();
     }
 
@@ -193,7 +193,7 @@ public final class KtmW32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static boolean GetTransactionInformation(
+    static boolean GetTransactionInformation(
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
             MemorySegment TransactionHandle,
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
@@ -226,7 +226,7 @@ public final class KtmW32 extends WindowsApi {
         }
     }
 
-    public static boolean isGetTransactionInformationEnabled() {
+    static boolean isGetTransactionInformationEnabled() {
         return GET_TRANSACTION_INFORMATION.isPresent();
     }
 }

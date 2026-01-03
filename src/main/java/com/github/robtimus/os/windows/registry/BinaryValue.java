@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_BINARY;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;

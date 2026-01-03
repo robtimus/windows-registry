@@ -17,13 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_EXPAND_SZ;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_EXPAND_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_SZ;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.util.Objects;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
-import com.github.robtimus.os.windows.registry.foreign.WString;
 
 /**
  * A representation of string registry values.

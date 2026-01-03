@@ -17,6 +17,16 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegConnectRegistry;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCreateKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegDeleteValue;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegEnumKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegEnumValue;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegOpenKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryValueEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegSetValueEx;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqBytes;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqSize;
@@ -27,23 +37,13 @@ import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockSubKe
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValue;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockValues;
 import static com.github.robtimus.os.windows.registry.RegistryValueTest.randomData;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteValue;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumValue;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_LOCAL_MACHINE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_USERS;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.HKEY_LOCAL_MACHINE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.HKEY_USERS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_SZ;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;

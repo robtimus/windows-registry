@@ -17,8 +17,6 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
-
 /**
  * Thrown when an error occurred while trying to use a transaction.
  *

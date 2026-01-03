@@ -17,13 +17,13 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
+import static com.github.robtimus.os.windows.registry.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.KtmW32.GetTransactionInformation;
+import static com.github.robtimus.os.windows.registry.KtmW32.RollbackTransaction;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -31,10 +31,8 @@ import java.time.Duration;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.IntFunction;
-import com.github.robtimus.os.windows.registry.foreign.CaptureState;
-import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HANDLE;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
+import com.github.robtimus.os.windows.registry.WindowsTypes.HANDLE;
+import com.github.robtimus.os.windows.registry.WindowsTypes.TRANSACTION_OUTCOME;
 
 /**
  * A representation of transactions for working with the Windows registry.

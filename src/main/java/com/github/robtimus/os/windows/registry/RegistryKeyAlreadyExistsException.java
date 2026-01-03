@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ALREADY_EXISTS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ALREADY_EXISTS;
 
 /**
  * Thrown when an attempt is made to create a registry key that already exists.

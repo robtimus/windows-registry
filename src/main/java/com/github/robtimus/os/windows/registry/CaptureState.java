@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
 import java.lang.foreign.Linker;
@@ -26,8 +26,7 @@ import java.lang.foreign.StructLayout;
 import java.lang.foreign.ValueLayout;
 import java.util.Optional;
 
-@SuppressWarnings("javadoc")
-public final class CaptureState {
+final class CaptureState {
 
     @SuppressWarnings("nls")
     static final String GET_LAST_ERROR = "GetLastError";
@@ -47,11 +46,11 @@ public final class CaptureState {
     private CaptureState() {
     }
 
-    public static MemorySegment allocate(SegmentAllocator allocator) {
+    static MemorySegment allocate(SegmentAllocator allocator) {
         return allocator.allocate(LAYOUT);
     }
 
-    public static int getLastError(MemorySegment segment) {
+    static int getLastError(MemorySegment segment) {
         return segment.get(LAST_ERROR_LAYOUT, LAST_ERROR_OFFSET);
     }
 }

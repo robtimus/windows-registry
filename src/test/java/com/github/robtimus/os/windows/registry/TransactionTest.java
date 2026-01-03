@@ -20,15 +20,15 @@ package com.github.robtimus.os.windows.registry;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.isNULL;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.setLastError;
+import static com.github.robtimus.os.windows.registry.Kernel32.CloseHandle;
+import static com.github.robtimus.os.windows.registry.KtmW32.CommitTransaction;
+import static com.github.robtimus.os.windows.registry.KtmW32.CreateTransaction;
+import static com.github.robtimus.os.windows.registry.KtmW32.GetTransactionInformation;
+import static com.github.robtimus.os.windows.registry.KtmW32.RollbackTransaction;
 import static com.github.robtimus.os.windows.registry.TransactionMocks.createTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.Kernel32.CloseHandle;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CommitTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.CreateTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.GetTransactionInformation;
-import static com.github.robtimus.os.windows.registry.foreign.KtmW32.RollbackTransaction;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.TRANSACTION_DO_NOT_PROMOTE;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -47,8 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.TRANSACTION_OUTCOME;
+import com.github.robtimus.os.windows.registry.WindowsTypes.TRANSACTION_OUTCOME;
 
 @SuppressWarnings("nls")
 class TransactionTest extends RegistryTestBase {

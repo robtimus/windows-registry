@@ -17,20 +17,20 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteValue;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegEnumValue;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegSetValueEx;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_MORE_DATA;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_NO_MORE_ITEMS;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_SET_VALUE;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegDeleteValue;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegEnumKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegEnumValue;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryValueEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegSetValueEx;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_MORE_DATA;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_NO_MORE_ITEMS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.KEY_SET_VALUE;
 import static java.lang.Math.toIntExact;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
@@ -55,8 +55,7 @@ import java.util.function.Function;
 import java.util.function.IntPredicate;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.FILETIME;
+import com.github.robtimus.os.windows.registry.WindowsTypes.FILETIME;
 
 /**
  * A representation of registry keys.

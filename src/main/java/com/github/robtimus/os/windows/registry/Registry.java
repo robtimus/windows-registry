@@ -17,12 +17,12 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCreateKeyTransacted;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegDeleteKeyTransacted;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyEx;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegOpenKeyTransacted;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCreateKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCreateKeyTransacted;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegDeleteKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegDeleteKeyTransacted;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegOpenKeyEx;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegOpenKeyTransacted;
 import java.lang.foreign.MemorySegment;
 
 /**

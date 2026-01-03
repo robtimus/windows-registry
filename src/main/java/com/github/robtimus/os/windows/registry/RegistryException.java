@@ -17,11 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_KEY_DELETED;
-import com.github.robtimus.os.windows.registry.foreign.Kernel32;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_KEY_DELETED;
 
 /**
  * Thrown when an error occurred while trying to access or modify the Windows registry.

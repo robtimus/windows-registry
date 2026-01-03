@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import static java.lang.foreign.MemoryLayout.PathElement.groupElement;
 import static java.lang.invoke.MethodHandles.insertCoordinates;
@@ -27,23 +27,22 @@ import java.lang.foreign.StructLayout;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.VarHandle;
 
-@SuppressWarnings("javadoc")
-public final class WindowsTypes {
+final class WindowsTypes {
 
     private WindowsTypes() {
     }
 
-    public static final class HANDLE {
+    static final class HANDLE {
 
         private HANDLE() {
         }
 
-        public static boolean isInvalid(MemorySegment segment) {
+        static boolean isInvalid(MemorySegment segment) {
             return segment.address() == -1;
         }
     }
 
-    public static final class HKEY {
+    static final class HKEY {
 
         private static final AddressLayout LAYOUT = ValueLayout.ADDRESS;
         private static final AddressLayout REFERENCE_LAYOUT = ValueLayout.ADDRESS.withTargetLayout(LAYOUT);
@@ -51,11 +50,11 @@ public final class WindowsTypes {
         private HKEY() {
         }
 
-        public static MemorySegment allocateRef(SegmentAllocator allocator) {
+        static MemorySegment allocateRef(SegmentAllocator allocator) {
             return allocator.allocate(REFERENCE_LAYOUT);
         }
 
-        public static MemorySegment target(MemorySegment ref) {
+        static MemorySegment target(MemorySegment ref) {
             return ref.get(LAYOUT, 0);
         }
     }
@@ -65,7 +64,7 @@ public final class WindowsTypes {
      *   DWORD dwLowDateTime
      *   DWORD dwHighDateTime
      */
-    public static final class FILETIME {
+    static final class FILETIME {
 
         private static final String DW_LOW_DATE_TIME_NAME = "dwLowDateTime"; //$NON-NLS-1$
         private static final String DW_HIGH_DATE_TIME_NAME = "dwHighDateTime"; //$NON-NLS-1$
@@ -80,23 +79,23 @@ public final class WindowsTypes {
         private FILETIME() {
         }
 
-        public static MemorySegment allocate(SegmentAllocator allocator) {
+        static MemorySegment allocate(SegmentAllocator allocator) {
             return allocator.allocate(LAYOUT);
         }
 
-        public static int dwLowDateTime(MemorySegment segment) {
+        static int dwLowDateTime(MemorySegment segment) {
             return (int) DW_LOW_DATE_TIME.get(segment);
         }
 
-        public static void dwLowDateTime(MemorySegment segment, int value) {
+        static void dwLowDateTime(MemorySegment segment, int value) {
             DW_LOW_DATE_TIME.set(segment, value);
         }
 
-        public static int dwHighDateTime(MemorySegment segment) {
+        static int dwHighDateTime(MemorySegment segment) {
             return (int) DW_HIGH_DATE_TIME.get(segment);
         }
 
-        public static void dwHighDateTime(MemorySegment segment, int value) {
+        static void dwHighDateTime(MemorySegment segment, int value) {
             DW_HIGH_DATE_TIME.set(segment, value);
         }
     }
@@ -108,11 +107,11 @@ public final class WindowsTypes {
      *   TransactionOutcomeAborted
      */
     @SuppressWarnings({ "checkstyle:TypeName", "squid:S101", "squid:S115" })
-    public static final class TRANSACTION_OUTCOME {
+    static final class TRANSACTION_OUTCOME {
 
-        public static final int TransactionOutcomeUndetermined = 1;
-        public static final int TransactionOutcomeCommitted = 2;
-        public static final int TransactionOutcomeAborted = 3;
+        static final int TransactionOutcomeUndetermined = 1;
+        static final int TransactionOutcomeCommitted = 2;
+        static final int TransactionOutcomeAborted = 3;
 
         private TRANSACTION_OUTCOME() {
         }

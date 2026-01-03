@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
@@ -25,8 +25,8 @@ import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 
-@SuppressWarnings({ "javadoc", "nls" })
-public final class Kernel32 extends WindowsApi {
+@SuppressWarnings("nls")
+final class Kernel32 extends WindowsApi {
 
     private static final MethodHandle EXPAND_ENVIRONMENT_STRINGS;
     private static final MethodHandle FORMAT_MESSAGE;
@@ -75,7 +75,7 @@ public final class Kernel32 extends WindowsApi {
 
     // The following functions all require GetLastError() to be called to retrieve any error that occurred
 
-    public static String expandEnvironmentStrings(String input) {
+    static String expandEnvironmentStrings(String input) {
         if (input == null) {
             return ""; //$NON-NLS-1$
         }
@@ -133,7 +133,7 @@ public final class Kernel32 extends WindowsApi {
         }
     }
 
-    public static String formatMessage(int code) {
+    static String formatMessage(int code) {
         try (Arena allocator = Arena.ofConfined()) {
             int dwFlags = FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS;
             int dwLanguageId = 0;
@@ -237,7 +237,7 @@ public final class Kernel32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static boolean CloseHandle(
+    static boolean CloseHandle(
             MemorySegment hObject,
             MemorySegment captureState) {
 

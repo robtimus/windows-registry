@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -25,8 +25,8 @@ import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.util.Optional;
 
-@SuppressWarnings({ "javadoc", "nls" })
-public final class Advapi32 extends WindowsApi {
+@SuppressWarnings("nls")
+final class Advapi32 extends WindowsApi {
 
     private static final MethodHandle REG_CLOSE_KEY;
     private static final MethodHandle REG_CONNECT_REGISTRY;
@@ -197,7 +197,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegCloseKey(
+    static int RegCloseKey(
             MemorySegment hKey) {
 
         try {
@@ -216,7 +216,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegConnectRegistry(
+    static int RegConnectRegistry(
             MemorySegment lpMachineName,
             MemorySegment hKey,
             MemorySegment phkResult) {
@@ -245,7 +245,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static int RegCreateKeyEx(
+    static int RegCreateKeyEx(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
@@ -289,7 +289,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static int RegCreateKeyTransacted(
+    static int RegCreateKeyTransacted(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })
@@ -322,7 +322,7 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static boolean isRegCreateKeyTransactedEnabled() {
+    static boolean isRegCreateKeyTransactedEnabled() {
         return REG_CREATE_KEY_TRANSACTED.isPresent();
     }
 
@@ -335,7 +335,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegDeleteKeyEx(
+    static int RegDeleteKeyEx(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int samDesired,
@@ -364,7 +364,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegDeleteKeyTransacted(
+    static int RegDeleteKeyTransacted(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int samDesired,
@@ -387,7 +387,7 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static boolean isRegDeleteKeyTransactedEnabled() {
+    static boolean isRegDeleteKeyTransactedEnabled() {
         return REG_DELETE_KEY_TRANSACTED.isPresent();
     }
 
@@ -398,7 +398,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegDeleteValue(
+    static int RegDeleteValue(
             MemorySegment hKey,
             MemorySegment lpValueName) {
 
@@ -424,7 +424,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static int RegEnumKeyEx(
+    static int RegEnumKeyEx(
             MemorySegment hKey,
             int dwIndex,
             MemorySegment lpName,
@@ -462,7 +462,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static int RegEnumValue(
+    static int RegEnumValue(
             MemorySegment hKey,
             int dwIndex,
             MemorySegment lpValueName,
@@ -497,7 +497,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegOpenKeyEx(
+    static int RegOpenKeyEx(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int ulOptions,
@@ -528,7 +528,7 @@ public final class Advapi32 extends WindowsApi {
      *)
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegOpenKeyTransacted(
+    static int RegOpenKeyTransacted(
             MemorySegment hKey,
             MemorySegment lpSubKey,
             int ulOptions,
@@ -552,7 +552,7 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static boolean isRegOpenKeyTransactedEnabled() {
+    static boolean isRegOpenKeyTransactedEnabled() {
         return REG_OPEN_KEY_TRANSACTED.isPresent();
     }
 
@@ -573,7 +573,7 @@ public final class Advapi32 extends WindowsApi {
      *)
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100", "squid:S107" })
-    public static int RegQueryInfoKey(
+    static int RegQueryInfoKey(
             MemorySegment hKey,
             MemorySegment lpClass,
             MemorySegment lpcchClass,
@@ -617,7 +617,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegQueryValueEx(
+    static int RegQueryValueEx(
             MemorySegment hKey,
             MemorySegment lpValueName,
             MemorySegment lpReserved,
@@ -646,7 +646,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegRenameKey(
+    static int RegRenameKey(
             MemorySegment hKey,
             MemorySegment lpSubKeyName,
             MemorySegment lpNewKeyName) {
@@ -662,7 +662,7 @@ public final class Advapi32 extends WindowsApi {
         }
     }
 
-    public static boolean isRegRenameKeyEnabled() {
+    static boolean isRegRenameKeyEnabled() {
         return REG_RENAME_KEY.isPresent();
     }
 
@@ -677,7 +677,7 @@ public final class Advapi32 extends WindowsApi {
      * )
      */
     @SuppressWarnings({ "checkstyle:MethodName", "squid:S100" })
-    public static int RegSetValueEx(
+    static int RegSetValueEx(
             MemorySegment hKey,
             MemorySegment lpValueName,
             @SuppressWarnings({ "checkstyle:ParameterName", "squid:S117" })

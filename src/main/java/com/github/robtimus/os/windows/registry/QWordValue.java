@@ -17,7 +17,7 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_QWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_QWORD_LITTLE_ENDIAN;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
 import java.lang.foreign.ValueLayout;

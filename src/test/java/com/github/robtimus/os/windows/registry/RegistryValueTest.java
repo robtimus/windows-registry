@@ -17,20 +17,20 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_BIG_ENDIAN;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_EXPAND_SZ;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_LINK;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_MULTI_SZ;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_NONE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_QWORD;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_QWORD_LITTLE_ENDIAN;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_LIST;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_RESOURCE_REQUIREMENTS_LIST;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_BINARY;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_DWORD;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_DWORD_BIG_ENDIAN;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_EXPAND_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_FULL_RESOURCE_DESCRIPTOR;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_LINK;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_MULTI_SZ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_NONE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_QWORD;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_QWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_RESOURCE_LIST;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_RESOURCE_REQUIREMENTS_LIST;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_SZ;
 import static java.lang.Math.toIntExact;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;

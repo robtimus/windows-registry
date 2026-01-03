@@ -17,10 +17,10 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegQueryInfoKey;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_ACCESS_DENIED;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_FILE_NOT_FOUND;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_SUCCESS;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegQueryInfoKey;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_ACCESS_DENIED;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_FILE_NOT_FOUND;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_SUCCESS;
 import java.lang.foreign.MemorySegment;
 import java.lang.ref.Cleaner;
 import java.util.Optional;

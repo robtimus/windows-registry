@@ -25,7 +25,6 @@ import java.util.Deque;
 import java.util.Optional;
 import java.util.function.IntPredicate;
 import java.util.regex.Pattern;
-import com.github.robtimus.os.windows.registry.foreign.WindowsConstants;
 
 final class LocalRootKey extends RegistryKey {
 

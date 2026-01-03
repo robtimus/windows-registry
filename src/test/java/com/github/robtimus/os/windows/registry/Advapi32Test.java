@@ -15,13 +15,13 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.KEY_READ;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_BINARY;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.REG_OPTION_NON_VOLATILE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.KEY_READ;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_BINARY;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_DWORD_LITTLE_ENDIAN;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.REG_OPTION_NON_VOLATILE;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.lang.foreign.Arena;
@@ -31,8 +31,8 @@ import java.nio.ByteOrder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.FILETIME;
-import com.github.robtimus.os.windows.registry.foreign.WindowsTypes.HKEY;
+import com.github.robtimus.os.windows.registry.WindowsTypes.FILETIME;
+import com.github.robtimus.os.windows.registry.WindowsTypes.HKEY;
 
 @SuppressWarnings("nls")
 class Advapi32Test {

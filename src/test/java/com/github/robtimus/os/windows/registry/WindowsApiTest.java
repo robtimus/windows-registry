@@ -15,9 +15,9 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
-import static com.github.robtimus.os.windows.registry.foreign.WindowsApi.optionalSymbolLookup;
+import static com.github.robtimus.os.windows.registry.WindowsApi.optionalSymbolLookup;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import java.lang.foreign.Arena;

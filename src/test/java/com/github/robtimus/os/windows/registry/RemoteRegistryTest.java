@@ -17,15 +17,15 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static com.github.robtimus.os.windows.registry.Advapi32.RegCloseKey;
+import static com.github.robtimus.os.windows.registry.Advapi32.RegConnectRegistry;
 import static com.github.robtimus.os.windows.registry.ForeignTestUtils.eqPointer;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockClose;
 import static com.github.robtimus.os.windows.registry.RegistryKeyMocks.mockConnectAndClose;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegCloseKey;
-import static com.github.robtimus.os.windows.registry.foreign.Advapi32.RegConnectRegistry;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_BAD_NETPATH;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.ERROR_INVALID_HANDLE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_LOCAL_MACHINE;
-import static com.github.robtimus.os.windows.registry.foreign.WindowsConstants.HKEY_USERS;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_BAD_NETPATH;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.ERROR_INVALID_HANDLE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.HKEY_LOCAL_MACHINE;
+import static com.github.robtimus.os.windows.registry.WindowsConstants.HKEY_USERS;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;

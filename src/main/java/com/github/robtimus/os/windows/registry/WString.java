@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package com.github.robtimus.os.windows.registry.foreign;
+package com.github.robtimus.os.windows.registry;
 
 import java.lang.foreign.AddressLayout;
 import java.lang.foreign.MemoryLayout;
@@ -25,8 +25,7 @@ import java.lang.foreign.ValueLayout;
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("javadoc")
-public final class WString {
+final class WString {
 
     // LPWSTR and LPCWSTR are explicitly 16-bit, see
     // https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-dtyp/50e9ef83-d6fd-4e22-a34a-2c6b4e3c24f3 and
@@ -34,27 +33,27 @@ public final class WString {
     // That means there's no need to lookup the size for wchar_t
 
     private static final ValueLayout.OfChar CHAR_LAYOUT = ValueLayout.JAVA_CHAR;
-    public static final long CHAR_SIZE = CHAR_LAYOUT.byteSize();
+    static final long CHAR_SIZE = CHAR_LAYOUT.byteSize();
 
     private static final AddressLayout REFERENCE_LAYOUT = ValueLayout.ADDRESS.withTargetLayout(ValueLayout.ADDRESS);
 
     private WString() {
     }
 
-    public static MemorySegment allocate(SegmentAllocator allocator, int size) {
+    static MemorySegment allocate(SegmentAllocator allocator, int size) {
         return allocator.allocate(WString.CHAR_LAYOUT, size + 1L);
     }
 
-    public static MemorySegment allocateRef(SegmentAllocator allocator) {
+    static MemorySegment allocateRef(SegmentAllocator allocator) {
         return allocator.allocate(REFERENCE_LAYOUT);
     }
 
-    public static MemorySegment target(MemorySegment ref, int length) {
+    static MemorySegment target(MemorySegment ref, int length) {
         AddressLayout layout = ValueLayout.ADDRESS.withTargetLayout(MemoryLayout.sequenceLayout(length + 1L, ValueLayout.JAVA_CHAR));
         return ref.get(layout, 0);
     }
 
-    public static String getString(MemorySegment segment) {
+    static String getString(MemorySegment segment) {
         if (segment.byteSize() == 0) {
             return null;
         }
@@ -63,13 +62,13 @@ public final class WString {
         return getString(segment, length);
     }
 
-    public static String getString(MemorySegment segment, int length) {
+    static String getString(MemorySegment segment, int length) {
         char[] chars = new char[length];
         MemorySegment.copy(segment, CHAR_LAYOUT, 0, chars, 0, length);
         return new String(chars);
     }
 
-    public static List<String> getStringList(MemorySegment segment) {
+    static List<String> getStringList(MemorySegment segment) {
         List<String> result = new ArrayList<>();
         long offset = 0;
         while (offset < segment.byteSize()) {
@@ -102,13 +101,13 @@ public final class WString {
         throw new IllegalStateException(Messages.StringUtils.stringEndNotFound(segment.byteSize()));
     }
 
-    public static MemorySegment allocate(SegmentAllocator allocator, String value) {
+    static MemorySegment allocate(SegmentAllocator allocator, String value) {
         MemorySegment segment = allocator.allocate(CHAR_LAYOUT, value.length() + 1L);
         copy(value, segment, 0);
         return segment;
     }
 
-    public static MemorySegment allocate(SegmentAllocator allocator, List<String> values) {
+    static MemorySegment allocate(SegmentAllocator allocator, List<String> values) {
         long charCount = 1L + values.stream()
                 .mapToLong(value -> value.length() + 1L)
                 .sum();
@@ -127,7 +126,7 @@ public final class WString {
         return segment;
     }
 
-    public static void copy(String value, MemorySegment segment, long start) {
+    static void copy(String value, MemorySegment segment, long start) {
         char[] chars = value.toCharArray();
         MemorySegment.copy(chars, 0, segment, CHAR_LAYOUT, start, value.length());
     }

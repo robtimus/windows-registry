@@ -17,14 +17,14 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static com.github.robtimus.os.windows.registry.CaptureState.LAST_ERROR_LAYOUT;
+import static com.github.robtimus.os.windows.registry.CaptureState.LAST_ERROR_OFFSET;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandles;
 import java.util.Arrays;
 import java.util.HexFormat;
 import java.util.IdentityHashMap;
@@ -32,23 +32,9 @@ import java.util.Map;
 import org.mockito.ArgumentMatcher;
 import org.mockito.internal.matchers.ContainsExtraTypeInfo;
 import org.mockito.internal.matchers.text.ValuePrinter;
-import com.github.robtimus.os.windows.registry.foreign.CaptureState;
-import com.github.robtimus.os.windows.registry.foreign.WString;
-import com.github.robtimus.os.windows.registry.foreign.WindowsConstants;
 
 @SuppressWarnings({ "javadoc", "nls" })
 public final class ForeignTestUtils {
-
-    private static ValueLayout.OfInt lastErrorLayout;
-    private static long lastErrorOffset;
-
-    static {
-        assertDoesNotThrow(() -> {
-            MethodHandles.Lookup lookup = MethodHandles.privateLookupIn(CaptureState.class, MethodHandles.lookup());
-            lastErrorLayout = (ValueLayout.OfInt) lookup.findStaticVarHandle(CaptureState.class, "LAST_ERROR_LAYOUT", ValueLayout.OfInt.class).get();
-            lastErrorOffset = (long) lookup.findStaticVarHandle(CaptureState.class, "LAST_ERROR_OFFSET", long.class).get();
-        });
-    }
 
     private static int hKeyValue = 0;
 
@@ -213,6 +199,6 @@ public final class ForeignTestUtils {
     }
 
     public static void setLastError(MemorySegment captureState, int errorCode) {
-        captureState.set(lastErrorLayout, lastErrorOffset, errorCode);
+        captureState.set(LAST_ERROR_LAYOUT, LAST_ERROR_OFFSET, errorCode);
     }
 }
