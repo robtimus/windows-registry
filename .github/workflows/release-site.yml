@@ -61,6 +61,7 @@ jobs:
       - name: Deploy to gh-pages
         uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: 'target/site'
+          folder: 'target/site/apidocs'
+          target-folder: 'apidocs/1.x'
           commit-message: 'Updated for version ${{ github.ref_name }}'
           clean-exclude: 'apidocs/*.x'
