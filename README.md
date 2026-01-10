@@ -1,9 +1,9 @@
 # windows-registry
-[![Maven Central](https://img.shields.io/maven-central/v/com.github.robtimus/windows-registry)](https://search.maven.org/artifact/com.github.robtimus/windows-registry)
-[![Build Status](https://github.com/robtimus/windows-registry/actions/workflows/build.yml/badge.svg)](https://github.com/robtimus/windows-registry/actions/workflows/build.yml)
-[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=com.github.robtimus%3Awindows-registry&metric=alert_status)](https://sonarcloud.io/summary/overall?id=com.github.robtimus%3Awindows-registry)
-[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=com.github.robtimus%3Awindows-registry&metric=coverage)](https://sonarcloud.io/summary/overall?id=com.github.robtimus%3Awindows-registry)
-[![Known Vulnerabilities](https://snyk.io/test/github/robtimus/windows-registry/badge.svg)](https://snyk.io/test/github/robtimus/windows-registry)
+[![Maven Central](https://img.shields.io/maven-central/v/com.github.robtimus/windows-registry?versionPrefix=1)](https://search.maven.org/artifact/com.github.robtimus/windows-registry)
+[![Build Status](https://github.com/robtimus/windows-registry/actions/workflows/build.yml/badge.svg?branch=1.x)](https://github.com/robtimus/windows-registry/actions/workflows/build.yml)
+[![Quality Gate Status](https://sonarcloud.io/api/project_badges/measure?project=com.github.robtimus%3Awindows-registry&branch=1.x&metric=alert_status)](https://sonarcloud.io/summary/overall?id=com.github.robtimus%3Awindows-registry&branch=1.x)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=com.github.robtimus%3Awindows-registry&branch=1.x&metric=coverage)](https://sonarcloud.io/summary/overall?id=com.github.robtimus%3Awindows-registry&branch=1.x)
+[![Known Vulnerabilities](https://snyk.io/test/github/robtimus/windows-registry/1.x/badge.svg)](https://snyk.io/test/github/robtimus/windows-registry/1.x)
 
 Provides classes and interfaces for working with the Windows registry.
 
