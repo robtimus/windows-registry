@@ -17,16 +17,11 @@
 
 package com.github.robtimus.os.windows.registry;
 
-import static java.lang.Math.toIntExact;
 import java.lang.foreign.AddressLayout;
-import java.lang.foreign.FunctionDescriptor;
-import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
-import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
-import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -41,18 +36,6 @@ final class WString {
     static final long CHAR_SIZE = CHAR_LAYOUT.byteSize();
 
     private static final AddressLayout REFERENCE_LAYOUT = ValueLayout.ADDRESS.withTargetLayout(ValueLayout.ADDRESS);
-
-    private static final MethodHandle WCSNLEN;
-
-    static {
-        Linker linker = Linker.nativeLinker();
-        SymbolLookup defaultLookup = linker.defaultLookup();
-
-        FunctionDescriptor wcslenDescriptor = FunctionDescriptor.of(ValueLayout.JAVA_LONG,
-                                                                    ValueLayout.ADDRESS /* str */,
-                                                                    ValueLayout.JAVA_LONG /* numberOfElements */);
-        WCSNLEN = linker.downcallHandle(defaultLookup.findOrThrow("wcsnlen"), wcslenDescriptor); //$NON-NLS-1$
-    }
 
     private WString() {
     }
@@ -75,8 +58,9 @@ final class WString {
             return null;
         }
 
-        int length = stringLength(segment, 0);
-        return getString(segment, length);
+        char[] chars = segment.toArray(CHAR_LAYOUT);
+        int length = stringLength(chars, 0);
+        return new String(chars, 0, length);
     }
 
     static String getString(MemorySegment segment, int length) {
@@ -87,46 +71,33 @@ final class WString {
 
     static List<String> getStringList(MemorySegment segment) {
         List<String> result = new ArrayList<>();
-        long offset = 0;
-        while (offset < segment.byteSize()) {
-            int length = stringLength(segment, offset);
+        char[] chars = segment.toArray(CHAR_LAYOUT);
+        int index = 0;
+        while (index < chars.length) {
+            int length = stringLength(chars, index);
             if (length == 0) {
                 // A sequence of null-terminated strings, terminated by an empty string (\0).
                 // => The first empty string terminates the string list
                 break;
             }
-            char[] chars = new char[length];
-            MemorySegment.copy(segment, CHAR_LAYOUT, offset, chars, 0, length);
-            String value = new String(chars);
+            String value = new String(chars, index, length);
 
             result.add(value);
 
-            offset += (length + 1L) * CHAR_SIZE;
+            index += length + 1;
         }
         return result;
     }
 
-    private static int stringLength(MemorySegment segment, long start) {
-        MemorySegment subSegment = segment.asSlice(start, segment.byteSize() - start);
-        long numberOfElements = subSegment.byteSize() / CHAR_SIZE;
-        long length = wcsnlen(subSegment, numberOfElements);
-        // Due to the way that the Windows registry API works, and space for additional NULL characters allocated when the Windows registry API
-        // does not guarantee NULL characters, a NULL character will always be present, and there is no need to check for it.
-        return toIntExact(length);
-    }
-
-    /*
-     * size_t wcsnlen(
-     *    const wchar_t *str,
-     *    size_t numberOfElements
-     * )
-     */
-    private static long wcsnlen(MemorySegment str, long numberOfElements) {
-        try {
-            return (long) WCSNLEN.invokeExact(str, numberOfElements);
-        } catch (Throwable t) {
-            throw new IllegalStateException(t);
+    private static int stringLength(char[] chars, int start) {
+        int result = 0;
+        for (int i = start; i < chars.length; i++) {
+            if (chars[i] == '\0') {
+                return result;
+            }
+            result++;
         }
+        return result;
     }
 
     static MemorySegment allocate(SegmentAllocator allocator, String value) {

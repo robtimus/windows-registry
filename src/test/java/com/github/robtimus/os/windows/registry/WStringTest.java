@@ -66,6 +66,22 @@ class WStringTest {
                 assertEquals(value, result);
             }
         }
+
+        @Test
+        void testMissingTerminator() {
+            String value = "foo";
+            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
+                memory.setWideString(0, value);
+                byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
+
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+
+                String result = WString.getString(segment);
+                assertEquals(value, result);
+            }
+        }
     }
 
     @Nested
@@ -159,6 +175,33 @@ class WStringTest {
                 }
 
                 byte[] bytes = memory.getByteArray(0, (int) memory.size());
+
+                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
+
+                List<String> result = WString.getStringList(segment);
+                assertEquals(values, result);
+            }
+        }
+
+        @Test
+        void testMissingElementTerminator() {
+            List<String> values = List.of("foo", "bar");
+
+            int size = values.stream()
+                    .mapToInt(String::length)
+                    .sum()
+                    + values.size();
+
+            try (Memory memory = new Memory(size * Native.WCHAR_SIZE);
+                    Arena arena = Arena.ofConfined()) {
+
+                long offset = 0;
+                for (String value : values) {
+                    memory.setWideString(offset, value);
+                    offset += (value.length() + 1) * Native.WCHAR_SIZE;
+                }
+
+                byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
 
                 MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
 
