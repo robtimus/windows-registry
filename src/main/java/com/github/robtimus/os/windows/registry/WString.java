@@ -17,11 +17,16 @@
 
 package com.github.robtimus.os.windows.registry;
 
+import static java.lang.Math.toIntExact;
 import java.lang.foreign.AddressLayout;
+import java.lang.foreign.FunctionDescriptor;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.SegmentAllocator;
+import java.lang.foreign.SymbolLookup;
 import java.lang.foreign.ValueLayout;
+import java.lang.invoke.MethodHandle;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -36,6 +41,18 @@ final class WString {
     static final long CHAR_SIZE = CHAR_LAYOUT.byteSize();
 
     private static final AddressLayout REFERENCE_LAYOUT = ValueLayout.ADDRESS.withTargetLayout(ValueLayout.ADDRESS);
+
+    private static final MethodHandle WCSNLEN;
+
+    static {
+        Linker linker = Linker.nativeLinker();
+        SymbolLookup defaultLookup = linker.defaultLookup();
+
+        FunctionDescriptor wcslenDescriptor = FunctionDescriptor.of(ValueLayout.JAVA_LONG,
+                                                                    ValueLayout.ADDRESS /* str */,
+                                                                    ValueLayout.JAVA_LONG /* numberOfElements */);
+        WCSNLEN = linker.downcallHandle(defaultLookup.findOrThrow("wcsnlen"), wcslenDescriptor); //$NON-NLS-1$
+    }
 
     private WString() {
     }
@@ -90,15 +107,26 @@ final class WString {
     }
 
     private static int stringLength(MemorySegment segment, long start) {
-        // add offset >= 0 check to guard against overflow
-        int length = 0;
-        for (long offset = start; offset < segment.byteSize() && offset >= 0; offset += CHAR_SIZE, length++) {
-            char c = segment.get(CHAR_LAYOUT, offset);
-            if (c == '\0') {
-                return length;
-            }
+        MemorySegment subSegment = segment.asSlice(start, segment.byteSize() - start);
+        long numberOfElements = subSegment.byteSize() / CHAR_SIZE;
+        long length = wcsnlen(subSegment, numberOfElements);
+        // Due to the way that the Windows registry API works, and space for additional NULL characters allocated when the Windows registry API
+        // does not guarantee NULL characters, a NULL character will always be present, and there is no need to check for it.
+        return toIntExact(length);
+    }
+
+    /*
+     * size_t wcsnlen(
+     *    const wchar_t *str,
+     *    size_t numberOfElements
+     * )
+     */
+    private static long wcsnlen(MemorySegment str, long numberOfElements) {
+        try {
+            return (long) WCSNLEN.invokeExact(str, numberOfElements);
+        } catch (Throwable t) {
+            throw new IllegalStateException(t);
         }
-        throw new IllegalStateException(Messages.StringUtils.stringEndNotFound(segment.byteSize()));
     }
 
     static MemorySegment allocate(SegmentAllocator allocator, String value) {

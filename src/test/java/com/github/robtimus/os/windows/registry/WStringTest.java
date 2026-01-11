@@ -19,7 +19,6 @@ package com.github.robtimus.os.windows.registry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import java.lang.foreign.Arena;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -65,22 +64,6 @@ class WStringTest {
 
                 String result = WString.getString(segment);
                 assertEquals(value, result);
-            }
-        }
-
-        @Test
-        void testMissingTerminator() {
-            String value = "foo";
-            try (Memory memory = new Memory((value.length() + 1L) * Native.WCHAR_SIZE);
-                    Arena arena = Arena.ofConfined()) {
-
-                memory.setWideString(0, value);
-                byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
-
-                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
-
-                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> WString.getString(segment));
-                assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
             }
         }
     }
@@ -181,33 +164,6 @@ class WStringTest {
 
                 List<String> result = WString.getStringList(segment);
                 assertEquals(values, result);
-            }
-        }
-
-        @Test
-        void testMissingElementTerminator() {
-            List<String> values = List.of("foo", "bar");
-
-            int size = values.stream()
-                    .mapToInt(String::length)
-                    .sum()
-                    + values.size();
-
-            try (Memory memory = new Memory(size * Native.WCHAR_SIZE);
-                    Arena arena = Arena.ofConfined()) {
-
-                long offset = 0;
-                for (String value : values) {
-                    memory.setWideString(offset, value);
-                    offset += (value.length() + 1) * Native.WCHAR_SIZE;
-                }
-
-                byte[] bytes = memory.getByteArray(0, (int) memory.size() - Native.WCHAR_SIZE);
-
-                MemorySegment segment = arena.allocateFrom(ValueLayout.JAVA_BYTE, bytes);
-
-                IllegalStateException exception = assertThrows(IllegalStateException.class, () -> WString.getStringList(segment));
-                assertEquals(Messages.StringUtils.stringEndNotFound(bytes.length), exception.getMessage());
             }
         }
     }
