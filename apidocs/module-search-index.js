@@ -1,1 +1,1 @@
-moduleSearchIndex = [{"l":"com.github.robtimus.os.windows.registry"}]
+moduleSearchIndex = [{"l":"com.github.robtimus.os.windows.registry"}];updateSearchResults();
