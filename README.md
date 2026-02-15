@@ -9,7 +9,7 @@ Provides classes and interfaces for working with the Windows registry.
 
 ## Entry point
 
-The entry point for accessing the Windows registry is method [Registry.local()](https://robtimus.github.io/windows-registry/apidocs/com.github.robtimus.os.windows.registry/com/github/robtimus/os/windows/registry/Registry.html#local\(\)). It returns a reference to the local Windows registry. This reference contains constants for each of the available root registry keys. From these, use the `resolve` method to get the registry key you need. Note that registry key names can contain forward slashes, so you need to use backslashes to separate keys. From there you can access the registry key's sub keys and values.
+The entry point for accessing the Windows registry is method [Registry.local()](https://robtimus.github.io/windows-registry/apidocs/com.github.robtimus.os.windows.registry/com/github/robtimus/os/windows/registry/Registry.html#local\(\)). It returns a reference to the local Windows registry. This reference contains public fields for each of the available root registry keys. From these, use the `resolve` method to get the registry key you need. Note that registry key names can contain forward slashes, so you need to use backslashes to separate keys. From there you can access the registry key's sub keys and values.
 
 ## Registry values
 
